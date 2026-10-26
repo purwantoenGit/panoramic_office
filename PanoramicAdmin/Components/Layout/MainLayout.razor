@@ -1,0 +1,105 @@
+﻿@inherits LayoutComponentBase
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="0" Class="admin-appbar">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       OnClick="@ToggleDrawer" aria-label="Buka menu" />
+        <MudText Typo="Typo.h6" Class="appbar-title">Panoramic <span>Review</span></MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.NotificationsNone" Color="Color.Inherit"
+                       aria-label="Notifikasi" />
+        <MudAvatar Color="Color.Primary" Size="Size.Small" Class="user-avatar">A</MudAvatar>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="0"
+               Variant="DrawerVariant.Responsive" Class="admin-drawer">
+        <div class="drawer-brand">
+            <MudAvatar Color="Color.Primary" Size="Size.Medium">
+                <MudIcon Icon="@Icons.Material.Filled.Widgets" />
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.subtitle1" Class="brand-title">Panoramic Review</MudText>
+                <MudText Typo="Typo.caption" Class="brand-caption">ADMIN CONSOLE</MudText>
+            </div>
+        </div>
+        <MudNavMenu Class="admin-nav">
+            <MudText Typo="Typo.overline" Class="nav-section">DASHBOARD</MudText>
+            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+                Main Dashboard
+            </MudNavLink>
+            <MudNavLink Href="/virtual-office" Icon="@Icons.Material.Filled.Business">
+                Virtual Office
+            </MudNavLink>
+            <MudText Typo="Typo.overline" Class="nav-section">AGENDA</MudText>
+            <MudNavLink Href="/agenda" Icon="@Icons.Material.Filled.EventNote">
+                Daily Agenda
+            </MudNavLink>
+            <MudText Typo="Typo.overline" Class="nav-section">PROJECT</MudText>
+            <MudNavLink Href="/project-issue" Icon="@Icons.Material.Filled.BugReport">
+                Project Issue
+            </MudNavLink>
+            <MudNavLink Href="/strategic-action" Icon="@Icons.Material.Filled.TrendingUp">
+                Strategic Action
+            </MudNavLink>
+            <MudNavLink Href="/scrum-activity" Icon="@Icons.Material.Filled.Groups">
+                Scrum Activity
+            </MudNavLink>
+            <MudText Typo="Typo.overline" Class="nav-section">MASTER</MudText>
+            <MudNavLink Href="/master-project" Icon="@Icons.Material.Filled.Folder">
+                Master Project
+            </MudNavLink>
+            <MudNavLink Href="/master-stream" Icon="@Icons.Material.Filled.Stream">
+                Master Stream
+            </MudNavLink>
+            <MudNavLink Href="/master-category-project" Icon="@Icons.Material.Filled.Label">
+                Master Category Project
+            </MudNavLink>
+            <MudNavLink Href="/master-sites" Icon="@Icons.Material.Filled.Place">
+                Master Sites
+            </MudNavLink>
+            <MudNavLink Href="/master-roles" Icon="@Icons.Material.Filled.Work">
+                Master Roles
+            </MudNavLink>
+            <MudNavLink Href="/master-pic" Icon="@Icons.Material.Filled.Person">
+                Master PIC
+            </MudNavLink>
+            <MudNavLink Href="/master-issue" Icon="@Icons.Material.Filled.BugReport">
+                Master Issue
+            </MudNavLink>
+            <MudText Typo="Typo.overline" Class="nav-section">ADMINISTRATOR</MudText>
+            <MudNavLink Href="/users" Icon="@Icons.Material.Filled.People">
+                User
+            </MudNavLink>
+        </MudNavMenu>
+        <MudSpacer />
+        <div class="drawer-footer">
+            <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Size="Size.Small" />
+            <MudText Typo="Typo.caption">Pusat bantuan</MudText>
+            <MudSpacer />
+            <MudText Typo="Typo.caption" Class="version-label">v1.0</MudText>
+        </div>
+    </MudDrawer>
+
+    <MudMainContent Class="admin-main">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="page-container">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private bool _drawerOpen = true;
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+}

@@ -1,0 +1,73 @@
+@page "/users"
+@using PanoramicAdmin.ViewModels
+@inject UserListViewModel ViewModel
+
+<PageTitle>Pengguna | Panoramic Office</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.h4" Class="page-title">Pengguna</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">Kelola akses dan status anggota workspace.</MudText>
+    </div>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd">
+        Tambah pengguna
+    </MudButton>
+</div>
+
+<MudPaper Class="section-card user-table" Elevation="0">
+    <div class="section-heading">
+        <div>
+            <MudText Typo="Typo.h6" Class="section-title">Semua pengguna</MudText>
+            <MudText Typo="Typo.body2" Class="section-subtitle">@ViewModel.Users.Count anggota ditampilkan</MudText>
+        </div>
+        <MudTextField T="string" Value="@ViewModel.SearchText" ValueChanged="OnSearchChanged"
+                      Placeholder="Cari nama, email, atau role" Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true"
+                      Class="search-field" aria-label="Cari pengguna" />
+    </div>
+
+    @if (ViewModel.IsLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (ViewModel.Users.Count == 0)
+    {
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            Tidak ada pengguna yang cocok dengan pencarian.
+        </MudText>
+    }
+    else
+    {
+        <MudTable Items="@ViewModel.Users" Hover="true" Striped="true" Dense="true">
+            <HeaderContent>
+                <MudTh>Nama</MudTh>
+                <MudTh>Email</MudTh>
+                <MudTh>Peran</MudTh>
+                <MudTh>Status</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Nama">
+                    <div class="user-name-cell">
+                        <MudAvatar Color="Color.Primary" Size="Size.Small">@context.FullName[..1]</MudAvatar>
+                        <span>@context.FullName</span>
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Email">@context.Email</MudTd>
+                <MudTd DataLabel="Peran">@context.Role</MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string" Color="@(context.IsActive ? Color.Success : Color.Default)"
+                             Size="Size.Small" Variant="Variant.Outlined">
+                        @(context.IsActive ? "Aktif" : "Nonaktif")
+                    </MudChip>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+@code {
+    protected override async Task OnInitializedAsync() => await ViewModel.LoadAsync();
+
+    private void OnSearchChanged(string? text) => ViewModel.Search(text);
+}

@@ -1,0 +1,63 @@
+<MudDialog Class="add-project-dialog">
+    <TitleContent>
+        <div class="add-project-header">
+            <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Rounded="true">
+                <MudIcon Icon="@Icons.Material.Filled.Work" />
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.h6" Class="add-project-title">Tambah Master Role</MudText>
+                <MudText Typo="Typo.caption" Class="add-project-subtitle">
+                    Masukkan nama role untuk Master PIC.
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField T="string" @bind-Value="_roles" Label="Roles"
+                      Placeholder="Contoh: Project Implementor"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                      MaxLength="100" Counter="100"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Work" />
+        @if (_validationMessage is not null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Error">@_validationMessage</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <div class="add-project-actions">
+            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Batal</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save"
+                       StartIcon="@Icons.Material.Filled.Check" Class="add-project-save">
+                Simpan Role
+            </MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _roles = string.Empty;
+    private string? _validationMessage;
+
+    private void Save()
+    {
+        var roles = _roles.Trim();
+        if (string.IsNullOrWhiteSpace(roles))
+        {
+            _validationMessage = "Role wajib diisi.";
+            return;
+        }
+
+        if (roles.Length > 100)
+        {
+            _validationMessage = "Role maksimal 100 karakter.";
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(roles));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

@@ -1,0 +1,99 @@
+@using PanoramicAdmin.Models
+
+<MudDialog Class="add-project-dialog">
+    <TitleContent>
+        <div class="add-project-header">
+            <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Rounded="true">
+                <MudIcon Icon="@Icons.Material.Filled.Person" />
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.h6" Class="add-project-title">Tambah Master PIC</MudText>
+                <MudText Typo="Typo.caption" Class="add-project-subtitle">
+                    Masukkan nama dan role PIC.
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField T="string" @bind-Value="_nama" Label="Nama"
+                      Placeholder="Masukkan nama PIC"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                      MaxLength="150" Counter="150"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" />
+        <MudSelect T="string" @bind-Value="_role" Label="Role"
+                   Variant="Variant.Outlined" Margin="Margin.Dense"
+                   Required="true" RequiredError="Pilih role dari Master Roles."
+                   Disabled="@(Roles.Count == 0)">
+            @foreach (var role in Roles)
+            {
+                <MudSelectItem T="string" Value="@role">@role</MudSelectItem>
+            }
+        </MudSelect>
+        @if (_validationMessage is not null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Error">@_validationMessage</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <div class="add-project-actions">
+            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Batal</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save"
+                       StartIcon="@Icons.Material.Filled.Check" Class="add-project-save">
+                Simpan PIC
+            </MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public IReadOnlyList<string> Roles { get; set; } = [];
+
+    private string _nama = string.Empty;
+    private string _role = string.Empty;
+    private string? _validationMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (!Roles.Contains(_role, StringComparer.Ordinal) && Roles.Count > 0)
+        {
+            _role = Roles[0];
+        }
+    }
+
+    private void Save()
+    {
+        var nama = _nama.Trim();
+        var role = _role.Trim();
+        if (string.IsNullOrWhiteSpace(nama))
+        {
+            _validationMessage = "Nama wajib diisi.";
+            return;
+        }
+
+        if (nama.Length > 150)
+        {
+            _validationMessage = "Nama maksimal 150 karakter.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(role))
+        {
+            _validationMessage = "Role wajib diisi.";
+            return;
+        }
+
+        if (!Roles.Contains(role, StringComparer.Ordinal))
+        {
+            _validationMessage = "Pilih role yang tersedia dari Master Roles.";
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new MasterPicInput(nama, role)));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

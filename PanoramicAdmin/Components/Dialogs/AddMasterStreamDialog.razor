@@ -1,0 +1,63 @@
+<MudDialog Class="add-project-dialog">
+    <TitleContent>
+        <div class="add-project-header">
+            <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Rounded="true">
+                <MudIcon Icon="@Icons.Material.Filled.Stream" />
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.h6" Class="add-project-title">Tambah Stream</MudText>
+                <MudText Typo="Typo.caption" Class="add-project-subtitle">
+                    Masukkan nama stream baru.
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField T="string" @bind-Value="_namaStream" Label="Nama Stream"
+                      Placeholder="Contoh: Digital Workplace"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                      MaxLength="100" Counter="100"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Stream" />
+        @if (_validationMessage is not null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Error">@_validationMessage</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <div class="add-project-actions">
+            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Batal</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save"
+                       StartIcon="@Icons.Material.Filled.Check" Class="add-project-save">
+                Simpan Stream
+            </MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _namaStream = string.Empty;
+    private string? _validationMessage;
+
+    private void Save()
+    {
+        var namaStream = _namaStream.Trim();
+        if (string.IsNullOrWhiteSpace(namaStream))
+        {
+            _validationMessage = "Nama stream wajib diisi.";
+            return;
+        }
+
+        if (namaStream.Length > 100)
+        {
+            _validationMessage = "Nama stream maksimal 100 karakter.";
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(namaStream));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

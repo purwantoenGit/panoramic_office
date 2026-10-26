@@ -1,0 +1,351 @@
+@page "/project-issue"
+@implements IDisposable
+@using PanoramicAdmin.Components.Dialogs
+@using PanoramicAdmin.ViewModels
+@inject IDialogService DialogService
+@inject ProjectIssueViewModel ViewModel
+
+<PageTitle>Project Issue | Panoramic Office</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.h4" Class="page-title">Project Issue</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Kelola dan pantau issue pada project.
+        </MudText>
+    </div>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="@(() => OpenDialogAsync(null))"
+               Disabled="@(ViewModel.IsLoading || ViewModel.IsSaving || ViewModel.DatabaseError is not null ||
+                           ViewModel.Projects.Count == 0 || ViewModel.Pics.Count == 0 ||
+                           ViewModel.StrategicActions.Count == 0 || ViewModel.ProjectStatuses.Count == 0)">
+        Tambah Issue
+    </MudButton>
+</div>
+
+@if (!ViewModel.IsLoading && ViewModel.DatabaseError is null && ViewModel.ProjectStatuses.Count == 0)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4">
+        Belum ada Status Project aktif. Tambahkan atau aktifkan pilihan di
+        <MudLink Href="/master-issue">Master Issue</MudLink>.
+    </MudAlert>
+}
+
+<MudPaper Class="section-card project-list-card" Elevation="0">
+    <div class="section-heading project-list-heading">
+        <div>
+            <MudText Typo="Typo.h6" Class="section-title">Daftar Project Issue</MudText>
+            <MudText Typo="Typo.body2" Class="section-subtitle">
+                @ViewModel.FilteredIssues.Count dari @ViewModel.Issues.Count issue ditampilkan
+            </MudText>
+        </div>
+        <MudTextField T="string" Value="@ViewModel.SearchText" ValueChanged="OnSearchChanged"
+                      Placeholder="Cari project, status, issuer, action plan, atau PIC"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Clearable="true" Class="search-field" aria-label="Cari Project Issue" />
+    </div>
+
+    @if (ViewModel.IsLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">Memuat data Project Issue...</MudText>
+    }
+    else if (ViewModel.DatabaseError is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="ma-4">
+            <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                <span>@ViewModel.DatabaseError</span>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                           OnClick="ViewModel.LoadAsync" Disabled="@ViewModel.IsSaving">Coba lagi</MudButton>
+            </div>
+        </MudAlert>
+    }
+    else if (ViewModel.FilteredIssues.Count == 0)
+    {
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            @(ViewModel.Issues.Count == 0
+                ? "Belum ada Project Issue."
+                : "Tidak ada issue yang cocok dengan pencarian.")
+        </MudText>
+    }
+    else
+    {
+        <div class="project-table-wrap">
+            <MudTable Items="@ViewModel.FilteredIssues" Hover="true" Dense="true"
+                      Breakpoint="Breakpoint.Md" Class="project-table">
+                <HeaderContent>
+                    <MudTh>No</MudTh>
+                    <MudTh>Project / Status</MudTh>
+                    <MudTh>Strategic Action</MudTh>
+                    <MudTh>Issuer</MudTh>
+                    <MudTh>Tanggal / Due Date</MudTh>
+                    <MudTh>Action Plan</MudTh>
+                    <MudTh Class="project-actions-header">Aksi</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="No"><span class="project-number">@context.No.ToString("D2")</span></MudTd>
+                    <MudTd DataLabel="Project / Status">
+                        <div class="project-issue-primary">
+                            <span class="project-issue-project-icon">
+                                <MudIcon Icon="@Icons.Material.Filled.FolderOpen" />
+                            </span>
+                            <div class="project-issue-project-copy">
+                                <MudText Typo="Typo.body2" Class="project-name">@context.Project</MudText>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                                         Class="@GetStatusClass(context.StatusProject)">
+                                    @context.StatusProject
+                                </MudChip>
+                            </div>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Strategic Action">
+                        <div class="project-issue-action-cell">
+                            <span class="project-issue-action-icon">
+                                <MudIcon Icon="@Icons.Material.Filled.Flag" />
+                            </span>
+                            <MudText Typo="Typo.body2" Class="project-issue-action">@context.StrategicAction</MudText>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Issuer">
+                        <div class="project-issue-issuer-cell">
+                            <MudAvatar Color="Color.Primary" Size="Size.Small"
+                                       Class="project-issue-issuer-avatar" aria-label="@context.Issuer">
+                                @GetInitials(context.Issuer)
+                            </MudAvatar>
+                            <MudText Typo="Typo.body2" Class="project-issue-issuer">@context.Issuer</MudText>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Tanggal / Due Date">
+                        <div class="project-issue-date-stack">
+                            <div class="project-issue-date-item">
+                                <span class="project-issue-date-icon">
+                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" />
+                                </span>
+                                <span>
+                                    <span class="project-issue-meta-label">Tanggal</span>
+                                    <span class="project-issue-date-value">@context.Tanggal.ToString("dd/MM/yyyy")</span>
+                                </span>
+                            </div>
+                            <div class="project-issue-date-item">
+                                <span class="project-issue-date-icon project-issue-date-icon-due">
+                                    <MudIcon Icon="@Icons.Material.Filled.EventAvailable" />
+                                </span>
+                                <span>
+                                    <span class="project-issue-meta-label">Due Date</span>
+                                    <span class="project-issue-date-value">
+                                        @(context.DueDate?.ToString("dd/MM/yyyy") ?? "—")
+                                    </span>
+                                </span>
+                            </div>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Action Plan" Class="project-issue-detail-toggle">
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                   Class="project-issue-details-button"
+                                   StartIcon="@(_expandedIssueId == context.Id
+                                                   ? Icons.Material.Filled.ExpandLess
+                                                   : Icons.Material.Filled.ExpandMore)"
+                                   OnClick="@(() => ToggleDetails(context.Id))"
+                                   aria-label="@(_expandedIssueId == context.Id
+                                                     ? $"Sembunyikan Action Plan issue {context.No}"
+                                                     : $"Lihat Action Plan issue {context.No}")">
+                            @context.ActionPlans.Count Rencana
+                        </MudButton>
+                    </MudTd>
+                    <MudTd DataLabel="Aksi" Class="project-actions-cell">
+                        @if (ViewModel.PendingDeleteId == context.Id)
+                        {
+                            <div class="project-actions">
+                                <MudIconButton Icon="@Icons.Material.Filled.Check" Color="Color.Error" Size="Size.Small"
+                                               OnClick="@(() => ViewModel.DeleteAsync(context.Id))"
+                                               Disabled="@ViewModel.IsSaving" Class="project-row-delete-confirm"
+                                               aria-label="Konfirmasi hapus" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" Size="Size.Small"
+                                               OnClick="ViewModel.CancelDelete" Disabled="@ViewModel.IsSaving"
+                                               aria-label="Batal menghapus" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="project-actions">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small"
+                                               Class="project-row-edit-button"
+                                               OnClick="@(() => OpenDialogAsync(context))"
+                                               Disabled="@(ViewModel.IsSaving || ViewModel.PendingDeleteId is not null)"
+                                               aria-label="@($"Edit issue {context.No}")" />
+                            <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error"
+                                           Size="Size.Small" Class="project-row-delete-button"
+                                           OnClick="@(() => ViewModel.RequestDelete(context.Id))"
+                                           Disabled="@(ViewModel.IsSaving || ViewModel.PendingDeleteId is not null)"
+                                           aria-label="@($"Hapus issue {context.No}")" />
+                            </div>
+                        }
+                    </MudTd>
+                </RowTemplate>
+                <ChildRowContent Context="issue">
+                    @if (_expandedIssueId == issue.Id)
+                    {
+                        <MudTd colspan="7" Class="project-issue-detail-cell">
+                            @if (issue.ActionPlans.Count == 0)
+                            {
+                                <MudText Typo="Typo.body2" Class="project-issue-no-action-plans">
+                                    Belum ada Action Plan. Edit issue untuk menambahkan rencana.
+                                </MudText>
+                            }
+                            else
+                            {
+                                <div class="project-issue-plans">
+                                    @for (var i = 0; i < issue.ActionPlans.Count; i++)
+                                    {
+                                        var plan = issue.ActionPlans[i];
+                                        var actionPlanLabel = ProjectIssueLabels.GetActionPlanLetter(i);
+                                        <MudPaper @key="plan.Id" Class="project-issue-plan-card" Elevation="0">
+                                            <div class="project-issue-plan-heading">
+                                                <div class="project-issue-plan-title-wrap">
+                                                    <span class="project-action-plan-letter">
+                                                        @actionPlanLabel
+                                                    </span>
+                                                    <MudText Typo="Typo.subtitle2" Class="project-issue-plan-title">
+                                                        Action Plan @actionPlanLabel
+                                                    </MudText>
+                                                </div>
+                                                <div class="project-issue-plan-pic">
+                                                    <span class="project-issue-meta-label">PIC</span>
+                                                    <MudTooltip Text="@plan.Pic">
+                                                        <MudAvatar Color="Color.Primary" Size="Size.Small"
+                                                                   Class="project-issue-pic-avatar"
+                                                                   aria-label="@plan.Pic">
+                                                            @GetInitials(plan.Pic)
+                                                        </MudAvatar>
+                                                    </MudTooltip>
+                                                </div>
+                                            </div>
+                                            <div class="project-issue-plan-status">
+                                                <span class="project-issue-meta-label">Status</span>
+                                                <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                                                         Class="@GetStatusClass(plan.Status)">
+                                                    @plan.Status
+                                                </MudChip>
+                                            </div>
+                                            <MudText Typo="Typo.body2" Class="project-issue-plan-copy">
+                                                @plan.ActionPlan
+                                            </MudText>
+                                            <MudDivider Class="project-issue-plan-divider" />
+                                            <div class="project-issue-feedback">
+                                                <div class="project-issue-feedback-heading">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Forum" Size="Size.Small" />
+                                                    <MudText Typo="Typo.overline" Class="project-issue-detail-label">
+                                                        Feedback
+                                                    </MudText>
+                                                </div>
+                                                <MudText Typo="Typo.body2">
+                                                    @(string.IsNullOrWhiteSpace(plan.Feedback)
+                                                        ? "Belum ada feedback."
+                                                        : plan.Feedback)
+                                                </MudText>
+                                            </div>
+                                        </MudPaper>
+                                    }
+                                </div>
+                            }
+                        </MudTd>
+                    }
+                </ChildRowContent>
+            </MudTable>
+        </div>
+    }
+</MudPaper>
+
+@code {
+    private int? _expandedIssueId;
+
+    private static string GetStatusClass(string status) =>
+        status.Trim().ToUpperInvariant() switch
+        {
+            "OPEN" => "project-plan-status-open",
+            "PROGRESS" or "IN PROGRESS" or "IN-PROGRESS" or "ONGOING" or "ON GOING" or "SEDANG BERJALAN" =>
+                "project-plan-status-progress",
+            "HOLD" or "ON HOLD" or "BLOCKED" or "PENDING" or "TERTUNDA" =>
+                "project-plan-status-hold",
+            "DONE" or "COMPLETED" or "CLOSED" or "SELESAI" =>
+                "project-plan-status-complete",
+            _ => "project-plan-status-default"
+        };
+
+    private static string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.StartsWith('('))
+        {
+            return "—";
+        }
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parts.Length == 1
+            ? parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant()
+            : $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ViewModel.StateChanged += OnViewModelStateChanged;
+        await ViewModel.LoadAsync();
+    }
+
+    private void OnViewModelStateChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnSearchChanged(string? text) => ViewModel.Search(text);
+    private void ToggleDetails(int issueId) =>
+        _expandedIssueId = _expandedIssueId == issueId ? null : issueId;
+
+    private async Task OpenDialogAsync(ProjectIssueRow? issue)
+    {
+        var projectStatuses = ViewModel.ProjectStatuses.ToList();
+        if (issue is not null && !projectStatuses.Contains(issue.StatusProject, StringComparer.Ordinal))
+        {
+            projectStatuses.Insert(0, issue.StatusProject);
+        }
+        if (issue is not null)
+        {
+            foreach (var plan in issue.ActionPlans)
+            {
+                if (!projectStatuses.Contains(plan.Status, StringComparer.Ordinal))
+                {
+                    projectStatuses.Insert(0, plan.Status);
+                }
+            }
+        }
+
+        var initialValue = issue is null
+            ? null
+            : new ProjectIssueInput(issue.ProjectId, issue.StatusProject, issue.Tanggal,
+                issue.IssuerPicId, issue.StrategicActionId,
+                issue.ActionPlans.Select(plan => new ProjectIssueActionPlanInput(
+                    plan.Id, plan.ActionPlan, plan.Status, plan.PicId, plan.Feedback)).ToArray(),
+                issue.DueDate);
+        var parameters = new DialogParameters
+        {
+            ["InitialValue"] = initialValue,
+            ["Title"] = issue is null ? "Tambah Project Issue" : "Edit Project Issue",
+            ["Projects"] = ViewModel.Projects.ToArray(),
+            ["Pics"] = ViewModel.Pics.ToArray(),
+            ["StrategicActions"] = ViewModel.StrategicActions.ToArray(),
+            ["ProjectStatuses"] = projectStatuses.ToArray()
+        };
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Medium
+        };
+        var dialog = await DialogService.ShowAsync<ProjectIssueDialog>(
+            issue is null ? "Tambah Project Issue" : "Edit Project Issue", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: ProjectIssueInput input })
+        {
+            if (issue is null) await ViewModel.CreateAsync(input);
+            else await ViewModel.UpdateAsync(issue.Id, input);
+        }
+    }
+
+    public void Dispose() => ViewModel.StateChanged -= OnViewModelStateChanged;
+}

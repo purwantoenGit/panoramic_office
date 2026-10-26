@@ -1,0 +1,320 @@
+@page "/virtual-office"
+@implements IDisposable
+@using Microsoft.AspNetCore.Components.Web
+@using PanoramicAdmin.ViewModels
+@inject VirtualOfficeViewModel ViewModel
+
+<PageTitle>Virtual Office | Panoramic Review</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.overline" Class="office-eyebrow">PANORAMIC REVIEW</MudText>
+        <MudText Typo="Typo.h4" Class="page-title">Virtual Office</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Ruang kerja digital untuk kolaborasi dan aktivitas tim.
+        </MudText>
+    </div>
+    <MudChip T="string" Class="office-concept-chip" Variant="Variant.Outlined"
+             Icon="@Icons.Material.Filled.Layers">Denah konsep</MudChip>
+</div>
+
+<div class="office-layout">
+    <MudPaper Class="office-map-card" Elevation="0">
+        <div class="office-map-heading">
+            <div>
+                <MudText Typo="Typo.h6" Class="office-panel-title">Denah Kantor</MudText>
+                <MudText Typo="Typo.body2" Class="office-panel-subtitle">
+                    Pilih ruangan pada denah untuk melihat detail.
+                </MudText>
+            </div>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                     Icon="@Icons.Material.Filled.Apartment">Lantai 1</MudChip>
+        </div>
+
+        <div class="office-map-scroll">
+            <svg class="office-floor-plan" viewBox="0 0 1200 700"
+                 role="group" aria-label="Denah konsep Virtual Office">
+                <defs>
+                    <pattern id="office-grid" width="28" height="28" patternUnits="userSpaceOnUse">
+                        <path d="M 28 0 L 0 0 0 28" class="office-grid-line" />
+                    </pattern>
+                </defs>
+
+                <rect x="12" y="12" width="1176" height="676" rx="24" class="office-floor-base" />
+                <rect x="12" y="12" width="1176" height="676" rx="24" fill="url(#office-grid)" />
+
+                <g class="@GetZoneClass(0)" role="button" tabindex="0"
+                   aria-label="Pilih ruang Project Implementor"
+                   aria-pressed="@(_selectedRoomIndex == 0)"
+                   @onclick="() => SelectRoom(0)"
+                   @onkeydown="args => HandleRoomKeyDown(0, args)">
+                    <rect x="40" y="40" width="490" height="260" rx="18" class="office-room-fill" />
+                    <rect x="40" y="40" width="490" height="260" rx="18" class="office-room-boundary" />
+                    <text x="68" y="80" class="office-room-kicker">AREA KERJA</text>
+                    <text x="68" y="111" class="office-room-label">Project Implementor</text>
+                    <text x="68" y="135" class="office-room-caption">Ruang kerja fokus dan koordinasi project</text>
+                    <rect x="76" y="174" width="118" height="58" rx="8" class="office-furniture" />
+                    <rect x="214" y="174" width="118" height="58" rx="8" class="office-furniture" />
+                    <rect x="352" y="174" width="142" height="58" rx="8" class="office-furniture" />
+                    <rect x="91" y="187" width="34" height="23" rx="3" class="office-equipment" />
+                    <rect x="229" y="187" width="34" height="23" rx="3" class="office-equipment" />
+                    <rect x="367" y="187" width="34" height="23" rx="3" class="office-equipment" />
+                    <circle cx="135" cy="248" r="10" class="office-chair" />
+                    <circle cx="273" cy="248" r="10" class="office-chair" />
+                    <circle cx="421" cy="248" r="10" class="office-chair" />
+                    @if (!ViewModel.IsLoading && ViewModel.DatabaseError is null)
+                    {
+                        @for (var i = 0; i < ViewModel.ProjectImplementors.Count; i++)
+                        {
+                            var pic = ViewModel.ProjectImplementors[i];
+                            <g class="office-person-marker office-person-marker-@(i % 3)"
+                               transform="@GetSeatTransform(i)"
+                               role="img" aria-label="@pic.Nama">
+                                <title>@pic.Nama</title>
+                                <circle r="13" class="office-person-marker-circle" />
+                                <text y="3.5" class="office-person-marker-initials">
+                                    @GetInitials(pic.Nama)
+                                </text>
+                            </g>
+                        }
+                    }
+                </g>
+
+                <g class="@GetZoneClass(1)" role="button" tabindex="0"
+                   aria-label="Pilih ruang Rapat"
+                   aria-pressed="@(_selectedRoomIndex == 1)"
+                   @onclick="() => SelectRoom(1)"
+                   @onkeydown="args => HandleRoomKeyDown(1, args)">
+                    <rect x="670" y="40" width="490" height="260" rx="18" class="office-room-fill" />
+                    <rect x="670" y="40" width="490" height="260" rx="18" class="office-room-boundary" />
+                    <text x="698" y="80" class="office-room-kicker">KOLABORASI</text>
+                    <text x="698" y="111" class="office-room-label">Ruang Rapat</text>
+                    <text x="698" y="135" class="office-room-caption">Diskusi, review, dan perencanaan bersama</text>
+                    <rect x="792" y="166" width="246" height="76" rx="22" class="office-meeting-table" />
+                    <rect x="817" y="183" width="46" height="39" rx="5" class="office-equipment" />
+                    <circle cx="780" cy="181" r="11" class="office-chair" />
+                    <circle cx="780" cy="225" r="11" class="office-chair" />
+                    <circle cx="1050" cy="181" r="11" class="office-chair" />
+                    <circle cx="1050" cy="225" r="11" class="office-chair" />
+                    <circle cx="862" cy="153" r="10" class="office-chair" />
+                    <circle cx="966" cy="153" r="10" class="office-chair" />
+                    <circle cx="862" cy="255" r="10" class="office-chair" />
+                    <circle cx="966" cy="255" r="10" class="office-chair" />
+                </g>
+
+                <g class="@GetZoneClass(2)" role="button" tabindex="0"
+                   aria-label="Pilih Ruang Tengah untuk Tim"
+                   aria-pressed="@(_selectedRoomIndex == 2)"
+                   @onclick="() => SelectRoom(2)"
+                   @onkeydown="args => HandleRoomKeyDown(2, args)">
+                    <rect x="40" y="360" width="710" height="300" rx="18" class="office-room-fill" />
+                    <rect x="40" y="360" width="710" height="300" rx="18" class="office-room-boundary" />
+                    <text x="68" y="402" class="office-room-kicker">RUANG BERSAMA</text>
+                    <text x="68" y="433" class="office-room-label">Ruang Tengah untuk Tim</text>
+                    <text x="68" y="457" class="office-room-caption">Area terbuka untuk kerja tim dan koordinasi harian</text>
+                    <rect x="92" y="496" width="184" height="62" rx="10" class="office-furniture" />
+                    <rect x="316" y="496" width="184" height="62" rx="10" class="office-furniture" />
+                    <rect x="540" y="496" width="166" height="62" rx="10" class="office-furniture" />
+                    <rect x="112" y="510" width="44" height="28" rx="4" class="office-equipment" />
+                    <rect x="336" y="510" width="44" height="28" rx="4" class="office-equipment" />
+                    <rect x="560" y="510" width="44" height="28" rx="4" class="office-equipment" />
+                    <circle cx="184" cy="574" r="11" class="office-chair" />
+                    <circle cx="408" cy="574" r="11" class="office-chair" />
+                    <circle cx="623" cy="574" r="11" class="office-chair" />
+                    <rect x="292" y="590" width="198" height="38" rx="19" class="office-lounge-seat" />
+                    <circle cx="316" cy="609" r="6" class="office-lounge-cushion" />
+                    <circle cx="466" cy="609" r="6" class="office-lounge-cushion" />
+                </g>
+
+                <g class="@GetZoneClass(3)" role="button" tabindex="0"
+                   aria-label="Pilih Ruang Kopi Santai"
+                   aria-pressed="@(_selectedRoomIndex == 3)"
+                   @onclick="() => SelectRoom(3)"
+                   @onkeydown="args => HandleRoomKeyDown(3, args)">
+                    <rect x="800" y="360" width="360" height="300" rx="18" class="office-room-fill" />
+                    <rect x="800" y="360" width="360" height="300" rx="18" class="office-room-boundary" />
+                    <text x="828" y="402" class="office-room-kicker">RECHARGE</text>
+                    <text x="828" y="433" class="office-room-label">Ruang Kopi Santai</text>
+                    <text x="828" y="457" class="office-room-caption">Beristirahat dan berbincang santai</text>
+                    <rect x="850" y="490" width="250" height="44" rx="9" class="office-coffee-counter" />
+                    <circle cx="884" cy="512" r="10" class="office-coffee-item" />
+                    <path d="M 920 502 h 18 v 20 h -18 z M 938 506 h 8 v 11 h -8" class="office-coffee-machine" />
+                    <rect x="850" y="558" width="112" height="48" rx="20" class="office-lounge-seat" />
+                    <rect x="988" y="558" width="112" height="48" rx="20" class="office-lounge-seat" />
+                    <circle cx="906" cy="582" r="6" class="office-lounge-cushion" />
+                    <circle cx="1044" cy="582" r="6" class="office-lounge-cushion" />
+                    <circle cx="975" cy="582" r="13" class="office-coffee-table" />
+                </g>
+
+                <text x="555" y="335" class="office-corridor-label">KORIDOR</text>
+            </svg>
+        </div>
+        <div class="office-room-shortcuts" aria-label="Pilih ruangan">
+            @for (var i = 0; i < Rooms.Length; i++)
+            {
+                var roomIndex = i;
+                <MudButton Variant="@(roomIndex == _selectedRoomIndex ? Variant.Filled : Variant.Outlined)"
+                           Color="Color.Primary" Size="Size.Small"
+                           OnClick="@(() => SelectRoom(roomIndex))">
+                    @Rooms[roomIndex].Name
+                </MudButton>
+            }
+        </div>
+        <MudText Typo="Typo.caption" Class="office-map-note">
+            Denah masih konsep. Inisial PIC ditampilkan pada kursi kerja masing-masing.
+        </MudText>
+    </MudPaper>
+
+    <MudPaper Class="office-detail-card" Elevation="0">
+        <div class="office-detail-icon">
+            <MudIcon Icon="@SelectedRoom.Icon" />
+        </div>
+        <MudText Typo="Typo.overline" Class="office-eyebrow">@SelectedRoom.Category</MudText>
+        <MudText Typo="Typo.h5" Class="office-detail-title">@SelectedRoom.Name</MudText>
+        <MudText Typo="Typo.body2" Class="office-detail-description">
+            @SelectedRoom.Description
+        </MudText>
+        @if (_selectedRoomIndex == 0)
+        {
+            <div class="office-team-roster">
+                <div class="office-roster-heading">
+                    <MudText Typo="Typo.subtitle2" Class="office-roster-title">
+                        Tim Project Implementor
+                    </MudText>
+                    @if (!ViewModel.IsLoading && ViewModel.DatabaseError is null)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                            @ViewModel.ProjectImplementors.Count PIC
+                        </MudChip>
+                    }
+                </div>
+                @if (ViewModel.IsLoading)
+                {
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                }
+                else if (ViewModel.DatabaseError is not null)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Outlined">
+                        <div class="office-roster-error">
+                            <span>@ViewModel.DatabaseError</span>
+                            <MudButton Variant="Variant.Text" Color="Color.Error"
+                                       OnClick="ViewModel.LoadAsync">
+                                Coba lagi
+                            </MudButton>
+                        </div>
+                    </MudAlert>
+                }
+                else if (ViewModel.ProjectImplementors.Count == 0)
+                {
+                    <MudText Typo="Typo.caption" Class="office-roster-empty">
+                        Belum ada PIC dengan role Project Implementor.
+                        <MudLink Href="/master-pic">Periksa Master PIC</MudLink>
+                    </MudText>
+                }
+                else
+                {
+                    <div class="office-team-list">
+                        @foreach (var pic in ViewModel.ProjectImplementors)
+                        {
+                            <div class="office-person-row" @key="pic.Id">
+                                <MudAvatar Color="Color.Primary" Size="Size.Small"
+                                           Class="office-person-avatar">
+                                    @GetInitials(pic.Nama)
+                                </MudAvatar>
+                                <div class="office-person-details">
+                                    <MudText Typo="Typo.body2" Class="office-person-name">
+                                        @pic.Nama
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Class="office-person-role">
+                                        Project Implementor
+                                    </MudText>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        <MudDivider Class="office-detail-divider" />
+        <MudText Typo="Typo.caption" Class="office-detail-hint">
+            Pilih ruangan lain pada denah untuk melihat area yang berbeda.
+        </MudText>
+    </MudPaper>
+</div>
+
+@code {
+    private int _selectedRoomIndex = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ViewModel.StateChanged += OnViewModelStateChanged;
+        await ViewModel.LoadAsync();
+    }
+
+    private static readonly OfficeRoom[] Rooms =
+    [
+        new(
+            "Project Implementor",
+            "AREA KERJA",
+            "Ruang kerja khusus Project Implementor untuk menjaga fokus, menyusun pekerjaan, dan berkoordinasi dalam pelaksanaan project.",
+            Icons.Material.Filled.LaptopMac),
+        new(
+            "Ruang Rapat",
+            "KOLABORASI",
+            "Ruang untuk rapat, review project, dan diskusi bersama tim.",
+            Icons.Material.Filled.Groups),
+        new(
+            "Ruang Tengah untuk Tim",
+            "RUANG BERSAMA",
+            "Area terbuka sebagai pusat aktivitas tim untuk bekerja dan berkoordinasi sehari-hari.",
+            Icons.Material.Filled.Groups),
+        new(
+            "Ruang Kopi Santai",
+            "RECHARGE",
+            "Area santai untuk menikmati kopi, beristirahat sejenak, dan berbincang informal.",
+            Icons.Material.Filled.Coffee)
+    ];
+
+    private OfficeRoom SelectedRoom => Rooms[_selectedRoomIndex];
+
+    private string GetZoneClass(int index) =>
+        $"office-zone office-zone-{index}{(_selectedRoomIndex == index ? " selected" : string.Empty)}";
+
+    private void SelectRoom(int index) => _selectedRoomIndex = index;
+
+    private void HandleRoomKeyDown(int index, KeyboardEventArgs args)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            SelectRoom(index);
+        }
+    }
+
+    private static readonly string[] SeatTransforms =
+    [
+        "translate(135 248)",
+        "translate(273 248)",
+        "translate(421 248)"
+    ];
+
+    private static string GetSeatTransform(int index) => SeatTransforms[index % SeatTransforms.Length];
+
+    private void OnViewModelStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private static string GetInitials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0)
+        {
+            return "?";
+        }
+
+        return parts.Length == 1
+            ? parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant()
+            : $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+
+    public void Dispose() => ViewModel.StateChanged -= OnViewModelStateChanged;
+
+    private sealed record OfficeRoom(string Name, string Category, string Description, string Icon);
+}

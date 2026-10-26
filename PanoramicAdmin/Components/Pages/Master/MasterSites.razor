@@ -1,0 +1,193 @@
+@page "/master-sites"
+@implements IDisposable
+@using PanoramicAdmin.Components.Dialogs
+@using PanoramicAdmin.ViewModels
+@inject IDialogService DialogService
+@inject MasterSitesViewModel ViewModel
+
+<PageTitle>Master Sites | Panoramic Office</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.h4" Class="page-title">Master Sites</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Kelola daftar site dan statusnya.
+        </MudText>
+    </div>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddDialogAsync"
+               Disabled="@(ViewModel.IsLoading || ViewModel.IsSaving || ViewModel.DatabaseError is not null)">
+        Tambah Site
+    </MudButton>
+</div>
+
+<MudPaper Class="section-card project-list-card" Elevation="0">
+    <div class="section-heading project-list-heading">
+        <div>
+            <MudText Typo="Typo.h6" Class="section-title">Daftar sites</MudText>
+            <MudText Typo="Typo.body2" Class="section-subtitle">
+                @ViewModel.FilteredSites.Count dari @ViewModel.Sites.Count sites ditampilkan
+            </MudText>
+        </div>
+        <MudTextField T="string" Value="@ViewModel.SearchText" ValueChanged="OnSearchChanged"
+                      Placeholder="Cari site"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Clearable="true" Class="search-field" aria-label="Cari site" />
+    </div>
+
+    @if (ViewModel.IsLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            Memuat data sites...
+        </MudText>
+    }
+    else if (ViewModel.DatabaseError is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="ma-4">
+            <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                <span>@ViewModel.DatabaseError</span>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                           OnClick="ViewModel.LoadAsync" Disabled="@ViewModel.IsSaving">
+                    Coba lagi
+                </MudButton>
+            </div>
+        </MudAlert>
+    }
+    else if (ViewModel.FilteredSites.Count == 0)
+    {
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            @(ViewModel.Sites.Count == 0
+                ? "Belum ada site."
+                : "Tidak ada site yang cocok dengan pencarian.")
+        </MudText>
+    }
+    else
+    {
+        <MudTable Items="@ViewModel.FilteredSites" Hover="true" Dense="true"
+                  Breakpoint="Breakpoint.Sm" Class="project-table">
+            <HeaderContent>
+                <MudTh>No</MudTh>
+                <MudTh>Sites</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh Class="project-actions-header">Edit</MudTh>
+                <MudTh Class="project-actions-header">Delete</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="No">
+                    <span class="project-number">@context.No.ToString("D2")</span>
+                </MudTd>
+                <MudTd DataLabel="Sites">
+                    @if (ViewModel.EditingSiteId == context.Id)
+                    {
+                        <MudTextField T="string" @bind-Value="ViewModel.EditSites"
+                                      Label="Sites" Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" MaxLength="150" Counter="150"
+                                      Error="@(ViewModel.EditError is not null)" ErrorText="@ViewModel.EditError" />
+                    }
+                    else
+                    {
+                        <div class="project-name-cell">
+                            <MudAvatar Color="Color.Primary" Size="Size.Small" Class="project-icon">
+                                <MudIcon Icon="@Icons.Material.Filled.Place" />
+                            </MudAvatar>
+                            <MudText Typo="Typo.body2" Class="project-name">@context.Sites</MudText>
+                        </div>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    @if (ViewModel.EditingSiteId == context.Id)
+                    {
+                        <MudSelect T="string" @bind-Value="ViewModel.EditStatus"
+                                   Label="Status" Variant="Variant.Outlined" Margin="Margin.Dense">
+                            <MudSelectItem Value="@("Active")">Active</MudSelectItem>
+                            <MudSelectItem Value="@("Non Active")">Non Active</MudSelectItem>
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(context.Status == "Active" ? Color.Success : Color.Default)"
+                                 Variant="Variant.Outlined">@context.Status</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Edit" Class="project-actions-cell">
+                    @if (ViewModel.EditingSiteId == context.Id)
+                    {
+                        <div class="project-actions">
+                            <MudIconButton Icon="@Icons.Material.Filled.Check"
+                                           Color="Color.Success" Size="Size.Small"
+                                           OnClick="@(() => ViewModel.SaveEditAsync(context.Id))"
+                                           Disabled="@ViewModel.IsSaving" aria-label="Simpan perubahan" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                           Color="Color.Default" Size="Size.Small"
+                                           OnClick="ViewModel.CancelEdit" Disabled="@ViewModel.IsSaving"
+                                           aria-label="Batal mengedit" />
+                        </div>
+                    }
+                    else
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Color="Color.Primary" Size="Size.Small"
+                                       OnClick="@(() => ViewModel.BeginEdit(context))"
+                                       Disabled="@(ViewModel.IsSaving || ViewModel.EditingSiteId is not null || ViewModel.PendingDeleteId is not null)"
+                                       aria-label="@($"Edit {context.Sites}")" />
+                    }
+                </MudTd>
+                <MudTd DataLabel="Delete" Class="project-actions-cell">
+                    @if (ViewModel.PendingDeleteId == context.Id)
+                    {
+                        <div class="project-actions">
+                            <MudIconButton Icon="@Icons.Material.Filled.Check"
+                                           Color="Color.Error" Size="Size.Small"
+                                           OnClick="@(() => ViewModel.DeleteAsync(context.Id))"
+                                           Disabled="@ViewModel.IsSaving" aria-label="Konfirmasi hapus" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                           Color="Color.Default" Size="Size.Small"
+                                           OnClick="ViewModel.CancelDelete" Disabled="@ViewModel.IsSaving"
+                                           aria-label="Batal menghapus" />
+                        </div>
+                    }
+                    else
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                       Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => ViewModel.RequestDelete(context.Id))"
+                                       Disabled="@(ViewModel.IsSaving || ViewModel.EditingSiteId is not null || ViewModel.PendingDeleteId is not null)"
+                                       aria-label="@($"Hapus {context.Sites}")" />
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        ViewModel.StateChanged += OnViewModelStateChanged;
+        await ViewModel.LoadAsync();
+    }
+
+    private void OnViewModelStateChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnSearchChanged(string? text) => ViewModel.Search(text);
+
+    private async Task OpenAddDialogAsync()
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Small
+        };
+        var dialog = await DialogService.ShowAsync<AddMasterSiteDialog>("Tambah Site", options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: AddMasterSiteDialog.MasterSiteInput input })
+        {
+            await ViewModel.CreateAsync(input);
+        }
+    }
+
+    public void Dispose() => ViewModel.StateChanged -= OnViewModelStateChanged;
+}

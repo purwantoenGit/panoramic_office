@@ -1,0 +1,177 @@
+@page "/master-category-project"
+@page "/master-status"
+@implements IDisposable
+@using PanoramicAdmin.Components.Dialogs
+@using PanoramicAdmin.ViewModels
+@inject IDialogService DialogService
+@inject MasterCategoryProjectViewModel ViewModel
+
+<PageTitle>Master Category Project | Panoramic Office</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.h4" Class="page-title">Master Category Project</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Kelola kategori project workspace.
+        </MudText>
+    </div>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddCategoryProjectDialogAsync"
+               Disabled="@(ViewModel.IsLoading || ViewModel.IsSaving || ViewModel.DatabaseError is not null)">
+        Tambah Kategori Project
+    </MudButton>
+</div>
+
+<MudPaper Class="section-card project-list-card" Elevation="0">
+    <div class="section-heading project-list-heading">
+        <div>
+            <MudText Typo="Typo.h6" Class="section-title">Daftar status</MudText>
+            <MudText Typo="Typo.body2" Class="section-subtitle">
+                @ViewModel.FilteredCategories.Count dari @ViewModel.Categories.Count kategori ditampilkan
+            </MudText>
+        </div>
+        <MudTextField T="string" Value="@ViewModel.SearchText" ValueChanged="OnSearchChanged"
+                      Placeholder="Cari kategori project"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Clearable="true" Class="search-field" aria-label="Cari kategori project" />
+    </div>
+
+    @if (ViewModel.IsLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            Memuat kategori project...
+        </MudText>
+    }
+    else if (ViewModel.DatabaseError is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="ma-4">
+            <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                <span>@ViewModel.DatabaseError</span>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                           OnClick="ViewModel.LoadAsync" Disabled="@ViewModel.IsSaving">
+                    Coba lagi
+                </MudButton>
+            </div>
+        </MudAlert>
+    }
+    else if (ViewModel.FilteredCategories.Count == 0)
+    {
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            @(ViewModel.Categories.Count == 0
+                ? "Belum ada kategori project."
+                : "Tidak ada kategori project yang cocok dengan pencarian.")
+        </MudText>
+    }
+    else
+    {
+        <MudTable Items="@ViewModel.FilteredCategories" Hover="true" Dense="true"
+                  Breakpoint="Breakpoint.Sm" Class="project-table">
+            <HeaderContent>
+                <MudTh>No</MudTh>
+                <MudTh>Kategori Project</MudTh>
+                <MudTh Class="project-actions-header">Edit</MudTh>
+                <MudTh Class="project-actions-header">Delete</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="No">
+                    <span class="project-number">@context.No.ToString("D2")</span>
+                </MudTd>
+                <MudTd DataLabel="Kategori Project">
+                    @if (ViewModel.EditingCategoryProjectId == context.Id)
+                    {
+                        <MudTextField T="string" @bind-Value="ViewModel.EditCategoryProject"
+                                      Label="Kategori Project" Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" MaxLength="50" Counter="50"
+                                      Error="@(ViewModel.EditError is not null)" ErrorText="@ViewModel.EditError" />
+                    }
+                    else
+                    {
+                        <div class="project-name-cell">
+                            <MudAvatar Color="Color.Primary" Size="Size.Small" Class="project-icon">
+                                <MudIcon Icon="@Icons.Material.Filled.Label" />
+                            </MudAvatar>
+                            <MudText Typo="Typo.body2" Class="project-name">@context.CategoryProject</MudText>
+                        </div>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Edit" Class="project-actions-cell">
+                    @if (ViewModel.EditingCategoryProjectId == context.Id)
+                    {
+                        <div class="project-actions">
+                            <MudIconButton Icon="@Icons.Material.Filled.Check"
+                                           Color="Color.Success" Size="Size.Small"
+                                           OnClick="@(() => ViewModel.SaveEditAsync(context.Id))"
+                                           Disabled="@ViewModel.IsSaving" aria-label="Simpan perubahan" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                           Color="Color.Default" Size="Size.Small"
+                                           OnClick="ViewModel.CancelEdit" Disabled="@ViewModel.IsSaving"
+                                           aria-label="Batal mengedit" />
+                        </div>
+                    }
+                    else
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Color="Color.Primary" Size="Size.Small"
+                                       OnClick="@(() => ViewModel.BeginEdit(context))"
+                                       Disabled="@(ViewModel.IsSaving || ViewModel.EditingCategoryProjectId is not null || ViewModel.PendingDeleteId is not null)"
+                                       aria-label="@($"Edit {context.CategoryProject}")" />
+                    }
+                </MudTd>
+                <MudTd DataLabel="Delete" Class="project-actions-cell">
+                    @if (ViewModel.PendingDeleteId == context.Id)
+                    {
+                        <div class="project-actions">
+                            <MudIconButton Icon="@Icons.Material.Filled.Check"
+                                           Color="Color.Error" Size="Size.Small"
+                                           OnClick="@(() => ViewModel.DeleteAsync(context.Id))"
+                                           Disabled="@ViewModel.IsSaving" aria-label="Konfirmasi hapus" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                           Color="Color.Default" Size="Size.Small"
+                                           OnClick="ViewModel.CancelDelete" Disabled="@ViewModel.IsSaving"
+                                           aria-label="Batal menghapus" />
+                        </div>
+                    }
+                    else
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                       Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => ViewModel.RequestDelete(context.Id))"
+                                       Disabled="@(ViewModel.IsSaving || ViewModel.EditingCategoryProjectId is not null || ViewModel.PendingDeleteId is not null)"
+                                       aria-label="@($"Hapus {context.CategoryProject}")" />
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        ViewModel.StateChanged += OnViewModelStateChanged;
+        await ViewModel.LoadAsync();
+    }
+
+    private void OnViewModelStateChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnSearchChanged(string? text) => ViewModel.Search(text);
+
+    private async Task OpenAddCategoryProjectDialogAsync()
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Small
+        };
+        var dialog = await DialogService.ShowAsync<AddMasterCategoryProjectDialog>("Tambah Kategori Project", options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: string status })
+        {
+            await ViewModel.CreateAsync(status);
+        }
+    }
+
+    public void Dispose() => ViewModel.StateChanged -= OnViewModelStateChanged;
+}

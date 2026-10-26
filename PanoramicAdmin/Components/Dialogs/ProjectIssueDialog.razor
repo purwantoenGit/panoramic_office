@@ -1,0 +1,269 @@
+@using PanoramicAdmin.ViewModels
+
+<MudDialog Class="add-project-dialog">
+    <TitleContent>
+        <div class="add-project-header">
+            <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Rounded="true">
+                <MudIcon Icon="@Icons.Material.Filled.BugReport" />
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.h6" Class="add-project-title">@Title</MudText>
+                <MudText Typo="Typo.caption" Class="add-project-subtitle">
+                    Lengkapi informasi issue project.
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int" @bind-Value="_projectId" Label="Project" Variant="Variant.Outlined"
+                           Margin="Margin.Dense" Required="true" RequiredError="Pilih Project."
+                           Disabled="@(Projects.Length == 0)">
+                    @foreach (var item in Projects)
+                    {
+                        <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="string" @bind-Value="_statusProject" Label="Status Project"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                           RequiredError="Pilih Status Project."
+                           Disabled="@(ProjectStatuses.Length == 0)">
+                    @foreach (var status in ProjectStatuses)
+                    {
+                        <MudSelectItem T="string" Value="@status">@status</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudDatePicker @bind-Date="_tanggal" Label="Tanggal" Variant="Variant.Outlined"
+                               Margin="Margin.Dense" Required="true" DateFormat="dd/MM/yyyy" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int" @bind-Value="_issuerPicId" Label="Issuer" Variant="Variant.Outlined"
+                           Margin="Margin.Dense" Required="true" RequiredError="Pilih Issuer."
+                           Disabled="@(Pics.Length == 0)">
+                    @foreach (var item in Pics)
+                    {
+                        <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <MudSelect T="int" @bind-Value="_strategicActionId" Label="Strategic Action"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                           RequiredError="Pilih Strategic Action."
+                           Disabled="@(StrategicActions.Length == 0)">
+                    @foreach (var item in StrategicActions)
+                    {
+                        <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <div class="project-action-plan-heading">
+                    <div>
+                        <MudText Typo="Typo.subtitle1" Class="project-action-plan-title">Action Plan</MudText>
+                        <MudText Typo="Typo.caption" Class="project-action-plan-hint">
+                            Tambahkan satu atau beberapa rencana, masing-masing dengan PIC dan feedback.
+                        </MudText>
+                    </div>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="AddActionPlan">
+                        Tambah Action Plan
+                    </MudButton>
+                </div>
+                <div class="project-action-plan-list">
+                    @for (var i = 0; i < _actionPlans.Count; i++)
+                    {
+                        var actionPlan = _actionPlans[i];
+                        var actionPlanLabel = ProjectIssueLabels.GetActionPlanLetter(i);
+                        <MudPaper @key="actionPlan" Class="project-action-plan-form" Elevation="0">
+                            <div class="project-action-plan-form-heading">
+                                <div class="project-action-plan-form-title-wrap">
+                                    <span class="project-action-plan-letter">@actionPlanLabel</span>
+                                    <MudText Typo="Typo.subtitle2" Class="project-action-plan-form-title">
+                                        Action Plan @actionPlanLabel
+                                    </MudText>
+                                </div>
+                                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                               Color="Color.Error" Size="Size.Small"
+                                               Disabled="@(_actionPlans.Count == 1)"
+                                               OnClick="@(() => RemoveActionPlan(actionPlan))"
+                                               aria-label="@($"Hapus Action Plan {actionPlanLabel}")" />
+                            </div>
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12">
+                                    <MudTextField T="string" @bind-Value="actionPlan.ActionPlan"
+                                                  Label="Action Plan" Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense" Required="true" Lines="2" />
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudSelect T="string" @bind-Value="actionPlan.Status" Label="Status"
+                                               Variant="Variant.Outlined" Margin="Margin.Dense"
+                                               Required="true" RequiredError="Pilih Status untuk Action Plan ini."
+                                               Disabled="@(ProjectStatuses.Length == 0)">
+                                        @foreach (var status in ProjectStatuses)
+                                        {
+                                            <MudSelectItem T="string" Value="@status">@status</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudSelect T="int" @bind-Value="actionPlan.PicId" Label="PIC"
+                                               Variant="Variant.Outlined" Margin="Margin.Dense"
+                                               Required="true" RequiredError="Pilih PIC untuk Action Plan ini."
+                                               Disabled="@(Pics.Length == 0)">
+                                        @foreach (var item in Pics)
+                                        {
+                                            <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudTextField T="string" @bind-Value="actionPlan.Feedback"
+                                                  Label="Feedback" Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense" Lines="2" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    }
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudDatePicker @bind-Date="_dueDate" Label="Due Date" Variant="Variant.Outlined"
+                               Margin="Margin.Dense" DateFormat="dd/MM/yyyy" Clearable="true" />
+            </MudItem>
+        </MudGrid>
+        @if (ProjectStatuses.Length == 0)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">
+                Belum ada Status Project aktif. Tambahkan atau aktifkan pilihan di
+                <MudLink Href="/master-issue">Master Issue</MudLink>.
+            </MudAlert>
+        }
+        @if (_validationMessage is not null)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">@_validationMessage</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <div class="add-project-actions">
+            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Batal</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save"
+                       StartIcon="@Icons.Material.Filled.Check" Class="add-project-save">
+                Simpan
+            </MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string Title { get; set; } = "Tambah Project Issue";
+    [Parameter] public ProjectIssueInput? InitialValue { get; set; }
+    [Parameter] public ReferenceOption[] Projects { get; set; } = [];
+    [Parameter] public ReferenceOption[] Pics { get; set; } = [];
+    [Parameter] public ReferenceOption[] StrategicActions { get; set; } = [];
+    [Parameter] public string[] ProjectStatuses { get; set; } = [];
+
+    private int _projectId;
+    private string _statusProject = string.Empty;
+    private DateTime? _tanggal = DateTime.Today;
+    private int _issuerPicId;
+    private int _strategicActionId;
+    private DateTime? _dueDate;
+    private string? _validationMessage;
+    private List<ActionPlanForm> _actionPlans = [new()];
+
+    protected override void OnInitialized()
+    {
+        if (InitialValue is not { } value) return;
+        _projectId = value.ProjectId;
+        _statusProject = value.StatusProject;
+        _tanggal = value.Tanggal;
+        _issuerPicId = value.IssuerPicId;
+        _strategicActionId = value.StrategicActionId;
+        _actionPlans = value.ActionPlans
+            .Select(plan => new ActionPlanForm
+            {
+                Id = plan.Id,
+                ActionPlan = plan.ActionPlan,
+                Status = plan.Status,
+                PicId = plan.PicId,
+                Feedback = plan.Feedback
+            })
+            .ToList();
+        if (_actionPlans.Count == 0)
+        {
+            _actionPlans.Add(new ActionPlanForm());
+        }
+        _dueDate = value.DueDate;
+    }
+
+    private void AddActionPlan() => _actionPlans.Add(new ActionPlanForm());
+
+    private void RemoveActionPlan(ActionPlanForm actionPlan)
+    {
+        if (_actionPlans.Count > 1)
+        {
+            _actionPlans.Remove(actionPlan);
+        }
+    }
+
+    private void Save()
+    {
+        if (_projectId <= 0 || _issuerPicId <= 0 || _strategicActionId <= 0)
+        {
+            _validationMessage = "Pilih Project, Issuer, dan Strategic Action.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_statusProject) ||
+            !ProjectStatuses.Contains(_statusProject, StringComparer.Ordinal))
+        {
+            _validationMessage = "Pilih Status Project yang tersedia di Master Issue.";
+            return;
+        }
+        if (_actionPlans.Count == 0 ||
+            _actionPlans.Any(plan =>
+                string.IsNullOrWhiteSpace(plan.ActionPlan) ||
+                plan.PicId <= 0 ||
+                string.IsNullOrWhiteSpace(plan.Status) ||
+                !ProjectStatuses.Contains(plan.Status, StringComparer.Ordinal)))
+        {
+            _validationMessage = "Isi Action Plan dan pilih Status serta PIC untuk setiap rencana.";
+            return;
+        }
+        if (_tanggal is null)
+        {
+            _validationMessage = "Tanggal wajib diisi.";
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new ProjectIssueInput(
+            _projectId, _statusProject.Trim(), _tanggal.Value.Date, _issuerPicId, _strategicActionId,
+            _actionPlans.Select(plan => new ProjectIssueActionPlanInput(
+                plan.Id,
+                plan.ActionPlan.Trim(),
+                plan.Status,
+                plan.PicId,
+                string.IsNullOrWhiteSpace(plan.Feedback) ? null : plan.Feedback.Trim())).ToArray(),
+            _dueDate?.Date)));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private sealed class ActionPlanForm
+    {
+        public int? Id { get; set; }
+        public string ActionPlan { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public int PicId { get; set; }
+        public string? Feedback { get; set; }
+    }
+}

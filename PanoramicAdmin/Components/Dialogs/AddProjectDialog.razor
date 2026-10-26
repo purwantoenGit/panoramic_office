@@ -1,0 +1,127 @@
+@using PanoramicAdmin.Models
+
+<MudDialog Class="add-project-dialog">
+    <TitleContent>
+        <div class="add-project-header">
+            <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Rounded="true">
+                <MudIcon Icon="@Icons.Material.Filled.Folder" />
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.h6" Class="add-project-title">Tambah Project</MudText>
+                <MudText Typo="Typo.caption" Class="add-project-subtitle">
+                    Isi detail project baru untuk workspace Anda.
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="project-dialog-fields">
+            @if (_validationMessage is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Filled" Class="add-project-alert">
+                    @_validationMessage
+                </MudAlert>
+            }
+
+            <MudTextField T="string" @bind-Value="_name" Label="Nama Project"
+                          Placeholder="Contoh: Panoramic Virtual Office"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Folder" />
+
+            <div class="add-project-row">
+                <MudSelect T="string" @bind-Value="_stream" Label="Stream"
+                           Variant="Variant.Outlined" Margin="Margin.Dense"
+                           Required="true" RequiredError="Pilih stream dari daftar Master Stream.">
+                    @foreach (var stream in Streams)
+                    {
+                        <MudSelectItem T="string" Value="@stream">@stream</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" @bind-Value="_categoryProject" Label="Kategori Project"
+                           Variant="Variant.Outlined" Margin="Margin.Dense"
+                           Required="true" RequiredError="Pilih kategori dari Master Category Project.">
+                    @foreach (var category in CategoryProjects)
+                    {
+                        <MudSelectItem T="string" Value="@category">@category</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+
+            <MudSelect T="string" @bind-SelectedValues="_sites" Label="Sites Implementasi"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                       RequiredError="Pilih minimal satu site aktif dari Master Sites."
+                       MultiSelection="true" SelectAll="true"
+                       Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Place">
+                @foreach (var site in AvailableSites)
+                {
+                    <MudSelectItem T="string" Value="@site">@site</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <div class="add-project-actions">
+            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Batal</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save"
+                       StartIcon="@Icons.Material.Filled.Check" Class="add-project-save">
+                Simpan Project
+            </MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public IReadOnlyList<string> Streams { get; set; } = Array.Empty<string>();
+
+    [Parameter]
+    public IReadOnlyList<string> CategoryProjects { get; set; } = Array.Empty<string>();
+
+    [Parameter]
+    public IReadOnlyList<string> AvailableSites { get; set; } = Array.Empty<string>();
+
+    private string _name = string.Empty;
+    private string _stream = string.Empty;
+    private string _categoryProject = string.Empty;
+    private IReadOnlyCollection<string> _sites = Array.Empty<string>();
+    private string? _validationMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (!CategoryProjects.Contains(_categoryProject, StringComparer.Ordinal) && CategoryProjects.Count > 0)
+        {
+            _categoryProject = CategoryProjects[0];
+        }
+    }
+
+    private void Save()
+    {
+        var sites = _sites
+            .Where(site => AvailableSites.Contains(site, StringComparer.Ordinal))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        if (string.IsNullOrWhiteSpace(_name) ||
+            string.IsNullOrWhiteSpace(_stream) ||
+            !Streams.Contains(_stream, StringComparer.Ordinal) ||
+            string.IsNullOrWhiteSpace(_categoryProject) ||
+            !CategoryProjects.Contains(_categoryProject, StringComparer.Ordinal) ||
+            sites.Length == 0 ||
+            sites.Length != _sites.Count())
+        {
+            _validationMessage = "Nama project, stream, kategori project dari daftar master, dan minimal satu site aktif wajib dipilih.";
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new ProjectInput(
+            _name.Trim(),
+            _stream.Trim(),
+            _categoryProject,
+            sites)));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

@@ -1,0 +1,148 @@
+@page "/strategic-action"
+@implements IDisposable
+@using PanoramicAdmin.Components.Dialogs
+@using PanoramicAdmin.ViewModels
+@inject IDialogService DialogService
+@inject StrategicActionViewModel ViewModel
+
+<PageTitle>Strategic Action | Panoramic Office</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.h4" Class="page-title">Strategic Action</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Kelola daftar Strategic Action untuk Project Issue.
+        </MudText>
+    </div>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="@(() => OpenDialogAsync(null))"
+               Disabled="@(ViewModel.IsLoading || ViewModel.IsSaving || ViewModel.DatabaseError is not null)">
+        Tambah Strategic Action
+    </MudButton>
+</div>
+
+<MudPaper Class="section-card project-list-card" Elevation="0">
+    <div class="section-heading project-list-heading">
+        <div>
+            <MudText Typo="Typo.h6" Class="section-title">Daftar Strategic Action</MudText>
+            <MudText Typo="Typo.body2" Class="section-subtitle">
+                @ViewModel.FilteredActions.Count dari @ViewModel.Actions.Count data ditampilkan
+            </MudText>
+        </div>
+        <MudTextField T="string" Value="@ViewModel.SearchText" ValueChanged="OnSearchChanged"
+                      Placeholder="Cari Strategic Action" Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true"
+                      Class="search-field" aria-label="Cari Strategic Action" />
+    </div>
+
+    @if (ViewModel.IsLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            Memuat data Strategic Action...
+        </MudText>
+    }
+    else if (ViewModel.DatabaseError is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="ma-4">
+            <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                <span>@ViewModel.DatabaseError</span>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                           OnClick="ViewModel.LoadAsync" Disabled="@ViewModel.IsSaving">
+                    Coba lagi
+                </MudButton>
+            </div>
+        </MudAlert>
+    }
+    else if (ViewModel.FilteredActions.Count == 0)
+    {
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            @(ViewModel.Actions.Count == 0
+                ? "Belum ada Strategic Action."
+                : "Tidak ada data yang cocok dengan pencarian.")
+        </MudText>
+    }
+    else
+    {
+        <MudTable Items="@ViewModel.FilteredActions" Hover="true" Dense="true"
+                  Breakpoint="Breakpoint.Sm" Class="project-table">
+            <HeaderContent>
+                <MudTh>No</MudTh>
+                <MudTh>Nama Strategic Action</MudTh>
+                <MudTh Class="project-actions-header">Edit</MudTh>
+                <MudTh Class="project-actions-header">Delete</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="No">
+                    <span class="project-number">@context.No.ToString("D2")</span>
+                </MudTd>
+                <MudTd DataLabel="Nama Strategic Action">
+                    <div class="project-name-cell">
+                        <MudAvatar Color="Color.Primary" Size="Size.Small" Class="project-icon">
+                            <MudIcon Icon="@Icons.Material.Filled.TrendingUp" />
+                        </MudAvatar>
+                        <MudText Typo="Typo.body2" Class="project-name">@context.NamaStrategicAction</MudText>
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Edit" Class="project-actions-cell">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small"
+                                   OnClick="@(() => OpenDialogAsync(context))"
+                                   Disabled="@(ViewModel.IsSaving || ViewModel.PendingDeleteId is not null)"
+                                   aria-label="@($"Edit {context.NamaStrategicAction}")" />
+                </MudTd>
+                <MudTd DataLabel="Delete" Class="project-actions-cell">
+                    @if (ViewModel.PendingDeleteId == context.Id)
+                    {
+                        <div class="project-actions">
+                            <MudIconButton Icon="@Icons.Material.Filled.Check" Color="Color.Error" Size="Size.Small"
+                                           OnClick="@(() => ViewModel.DeleteAsync(context.Id))"
+                                           Disabled="@ViewModel.IsSaving" aria-label="Konfirmasi hapus" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" Size="Size.Small"
+                                           OnClick="ViewModel.CancelDelete" Disabled="@ViewModel.IsSaving"
+                                           aria-label="Batal menghapus" />
+                        </div>
+                    }
+                    else
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error"
+                                       Size="Size.Small" OnClick="@(() => ViewModel.RequestDelete(context.Id))"
+                                       Disabled="@(ViewModel.IsSaving || ViewModel.PendingDeleteId is not null)"
+                                       aria-label="@($"Hapus {context.NamaStrategicAction}")" />
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        ViewModel.StateChanged += OnViewModelStateChanged;
+        await ViewModel.LoadAsync();
+    }
+
+    private void OnViewModelStateChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnSearchChanged(string? text) => ViewModel.Search(text);
+
+    private async Task OpenDialogAsync(StrategicActionRow? action)
+    {
+        var parameters = new DialogParameters
+        {
+            ["InitialValue"] = action?.NamaStrategicAction ?? string.Empty,
+            ["Title"] = action is null ? "Tambah Strategic Action" : "Edit Strategic Action"
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true, MaxWidth = MaxWidth.Small };
+        var dialog = await DialogService.ShowAsync<StrategicActionDialog>(
+            action is null ? "Tambah Strategic Action" : "Edit Strategic Action", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: string nama })
+        {
+            if (action is null) await ViewModel.CreateAsync(nama);
+            else await ViewModel.UpdateAsync(action.Id, nama);
+        }
+    }
+
+    public void Dispose() => ViewModel.StateChanged -= OnViewModelStateChanged;
+}

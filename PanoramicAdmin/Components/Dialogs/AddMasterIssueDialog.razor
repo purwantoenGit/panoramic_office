@@ -1,0 +1,68 @@
+@using PanoramicAdmin.Models
+
+<MudDialog Class="add-project-dialog">
+    <TitleContent>
+        <div class="add-project-header">
+            <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Rounded="true">
+                <MudIcon Icon="@Icons.Material.Filled.BugReport" />
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.h6" Class="add-project-title">Tambah Master Issue</MudText>
+                <MudText Typo="Typo.caption" Class="add-project-subtitle">
+                    Masukkan issue dan tentukan status aktifnya.
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField T="string" @bind-Value="_issue" Label="Issue"
+                      Placeholder="Masukkan issue"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                      MaxLength="200" Counter="200"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.BugReport" />
+        <MudCheckBox T="bool" @bind-Value="_active" Label="Active" Color="Color.Primary" />
+        @if (_validationMessage is not null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Error">@_validationMessage</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <div class="add-project-actions">
+            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Batal</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save"
+                       StartIcon="@Icons.Material.Filled.Check" Class="add-project-save">
+                Simpan Issue
+            </MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _issue = string.Empty;
+    private bool _active = true;
+    private string? _validationMessage;
+
+    private void Save()
+    {
+        var issue = _issue.Trim();
+        if (string.IsNullOrWhiteSpace(issue))
+        {
+            _validationMessage = "Issue wajib diisi.";
+            return;
+        }
+
+        if (issue.Length > 200)
+        {
+            _validationMessage = "Issue maksimal 200 karakter.";
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new MasterIssueInput(issue, _active)));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+}

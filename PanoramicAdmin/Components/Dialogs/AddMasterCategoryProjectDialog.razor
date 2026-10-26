@@ -1,0 +1,63 @@
+<MudDialog Class="add-project-dialog">
+    <TitleContent>
+        <div class="add-project-header">
+            <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Rounded="true">
+                <MudIcon Icon="@Icons.Material.Filled.Label" />
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.h6" Class="add-project-title">Tambah Kategori Project</MudText>
+                <MudText Typo="Typo.caption" Class="add-project-subtitle">
+                    Masukkan kategori project baru.
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField T="string" @bind-Value="_categoryProject" Label="Kategori Project"
+                      Placeholder="Contoh: Operasional"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                      MaxLength="50" Counter="50"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Label" />
+        @if (_validationMessage is not null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Error">@_validationMessage</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <div class="add-project-actions">
+            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Batal</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save"
+                       StartIcon="@Icons.Material.Filled.Check" Class="add-project-save">
+                Simpan Kategori Project
+            </MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _categoryProject = string.Empty;
+    private string? _validationMessage;
+
+    private void Save()
+    {
+        var categoryProject = _categoryProject.Trim();
+        if (string.IsNullOrWhiteSpace(categoryProject))
+        {
+            _validationMessage = "Kategori project wajib diisi.";
+            return;
+        }
+
+        if (categoryProject.Length > 50)
+        {
+            _validationMessage = "Kategori project maksimal 50 karakter.";
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(categoryProject));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

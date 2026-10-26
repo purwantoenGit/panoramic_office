@@ -1,0 +1,66 @@
+<MudDialog Class="add-project-dialog">
+    <TitleContent>
+        <div class="add-project-header">
+            <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Rounded="true">
+                <MudIcon Icon="@Icons.Material.Filled.TrendingUp" />
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.h6" Class="add-project-title">@Title</MudText>
+                <MudText Typo="Typo.caption" Class="add-project-subtitle">
+                    Masukkan nama Strategic Action.
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField T="string" @bind-Value="_nama" Label="Nama Strategic Action"
+                      Placeholder="Masukkan nama strategic action"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                      MaxLength="200" Counter="200"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.TrendingUp" />
+        @if (_validationMessage is not null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Error">@_validationMessage</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <div class="add-project-actions">
+            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Batal</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save"
+                       StartIcon="@Icons.Material.Filled.Check" Class="add-project-save">
+                Simpan
+            </MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string InitialValue { get; set; } = string.Empty;
+    [Parameter] public string Title { get; set; } = "Tambah Strategic Action";
+
+    private string _nama = string.Empty;
+    private string? _validationMessage;
+
+    protected override void OnInitialized() => _nama = InitialValue;
+
+    private void Save()
+    {
+        var nama = _nama.Trim();
+        if (string.IsNullOrWhiteSpace(nama))
+        {
+            _validationMessage = "Nama Strategic Action wajib diisi.";
+            return;
+        }
+        if (nama.Length > 200)
+        {
+            _validationMessage = "Nama Strategic Action maksimal 200 karakter.";
+            return;
+        }
+        MudDialog.Close(DialogResult.Ok(nama));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

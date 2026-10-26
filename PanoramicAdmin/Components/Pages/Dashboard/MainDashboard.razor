@@ -1,0 +1,94 @@
+@page "/"
+
+<PageTitle>Main Dashboard | Panoramic Review</PageTitle>
+
+<section class="dashboard-hero">
+    <div>
+        <MudText Typo="Typo.overline" Class="dashboard-eyebrow">PANORAMIC REVIEW</MudText>
+        <MudText Typo="Typo.h3" Class="dashboard-title">Main Dashboard</MudText>
+        <MudText Typo="Typo.body1" Class="dashboard-subtitle">
+            Akses cepat ke berbagai dashboard dan aplikasi operasional.
+        </MudText>
+    </div>
+    <div class="dashboard-hero-meta">
+        <MudAvatar Class="dashboard-hero-icon" Size="Size.Large">
+            <MudIcon Icon="@Icons.Material.Filled.SpaceDashboard" />
+        </MudAvatar>
+    </div>
+</section>
+
+<section class="dashboard-section">
+    <div class="dashboard-section-heading">
+        <div>
+            <MudText Typo="Typo.h5" Class="dashboard-section-title">Dashboard Aplikasi</MudText>
+            <MudText Typo="Typo.body2" Class="dashboard-section-subtitle">
+                Temukan aplikasi berdasarkan nama atau kategori.
+            </MudText>
+        </div>
+        <MudTextField T="string" Value="_searchText" ValueChanged="OnSearchChanged"
+                      Placeholder="Cari aplikasi"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      AdornmentColor="Color.Primary" Immediate="true"
+                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Clearable="true" Class="search-field dashboard-search"
+                      aria-label="Cari dashboard aplikasi" />
+    </div>
+
+    <div class="dashboard-app-grid">
+        @foreach (var app in FilteredApps)
+        {
+            <MudPaper Class="dashboard-app-card" Elevation="0" @key="app.Name">
+                <div class="dashboard-app-card-top">
+                    <span class="dashboard-category">@app.Category</span>
+                    <MudAvatar Class="@($"dashboard-app-icon {app.Tone}")" Size="Size.Medium">
+                        <MudIcon Icon="@app.Icon" />
+                    </MudAvatar>
+                </div>
+                <MudText Typo="Typo.h6" Class="dashboard-app-name">@app.Name</MudText>
+                <MudText Typo="Typo.body2" Class="dashboard-app-description">@app.Description</MudText>
+            </MudPaper>
+        }
+    </div>
+
+    @if (FilteredApps.Count == 0)
+    {
+        <div class="dashboard-empty">
+            <MudIcon Icon="@Icons.Material.Filled.SearchOff" />
+            <MudText Typo="Typo.body2">Tidak ada aplikasi yang cocok dengan pencarian.</MudText>
+        </div>
+    }
+</section>
+
+@code {
+    private string _searchText = string.Empty;
+
+    private static readonly DashboardApp[] Apps =
+    [
+        new("Safety", "OPA", "Operator Personal Assistance", Icons.Material.Filled.Watch, "blue"),
+        new("Safety", "MH-02", "Mata Hati", Icons.Material.Filled.Videocam, "violet"),
+        new("Safety", "OBSMS", "On Board Safety Monitoring System", Icons.Material.Filled.Videocam, "cyan"),
+        new("Safety", "MIR", "Mine Image Recognition", Icons.Material.Filled.DocumentScanner, "amber"),
+        new("Safety", "CAS", "Collision Avoid System", Icons.Material.Filled.Radar, "rose"),
+        new("Prodty", "TRANSMAN", "Transportation Management", Icons.Material.Filled.DirectionsBus, "blue"),
+        new("Fuel", "IFLASH", "Int. Fuel and Oil Lub. Sys. for High Perf.", Icons.Material.Filled.LocalGasStation, "amber"),
+        new("Fuel", "H2D", "Hauling DT Driving Guidance", Icons.Material.Filled.Speed, "cyan"),
+        new("Health Unit", "RDZ", "Remote Dozer", Icons.Material.Filled.Handyman, "violet"),
+        new("Health Unit", "OMP", "Opt. Mtc. Process", Icons.Material.Filled.PrecisionManufacturing, "rose"),
+        new("Health Unit", "IMMOCS", "Integrated Machine Monitoring & Control System", Icons.Material.Filled.Tune, "blue"),
+        new("Prodty", "D.TWIN", "Digital Twin", Icons.Material.Filled.Hub, "cyan"),
+        new("Tools", "CCTV", "Long Range Camera System", Icons.Material.Filled.Videocam, "violet"),
+        new("Tools", "COMPVISION", "Computer Vision System", Icons.Material.Filled.Visibility, "amber")
+    ];
+
+    private IReadOnlyList<DashboardApp> FilteredApps =>
+        string.IsNullOrWhiteSpace(_searchText)
+            ? Apps
+            : Apps.Where(app =>
+                app.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                app.Category.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                app.Description.Contains(_searchText, StringComparison.OrdinalIgnoreCase)).ToArray();
+
+    private void OnSearchChanged(string? text) => _searchText = text ?? string.Empty;
+
+    private sealed record DashboardApp(string Category, string Name, string Description, string Icon, string Tone);
+}
