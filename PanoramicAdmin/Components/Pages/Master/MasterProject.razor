@@ -118,6 +118,21 @@
                         <MudTextField T="string" @bind-Value="ViewModel.EditName" Label="Nama project"
                                   Variant="Variant.Outlined" Margin="Margin.Dense"
                                   Class="master-project-inline-field" />
+                        <MudSelect T="string" @bind-Value="ViewModel.EditLogoIcon" Label="Logo project"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense"
+                                   Class="master-project-inline-field"
+                                   Adornment="Adornment.Start"
+                                   AdornmentIcon="@ProjectLogoCatalog.GetIcon(ViewModel.EditLogoIcon)">
+                            @foreach (var logo in ProjectLogoCatalog.Options)
+                            {
+                                <MudSelectItem T="string" Value="@logo.Key">
+                                    <span class="project-logo-option">
+                                        <MudIcon Icon="@logo.Icon" Size="Size.Small" />
+                                        @logo.Label
+                                    </span>
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
                         @if (ViewModel.EditError is not null)
                         {
                             <MudText Typo="Typo.caption" Color="Color.Error">@ViewModel.EditError</MudText>
@@ -127,7 +142,7 @@
                     {
                         <div class="project-name-cell">
                             <MudAvatar Color="Color.Primary" Size="Size.Small" Class="project-icon">
-                                <MudIcon Icon="@Icons.Material.Filled.Folder" />
+                                <MudIcon Icon="@ProjectLogoCatalog.GetIcon(context.LogoIcon)" />
                             </MudAvatar>
                             <div>
                                 <MudText Typo="Typo.body2" Class="project-name">@context.Name</MudText>

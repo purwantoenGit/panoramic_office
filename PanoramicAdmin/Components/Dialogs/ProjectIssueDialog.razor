@@ -67,7 +67,7 @@
                     <div>
                         <MudText Typo="Typo.subtitle1" Class="project-action-plan-title">Action Plan</MudText>
                         <MudText Typo="Typo.caption" Class="project-action-plan-hint">
-                            Tambahkan satu atau beberapa rencana, masing-masing dengan PIC dan feedback.
+                            Tambahkan satu atau beberapa rencana, masing-masing dengan satu atau beberapa PIC dan feedback.
                         </MudText>
                     </div>
                     <MudButton Variant="Variant.Outlined" Color="Color.Primary"
@@ -113,9 +113,10 @@
                                     </MudSelect>
                                 </MudItem>
                                 <MudItem xs="12" sm="6">
-                                    <MudSelect T="int" @bind-Value="actionPlan.PicId" Label="PIC"
+                                    <MudSelect T="int" MultiSelection="true"
+                                               @bind-SelectedValues="actionPlan.PicIds" Label="PIC"
                                                Variant="Variant.Outlined" Margin="Margin.Dense"
-                                               Required="true" RequiredError="Pilih PIC untuk Action Plan ini."
+                                               Required="true" RequiredError="Pilih minimal satu PIC untuk Action Plan ini."
                                                Disabled="@(Pics.Length == 0)">
                                         @foreach (var item in Pics)
                                         {
@@ -195,7 +196,7 @@
                 Id = plan.Id,
                 ActionPlan = plan.ActionPlan,
                 Status = plan.Status,
-                PicId = plan.PicId,
+                PicIds = plan.PicIds.ToHashSet(),
                 Feedback = plan.Feedback
             })
             .ToList();
@@ -232,11 +233,12 @@
         if (_actionPlans.Count == 0 ||
             _actionPlans.Any(plan =>
                 string.IsNullOrWhiteSpace(plan.ActionPlan) ||
-                plan.PicId <= 0 ||
+                !plan.PicIds.Any() ||
+                plan.PicIds.Any(picId => picId <= 0) ||
                 string.IsNullOrWhiteSpace(plan.Status) ||
                 !ProjectStatuses.Contains(plan.Status, StringComparer.Ordinal)))
         {
-            _validationMessage = "Isi Action Plan dan pilih Status serta PIC untuk setiap rencana.";
+            _validationMessage = "Isi Action Plan dan pilih Status serta minimal satu PIC untuk setiap rencana.";
             return;
         }
         if (_tanggal is null)
@@ -251,7 +253,7 @@
                 plan.Id,
                 plan.ActionPlan.Trim(),
                 plan.Status,
-                plan.PicId,
+                plan.PicIds.Distinct().ToArray(),
                 string.IsNullOrWhiteSpace(plan.Feedback) ? null : plan.Feedback.Trim())).ToArray(),
             _dueDate?.Date)));
     }
@@ -263,7 +265,7 @@
         public int? Id { get; set; }
         public string ActionPlan { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
-        public int PicId { get; set; }
+        public IReadOnlyCollection<int> PicIds { get; set; } = [];
         public string? Feedback { get; set; }
     }
 }

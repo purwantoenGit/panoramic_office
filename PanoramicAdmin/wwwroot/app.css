@@ -37,32 +37,51 @@ body, .mud-typography {
 }
 
 .admin-drawer {
+    width: 248px !important;
     border-right: 1px solid #193b69 !important;
-    background: linear-gradient(180deg, #173f78 0%, #102d59 100%) !important;
+    background: linear-gradient(180deg, #1a477e 0%, #102d59 100%) !important;
     color: #fff;
 }
 
 .drawer-brand {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 24px 20px 26px;
+    gap: 10px;
+    padding: 18px 16px;
+    border-bottom: 1px solid #c6d6ef;
+    background: linear-gradient(135deg, #c8dcf8 0%, #a8c4ed 100%);
 }
 
-.admin-drawer .drawer-brand .mud-avatar {
-    background: rgb(255 255 255 / 14%) !important;
-    color: #d9e8ff !important;
+.brand-logo {
+    display: flex;
+    flex: 0 0 64px;
+    align-items: center;
+    width: 64px;
+}
+
+.brand-logo img {
+    display: block;
+    width: 100%;
+    height: auto;
 }
 
 .brand-title {
+    display: flex;
+    flex-direction: column;
+    font-size: 15px !important;
     font-weight: 800 !important;
-    letter-spacing: -0.03em;
-    color: #fff !important;
+    letter-spacing: 0.075em;
+    line-height: 1.2;
+    color: #183b70 !important;
 }
 
-.brand-caption, .nav-section {
+.brand-title span {
+    white-space: nowrap;
+}
+
+.nav-section {
     color: #a9c2e5 !important;
-    letter-spacing: 0.11em;
+    letter-spacing: 0.08em;
     font-weight: 700 !important;
 }
 
@@ -92,19 +111,19 @@ body, .mud-typography {
 }
 
 .admin-nav .mud-nav-link.active {
-    color: #174782 !important;
-    background: linear-gradient(135deg, #fff 0%, #eaf3ff 100%) !important;
+    color: #183b70 !important;
+    background: linear-gradient(135deg, #fff9e6 0%, #ffefb5 100%) !important;
     font-weight: 700;
-    box-shadow: inset 3px 0 0 #5c9bfa;
+    box-shadow: inset 3px 0 0 #f3bf27;
 }
 
 .admin-nav .mud-nav-link.active .mud-nav-link-icon,
 .admin-nav .mud-nav-link.active .mud-nav-link-text {
-    color: #174782 !important;
+    color: #183b70 !important;
 }
 
 .admin-nav .mud-nav-link.active:hover {
-    background: linear-gradient(135deg, #fff 0%, #eaf3ff 100%) !important;
+    background: linear-gradient(135deg, #fff9e6 0%, #ffefb5 100%) !important;
 }
 
 .drawer-footer {
@@ -845,6 +864,12 @@ body, .mud-typography {
     gap: 16px;
 }
 
+.project-logo-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .add-project-alert {
     border-radius: 12px !important;
 }
@@ -1086,6 +1111,15 @@ body, .mud-typography {
     font-weight: 800;
 }
 
+.project-issue-pic-avatars {
+    display: flex;
+    max-width: 180px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
 .project-issue-meta-label,
 .project-issue-detail-label {
     color: #8793a3 !important;
@@ -1314,6 +1348,7 @@ body, .mud-typography {
     border-radius: 0 10px 10px 0;
     background: #f6f8ff;
     color: #34445b !important;
+    font-weight: 700 !important;
     line-height: 1.6 !important;
     white-space: pre-wrap;
 }
@@ -1342,6 +1377,10 @@ body, .mud-typography {
     align-items: center;
     gap: 6px;
     color: #7d8da3;
+}
+
+.project-issue-feedback-copy {
+    font-weight: 700 !important;
 }
 
 .master-project-heading {
@@ -1561,6 +1600,77 @@ body, .mud-typography {
 
 .stream-chip,
 .site-chip {
+    border-color: #e4eaf2 !important;
+    background: #f8faff !important;
+    color: #52627a !important;
+}
+
+.master-pic-role-chip {
+    border: 1px solid transparent !important;
+    border-radius: 9px !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+}
+
+.master-pic-initials-chip {
+    border: 1px solid #d7e5fc !important;
+    border-radius: 9px !important;
+    background: #edf4ff !important;
+    color: #365f9e !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em;
+}
+
+.master-pic-role-chip.role-color-0 {
+    border-color: #d7e5fc !important;
+    background: #edf4ff !important;
+    color: #365f9e !important;
+}
+
+.master-pic-role-chip.role-color-1 {
+    border-color: #e1d7f8 !important;
+    background: #f3edff !important;
+    color: #6747a5 !important;
+}
+
+.master-pic-role-chip.role-color-2 {
+    border-color: #ccebdc !important;
+    background: #e9f8f0 !important;
+    color: #28714c !important;
+}
+
+.master-pic-role-chip.role-color-3 {
+    border-color: #f3e1b7 !important;
+    background: #fff7e5 !important;
+    color: #936b19 !important;
+}
+
+.master-pic-role-chip.role-color-4 {
+    border-color: #f2d3d8 !important;
+    background: #fff0f2 !important;
+    color: #a63e52 !important;
+}
+
+.master-pic-role-chip.role-color-5 {
+    border-color: #c9e8ed !important;
+    background: #eaf8fa !important;
+    color: #26717b !important;
+}
+
+.master-pic-role-chip.role-color-6 {
+    border-color: #d9e3ce !important;
+    background: #f0f6e9 !important;
+    color: #56743b !important;
+}
+
+.master-pic-role-chip.role-color-7 {
+    border-color: #d8dfe8 !important;
+    background: #edf1f6 !important;
+    color: #536274 !important;
+}
+
+.master-pic-role-chip.role-color-unassigned {
     border-color: #e4eaf2 !important;
     background: #f8faff !important;
     color: #52627a !important;

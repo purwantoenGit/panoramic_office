@@ -8,8 +8,17 @@ BEGIN
         [Name] nvarchar(200) NOT NULL,
         [Stream] nvarchar(100) NOT NULL,
         [Status] nvarchar(50) NOT NULL,
+        [LogoIcon] nvarchar(50) NOT NULL
+            CONSTRAINT [DF_pano_MasterProject_LogoIcon] DEFAULT (N'folder'),
         CONSTRAINT [PK_MasterProject] PRIMARY KEY ([Id])
     );
+END;
+
+IF COL_LENGTH(N'dbo.pano_MasterProject', N'LogoIcon') IS NULL
+BEGIN
+    ALTER TABLE [dbo].[pano_MasterProject]
+    ADD [LogoIcon] nvarchar(50) NOT NULL
+        CONSTRAINT [DF_pano_MasterProject_LogoIcon] DEFAULT (N'folder');
 END;
 
 IF OBJECT_ID(N'dbo.pano_MasterProjectSite', N'U') IS NULL

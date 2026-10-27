@@ -64,6 +64,9 @@ public sealed class ProjectIssueViewModel(
                 .Include(issue => issue.StrategicAction)
                 .Include(issue => issue.ActionPlans)
                     .ThenInclude(plan => plan.Pic)
+                .Include(issue => issue.ActionPlans)
+                    .ThenInclude(plan => plan.PicAssignments)
+                        .ThenInclude(assignment => assignment.Pic)
                 .OrderBy(issue => issue.Id)
                 .ToListAsync();
             Issues = issues.Select((issue, index) => new ProjectIssueRow(
@@ -77,13 +80,26 @@ public sealed class ProjectIssueViewModel(
                 issue.IssuerPic?.Nama ?? "(PIC tidak tersedia)",
                 issue.StrategicActionId,
                 issue.StrategicAction?.NamaStrategicAction ?? "(Strategic Action tidak tersedia)",
-                issue.ActionPlans.Select(plan => new ProjectIssueActionPlanRow(
-                    plan.Id,
-                    plan.ActionPlan,
-                    plan.Status,
-                    plan.PicId,
-                    plan.Pic?.Nama ?? "(PIC tidak tersedia)",
-                    plan.Feedback)).ToList(),
+                issue.ActionPlans.Select(plan =>
+                {
+                    var assignedPics = plan.PicAssignments
+                        .Select(assignment => assignment.Pic)
+                        .OfType<MasterPic>()
+                        .Select(pic => new ReferenceOption(pic.Id, pic.Nama))
+                        .ToList();
+                    if (assignedPics.Count == 0 && plan.Pic is not null)
+                    {
+                        assignedPics.Add(new ReferenceOption(plan.Pic.Id, plan.Pic.Nama));
+                    }
+
+                    return new ProjectIssueActionPlanRow(
+                        plan.Id,
+                        plan.ActionPlan,
+                        plan.Status,
+                        assignedPics.Select(pic => pic.Id).ToArray(),
+                        assignedPics,
+                        plan.Feedback);
+                }).ToList(),
                 issue.DueDate)).ToList();
             ApplyFilter();
         }
@@ -116,7 +132,7 @@ public sealed class ProjectIssueViewModel(
                 issue.ActionPlans.Any(plan =>
                     plan.ActionPlan.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
                     plan.Status.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                    plan.Pic.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                    plan.Pics.Any(pic => pic.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase)) ||
                     (plan.Feedback?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false)) ||
                 issue.Tanggal.ToString("dd/MM/yyyy").Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
                 (issue.DueDate?.ToString("dd/MM/yyyy").Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false))
@@ -134,7 +150,7 @@ public sealed class ProjectIssueViewModel(
             plan.Id,
             plan.ActionPlan.Trim(),
             plan.Status.Trim(),
-            plan.PicId,
+            plan.PicIds.Distinct().ToArray(),
             string.IsNullOrWhiteSpace(plan.Feedback) ? null : plan.Feedback.Trim())).ToList();
         if (!Validate(input, status, actionPlans)) return;
 
@@ -146,7 +162,7 @@ public sealed class ProjectIssueViewModel(
             var projectExists = await db.Projects.AnyAsync(project => project.Id == input.ProjectId);
             var issuerExists = await db.MasterPics.AnyAsync(pic => pic.Id == input.IssuerPicId);
             var strategicActionExists = await db.StrategicActions.AnyAsync(action => action.Id == input.StrategicActionId);
-            var actionPlanPicIds = actionPlans.Select(plan => plan.PicId).Distinct().ToArray();
+            var actionPlanPicIds = actionPlans.SelectMany(plan => plan.PicIds).Distinct().ToArray();
             var validActionPlanPicCount = await db.MasterPics.CountAsync(pic => actionPlanPicIds.Contains(pic.Id));
             if (!projectExists || !issuerExists || !strategicActionExists ||
                 validActionPlanPicCount != actionPlanPicIds.Length)
@@ -182,6 +198,7 @@ public sealed class ProjectIssueViewModel(
             {
                 issue = await db.ProjectIssues
                     .Include(item => item.ActionPlans)
+                        .ThenInclude(plan => plan.PicAssignments)
                     .SingleOrDefaultAsync(item => item.Id == id)
                     ?? throw new InvalidOperationException("Project Issue tidak ditemukan.");
             }
@@ -233,7 +250,11 @@ public sealed class ProjectIssueViewModel(
                     {
                         ActionPlan = actionPlan.ActionPlan,
                         Status = actionPlan.Status,
-                        PicId = actionPlan.PicId,
+                        PicId = actionPlan.PicIds[0],
+                        PicAssignments = actionPlan.PicIds.Select(picId => new ProjectIssueActionPlanPic
+                        {
+                            PicId = picId
+                        }).ToList(),
                         Feedback = actionPlan.Feedback
                     };
                     issue.ActionPlans.Add(actionPlanEntity);
@@ -242,7 +263,16 @@ public sealed class ProjectIssueViewModel(
 
                 actionPlanEntity.ActionPlan = actionPlan.ActionPlan;
                 actionPlanEntity.Status = actionPlan.Status;
-                actionPlanEntity.PicId = actionPlan.PicId;
+                actionPlanEntity.PicId = actionPlan.PicIds[0];
+                db.ProjectIssueActionPlanPics.RemoveRange(actionPlanEntity.PicAssignments);
+                actionPlanEntity.PicAssignments.Clear();
+                foreach (var picId in actionPlan.PicIds)
+                {
+                    actionPlanEntity.PicAssignments.Add(new ProjectIssueActionPlanPic
+                    {
+                        PicId = picId
+                    });
+                }
                 actionPlanEntity.Feedback = actionPlan.Feedback;
             }
             foreach (var removedPlan in issue.ActionPlans
@@ -289,9 +319,10 @@ public sealed class ProjectIssueViewModel(
             actionPlans.Any(plan =>
                 string.IsNullOrWhiteSpace(plan.ActionPlan) ||
                 string.IsNullOrWhiteSpace(plan.Status) ||
-                plan.PicId <= 0))
+                plan.PicIds.Count == 0 ||
+                plan.PicIds.Any(picId => picId <= 0)))
         {
-            snackbar.Add("Tambahkan minimal satu Action Plan dan pilih Status serta PIC untuk setiap Action Plan.", Severity.Warning);
+            snackbar.Add("Tambahkan minimal satu Action Plan dan pilih Status serta minimal satu PIC untuk setiap Action Plan.", Severity.Warning);
             return false;
         }
         if (input.Tanggal == default)
@@ -395,13 +426,13 @@ public sealed record ProjectIssueActionPlanRow(
     int Id,
     string ActionPlan,
     string Status,
-    int PicId,
-    string Pic,
+    IReadOnlyList<int> PicIds,
+    IReadOnlyList<ReferenceOption> Pics,
     string? Feedback);
 
 public sealed record ProjectIssueActionPlanInput(
     int? Id,
     string ActionPlan,
     string Status,
-    int PicId,
+    IReadOnlyList<int> PicIds,
     string? Feedback);

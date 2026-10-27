@@ -314,3 +314,51 @@ BEGIN
             ALTER COLUMN [PicId] int NULL;
     END;
 END;
+
+IF OBJECT_ID(N'dbo.pano_project_issue_action_plan_pic', N'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[pano_project_issue_action_plan_pic]
+    (
+        [ProjectIssueActionPlanId] int NOT NULL,
+        [PicId] int NOT NULL,
+        CONSTRAINT [PK_pano_project_issue_action_plan_pic]
+            PRIMARY KEY ([ProjectIssueActionPlanId], [PicId]),
+        CONSTRAINT [FK_pano_project_issue_action_plan_pic_ActionPlanId]
+            FOREIGN KEY ([ProjectIssueActionPlanId])
+            REFERENCES [dbo].[pano_project_issue_action_plan] ([Id]) ON DELETE CASCADE,
+        CONSTRAINT [FK_pano_project_issue_action_plan_pic_PicId]
+            FOREIGN KEY ([PicId])
+            REFERENCES [dbo].[pano_master_pic] ([Id]) ON DELETE NO ACTION
+    );
+END;
+
+IF OBJECT_ID(N'dbo.pano_project_issue_action_plan_pic', N'U') IS NOT NULL
+   AND OBJECT_ID(N'dbo.pano_project_issue_action_plan', N'U') IS NOT NULL
+   AND COL_LENGTH(N'dbo.pano_project_issue_action_plan', N'PicId') IS NOT NULL
+BEGIN
+    INSERT INTO [dbo].[pano_project_issue_action_plan_pic]
+        ([ProjectIssueActionPlanId], [PicId])
+    SELECT actionPlan.[Id], actionPlan.[PicId]
+    FROM [dbo].[pano_project_issue_action_plan] AS actionPlan
+    INNER JOIN [dbo].[pano_master_pic] AS pic
+        ON pic.[Id] = actionPlan.[PicId]
+    WHERE NOT EXISTS
+    (
+        SELECT 1
+        FROM [dbo].[pano_project_issue_action_plan_pic] AS assignment
+        WHERE assignment.[ProjectIssueActionPlanId] = actionPlan.[Id]
+          AND assignment.[PicId] = actionPlan.[PicId]
+    );
+END;
+
+IF OBJECT_ID(N'dbo.pano_project_issue_action_plan_pic', N'U') IS NOT NULL
+   AND NOT EXISTS
+   (
+       SELECT 1 FROM sys.indexes
+       WHERE name = N'IX_pano_project_issue_action_plan_pic_PicId'
+         AND object_id = OBJECT_ID(N'dbo.pano_project_issue_action_plan_pic', N'U')
+   )
+BEGIN
+    CREATE INDEX [IX_pano_project_issue_action_plan_pic_PicId]
+        ON [dbo].[pano_project_issue_action_plan_pic] ([PicId]);
+END;

@@ -9,5 +9,6 @@ public class ProjectIssueActionPlan
     public required string Status { get; set; }
     public int PicId { get; set; }
     public MasterPic? Pic { get; set; }
+    public ICollection<ProjectIssueActionPlanPic> PicAssignments { get; set; } = [];
     public string? Feedback { get; set; }
 }

@@ -212,13 +212,18 @@
                                                 </div>
                                                 <div class="project-issue-plan-pic">
                                                     <span class="project-issue-meta-label">PIC</span>
-                                                    <MudTooltip Text="@plan.Pic">
-                                                        <MudAvatar Color="Color.Primary" Size="Size.Small"
-                                                                   Class="project-issue-pic-avatar"
-                                                                   aria-label="@plan.Pic">
-                                                            @GetInitials(plan.Pic)
-                                                        </MudAvatar>
-                                                    </MudTooltip>
+                                                    <div class="project-issue-pic-avatars">
+                                                        @foreach (var pic in plan.Pics)
+                                                        {
+                                                            <MudTooltip Text="@pic.Name">
+                                                                <MudAvatar Color="Color.Primary" Size="Size.Small"
+                                                                           Class="project-issue-pic-avatar"
+                                                                           aria-label="@pic.Name">
+                                                                    @GetInitials(pic.Name)
+                                                                </MudAvatar>
+                                                            </MudTooltip>
+                                                        }
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div class="project-issue-plan-status">
@@ -239,7 +244,7 @@
                                                         Feedback
                                                     </MudText>
                                                 </div>
-                                                <MudText Typo="Typo.body2">
+                                                <MudText Typo="Typo.body2" Class="project-issue-feedback-copy">
                                                     @(string.IsNullOrWhiteSpace(plan.Feedback)
                                                         ? "Belum ada feedback."
                                                         : plan.Feedback)
@@ -280,10 +285,33 @@
             return "—";
         }
 
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        return parts.Length == 1
-            ? parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant()
-            : $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+        var words = name.Split(
+            (char[]?)null,
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var initials = new char[3];
+        var count = 0;
+
+        foreach (var word in words)
+        {
+            if (count == initials.Length)
+            {
+                break;
+            }
+
+            initials[count++] = char.ToUpperInvariant(word[0]);
+        }
+
+        for (var wordIndex = 0; wordIndex < words.Length && count < initials.Length; wordIndex++)
+        {
+            for (var characterIndex = 1;
+                 characterIndex < words[wordIndex].Length && count < initials.Length;
+                 characterIndex++)
+            {
+                initials[count++] = char.ToUpperInvariant(words[wordIndex][characterIndex]);
+            }
+        }
+
+        return new string(initials, 0, count);
     }
 
     protected override async Task OnInitializedAsync()
@@ -320,7 +348,7 @@
             : new ProjectIssueInput(issue.ProjectId, issue.StatusProject, issue.Tanggal,
                 issue.IssuerPicId, issue.StrategicActionId,
                 issue.ActionPlans.Select(plan => new ProjectIssueActionPlanInput(
-                    plan.Id, plan.ActionPlan, plan.Status, plan.PicId, plan.Feedback)).ToArray(),
+                    plan.Id, plan.ActionPlan, plan.Status, plan.PicIds, plan.Feedback)).ToArray(),
                 issue.DueDate);
         var parameters = new DialogParameters
         {

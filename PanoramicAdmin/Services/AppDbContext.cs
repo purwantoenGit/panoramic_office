@@ -16,6 +16,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<StrategicAction> StrategicActions => Set<StrategicAction>();
     public DbSet<ProjectIssue> ProjectIssues => Set<ProjectIssue>();
     public DbSet<ProjectIssueActionPlan> ProjectIssueActionPlans => Set<ProjectIssueActionPlan>();
+    public DbSet<ProjectIssueActionPlanPic> ProjectIssueActionPlanPics => Set<ProjectIssueActionPlanPic>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -98,6 +99,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(p => p.CategoryProject)
                 .HasColumnName("Status")
                 .HasMaxLength(50);
+            entity.Property(p => p.LogoIcon)
+                .HasMaxLength(50)
+                .HasDefaultValue(ProjectLogoCatalog.DefaultKey)
+                .IsRequired();
         });
 
         modelBuilder.Entity<ProjectSite>(entity =>
@@ -168,6 +173,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(plan => plan.Pic)
                 .WithMany()
                 .HasForeignKey(plan => plan.PicId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ProjectIssueActionPlanPic>(entity =>
+        {
+            entity.ToTable("pano_project_issue_action_plan_pic", "dbo");
+            entity.HasKey(assignment => new
+            {
+                assignment.ProjectIssueActionPlanId,
+                assignment.PicId
+            });
+            entity.HasOne(assignment => assignment.ActionPlan)
+                .WithMany(plan => plan.PicAssignments)
+                .HasForeignKey(assignment => assignment.ProjectIssueActionPlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(assignment => assignment.Pic)
+                .WithMany()
+                .HasForeignKey(assignment => assignment.PicId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

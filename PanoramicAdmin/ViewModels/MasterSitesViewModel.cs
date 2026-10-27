@@ -43,7 +43,9 @@ public sealed class MasterSitesViewModel(
 
             await using var db = await dbContextFactory.CreateDbContextAsync();
             var sites = await db.MasterSites.AsNoTracking()
-                .OrderBy(site => site.Id).ToListAsync();
+                .OrderBy(site => site.Sites)
+                .ThenBy(site => site.Id)
+                .ToListAsync();
             Sites = sites.Select((site, index) =>
                 new MasterSiteRow(site.Id, index + 1, site.Sites, site.Status)).ToList();
             ApplyFilter();

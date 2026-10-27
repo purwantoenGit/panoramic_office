@@ -4,7 +4,7 @@
     <TitleContent>
         <div class="add-project-header">
             <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Rounded="true">
-                <MudIcon Icon="@Icons.Material.Filled.Folder" />
+                <MudIcon Icon="@ProjectLogoCatalog.GetIcon(_logoIcon)" />
             </MudAvatar>
             <div>
                 <MudText Typo="Typo.h6" Class="add-project-title">Tambah Project</MudText>
@@ -26,7 +26,22 @@
             <MudTextField T="string" @bind-Value="_name" Label="Nama Project"
                           Placeholder="Contoh: Panoramic Virtual Office"
                           Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
-                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Folder" />
+                          Adornment="Adornment.Start" AdornmentIcon="@ProjectLogoCatalog.GetIcon(_logoIcon)" />
+
+            <MudSelect T="string" @bind-Value="_logoIcon" Label="Logo Project"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                       RequiredError="Pilih logo project."
+                       Adornment="Adornment.Start" AdornmentIcon="@ProjectLogoCatalog.GetIcon(_logoIcon)">
+                @foreach (var logo in ProjectLogoCatalog.Options)
+                {
+                    <MudSelectItem T="string" Value="@logo.Key">
+                        <span class="project-logo-option">
+                            <MudIcon Icon="@logo.Icon" Size="Size.Small" />
+                            @logo.Label
+                        </span>
+                    </MudSelectItem>
+                }
+            </MudSelect>
 
             <div class="add-project-row">
                 <MudSelect T="string" @bind-Value="_stream" Label="Stream"
@@ -84,6 +99,7 @@
     public IReadOnlyList<string> AvailableSites { get; set; } = Array.Empty<string>();
 
     private string _name = string.Empty;
+    private string _logoIcon = ProjectLogoCatalog.DefaultKey;
     private string _stream = string.Empty;
     private string _categoryProject = string.Empty;
     private IReadOnlyCollection<string> _sites = Array.Empty<string>();
@@ -120,6 +136,7 @@
             _name.Trim(),
             _stream.Trim(),
             _categoryProject,
+            _logoIcon,
             sites)));
     }
 

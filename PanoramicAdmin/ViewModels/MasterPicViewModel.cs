@@ -43,7 +43,9 @@ public sealed class MasterPicViewModel(
                 .Select(role => role.Roles)
                 .ToListAsync();
             var pics = await db.MasterPics.AsNoTracking()
-                .OrderBy(pic => pic.Id).ToListAsync();
+                .OrderBy(pic => pic.Nama)
+                .ThenBy(pic => pic.Id)
+                .ToListAsync();
             Pics = pics.Select((pic, index) =>
                 new MasterPicRow(pic.Id, index + 1, pic.Nama, pic.Role)).ToList();
             ApplyFilter();

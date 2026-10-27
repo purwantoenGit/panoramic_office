@@ -26,6 +26,7 @@ public sealed class MasterProjectViewModel(
     public int? EditingProjectId { get; private set; }
     public int? PendingDeleteId { get; private set; }
     public string EditName { get; set; } = string.Empty;
+    public string EditLogoIcon { get; set; } = ProjectLogoCatalog.DefaultKey;
     public string EditStream { get; set; } = string.Empty;
     public string EditCategoryProject { get; set; } = string.Empty;
     public IReadOnlyCollection<string> EditSites { get; set; } = Array.Empty<string>();
@@ -58,7 +59,9 @@ public sealed class MasterProjectViewModel(
             var projects = await db.Projects
                 .AsNoTracking()
                 .Include(project => project.Sites)
-                .OrderBy(project => project.Id)
+                .OrderBy(project => project.Stream)
+                .ThenBy(project => project.Name)
+                .ThenBy(project => project.Id)
                 .ToListAsync();
 
             Projects = projects
@@ -66,6 +69,7 @@ public sealed class MasterProjectViewModel(
                     project.Id,
                     index + 1,
                     project.Name,
+                    project.LogoIcon,
                     project.Stream,
                     project.CategoryProject,
                     project.Sites.Select(site => site.Name).ToArray()))
@@ -158,6 +162,12 @@ public sealed class MasterProjectViewModel(
 
     public async Task CreateAsync(ProjectInput input)
     {
+        if (!ProjectLogoCatalog.IsValidKey(input.LogoIcon))
+        {
+            snackbar.Add("Pilih logo project dari daftar ikon yang tersedia.", Severity.Warning);
+            return;
+        }
+
         if (!IsAvailableStream(input.Stream))
         {
             snackbar.Add("Pilih stream yang tersedia dari Master Stream.", Severity.Warning);
@@ -206,6 +216,7 @@ public sealed class MasterProjectViewModel(
             db.Projects.Add(new Project
             {
                 Name = input.Name,
+                LogoIcon = input.LogoIcon,
                 Stream = input.Stream,
                 CategoryProject = input.CategoryProject,
                 Sites = input.Sites
@@ -259,6 +270,9 @@ public sealed class MasterProjectViewModel(
         EditingProjectId = project.Id;
         PendingDeleteId = null;
         EditName = project.Name;
+        EditLogoIcon = ProjectLogoCatalog.IsValidKey(project.LogoIcon)
+            ? project.LogoIcon
+            : ProjectLogoCatalog.DefaultKey;
         EditStream = project.Stream;
         EditCategoryProject = project.CategoryProject;
         _editingOriginalSites = project.Sites.ToArray();
@@ -278,10 +292,11 @@ public sealed class MasterProjectViewModel(
         if (string.IsNullOrWhiteSpace(EditName) ||
             !IsAvailableStream(EditStream) ||
             !IsAvailableCategoryProject(EditCategoryProject) ||
+            !ProjectLogoCatalog.IsValidKey(EditLogoIcon) ||
             sites.Length == 0 ||
             sites.Length != EditSites.Count())
         {
-            EditError = "Nama, stream, kategori project dari daftar master, dan minimal satu site yang diizinkan harus dipilih.";
+            EditError = "Nama, logo project, stream, kategori dari daftar master, dan minimal satu site harus dipilih.";
             NotifyStateChanged();
             return;
         }
@@ -333,6 +348,7 @@ public sealed class MasterProjectViewModel(
             }
 
             project.Name = EditName.Trim();
+            project.LogoIcon = EditLogoIcon;
             project.Stream = EditStream.Trim();
             project.CategoryProject = EditCategoryProject;
             db.ProjectSites.RemoveRange(project.Sites);
@@ -512,6 +528,7 @@ public sealed record ProjectRow(
     int Id,
     int No,
     string Name,
+    string LogoIcon,
     string Stream,
     string CategoryProject,
     string[] Sites);

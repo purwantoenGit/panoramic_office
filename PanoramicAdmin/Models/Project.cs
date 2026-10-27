@@ -6,6 +6,7 @@ public class Project
     public required string Name { get; set; }
     public required string Stream { get; set; }
     public required string CategoryProject { get; set; }
+    public string LogoIcon { get; set; } = ProjectLogoCatalog.DefaultKey;
     public List<ProjectSite> Sites { get; set; } = [];
 }
 

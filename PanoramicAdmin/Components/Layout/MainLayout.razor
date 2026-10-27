@@ -19,14 +19,16 @@
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="0"
                Variant="DrawerVariant.Responsive" Class="admin-drawer">
         <div class="drawer-brand">
-            <MudAvatar Color="Color.Primary" Size="Size.Medium">
-                <MudIcon Icon="@Icons.Material.Filled.Widgets" />
-            </MudAvatar>
-            <div>
-                <MudText Typo="Typo.subtitle1" Class="brand-title">Panoramic Review</MudText>
-                <MudText Typo="Typo.caption" Class="brand-caption">ADMIN CONSOLE</MudText>
-            </div>
+        <div class="brand-logo">
+            <img src="pama-logo.png" alt="Logo PAMA" />
         </div>
+        <div>
+            <MudText Typo="Typo.subtitle1" Class="brand-title">
+                <span>PROJECT</span>
+                <span>MANAGEMENT</span>
+            </MudText>
+        </div>
+    </div>
         <MudNavMenu Class="admin-nav">
             <MudText Typo="Typo.overline" Class="nav-section">DASHBOARD</MudText>
             <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">

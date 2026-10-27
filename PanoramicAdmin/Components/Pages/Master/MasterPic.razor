@@ -79,6 +79,7 @@
                   Breakpoint="Breakpoint.Sm" Class="project-table">
             <HeaderContent>
                 <MudTh>No</MudTh>
+                <MudTh>Inisial</MudTh>
                 <MudTh>Nama</MudTh>
                 <MudTh>ROLE</MudTh>
                 <MudTh Class="project-actions-header">Edit</MudTh>
@@ -87,6 +88,12 @@
             <RowTemplate>
                 <MudTd DataLabel="No">
                     <span class="project-number">@context.No.ToString("D2")</span>
+                </MudTd>
+                <MudTd DataLabel="Inisial">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                             Class="master-pic-initials-chip">
+                        @GetInitials(context.Nama)
+                    </MudChip>
                 </MudTd>
                 <MudTd DataLabel="Nama">
                     <div class="project-name-cell">
@@ -97,8 +104,8 @@
                     </div>
                 </MudTd>
                 <MudTd DataLabel="Role">
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                             Class="stream-chip">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                             Class="@GetRoleChipClass(context.Role)">
                         @(string.IsNullOrWhiteSpace(context.Role) ? "Belum diisi" : context.Role)
                     </MudChip>
                 </MudTd>
@@ -146,6 +153,59 @@
 
     private void OnViewModelStateChanged() => _ = InvokeAsync(StateHasChanged);
     private void OnSearchChanged(string? text) => ViewModel.Search(text);
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return string.Empty;
+        }
+
+        var words = name.Split(
+            (char[]?)null,
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var initials = new char[3];
+        var count = 0;
+
+        foreach (var word in words)
+        {
+            if (count == initials.Length)
+            {
+                break;
+            }
+
+            initials[count++] = char.ToUpperInvariant(word[0]);
+        }
+
+        for (var wordIndex = 0; wordIndex < words.Length && count < initials.Length; wordIndex++)
+        {
+            for (var characterIndex = 1;
+                 characterIndex < words[wordIndex].Length && count < initials.Length;
+                 characterIndex++)
+            {
+                initials[count++] = char.ToUpperInvariant(words[wordIndex][characterIndex]);
+            }
+        }
+
+        return new string(initials, 0, count);
+    }
+
+    private string GetRoleChipClass(string role)
+    {
+        var index = -1;
+        for (var roleIndex = 0; roleIndex < ViewModel.AvailableRoles.Count; roleIndex++)
+        {
+            if (string.Equals(ViewModel.AvailableRoles[roleIndex], role, StringComparison.Ordinal))
+            {
+                index = roleIndex;
+                break;
+            }
+        }
+
+        return index < 0
+            ? "master-pic-role-chip role-color-unassigned"
+            : $"master-pic-role-chip role-color-{index % 8}";
+    }
 
     private async Task OpenAddDialogAsync()
     {

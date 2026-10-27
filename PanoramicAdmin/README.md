@@ -31,6 +31,13 @@ Keep the watch process running while editing. Razor and CSS changes are applied 
 
 The dashboard metrics and user list are sample data. Replace `InMemoryUserService` with a persistent implementation and connect the dashboard to real data before production use. Authentication and authorization have not been configured yet.
 
+## Master Project logo setup
+
+Run `Database/Scripts/Create_MasterProject.sql` against `db_panoramic`. The
+script adds a `LogoIcon` column to an existing `pano_MasterProject` table and
+assigns the default folder icon to existing projects. Project logos can then be
+selected from the built-in icon list in the Master Project page.
+
 ## Master Category Project database setup
 
 Run `Database/Scripts/Create_MasterCategoryProject.sql` against `db_panoramic`.
@@ -65,10 +72,13 @@ Run `Database/Scripts/Create_MasterIssue.sql` and
 issue table on a fresh database, or migrates an existing
 `MasterActivityPlanId` column in place to `StrategicActionId` without deleting
 issue rows, expands `StatusProject` to support the Master Issue field length,
-and creates `pano_project_issue_action_plan` for multiple Action Plans per issue.
+and creates `pano_project_issue_action_plan` for multiple Action Plans per issue
+plus `pano_project_issue_action_plan_pic` for assigning multiple PICs to each
+Action Plan.
 Existing `Deskripsi`, `PicId`, and `Feedback` values are migrated as the first
 Action Plan, with the legacy columns retained as nullable fields. Each Action
-Plan has its own Status (selected from active Master Issue values), PIC, and
+Plan has its own Status (selected from active Master Issue values), one or more
+PICs, and
 optional Feedback. Legacy Action Plan status starts with its parent issue's
 Status Project. For legacy IDs that have no matching Strategic Action, the
 script inserts placeholder names (`Strategic Action {id}`) so the new foreign
