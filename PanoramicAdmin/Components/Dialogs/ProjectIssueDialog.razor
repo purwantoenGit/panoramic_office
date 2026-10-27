@@ -42,14 +42,15 @@
                                Margin="Margin.Dense" Required="true" DateFormat="dd/MM/yyyy" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudSelect T="int" @bind-Value="_issuerPicId" Label="Issuer" Variant="Variant.Outlined"
-                           Margin="Margin.Dense" Required="true" RequiredError="Pilih Issuer."
-                           Disabled="@(Pics.Length == 0)">
-                    @foreach (var item in Pics)
-                    {
-                        <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem>
-                    }
-                </MudSelect>
+                <MudAutocomplete T="ReferenceOption" Value="@_selectedIssuerPic"
+                                 ValueChanged="OnIssuerPicSelected"
+                                 SearchFunc="SearchPicsAsync" ToStringFunc="PicToString"
+                                 Label="Issuer" Placeholder="Ketik nama Issuer..."
+                                 Variant="Variant.Outlined" Margin="Margin.Dense"
+                                 Required="true" RequiredError="Pilih Issuer."
+                                 MinCharacters="1" MaxItems="20" Clearable="true"
+                                 ResetValueOnEmptyText="true" Immediate="true"
+                                 Disabled="@(Pics.Length == 0)" />
             </MudItem>
             <MudItem xs="12">
                 <MudSelect T="int" @bind-Value="_strategicActionId" Label="Strategic Action"
@@ -99,7 +100,9 @@
                                 <MudItem xs="12">
                                     <MudTextField T="string" @bind-Value="actionPlan.ActionPlan"
                                                   Label="Action Plan" Variant="Variant.Outlined"
-                                                  Margin="Margin.Dense" Required="true" Lines="2" />
+                                                  Placeholder="Tuliskan langkah konkret yang akan dilakukan..."
+                                                  Margin="Margin.Dense" Required="true" Lines="3"
+                                                  Class="project-issue-text-field project-issue-action-plan-input" />
                                 </MudItem>
                                 <MudItem xs="12" sm="6">
                                     <MudSelect T="string" @bind-Value="actionPlan.Status" Label="Status"
@@ -113,21 +116,34 @@
                                     </MudSelect>
                                 </MudItem>
                                 <MudItem xs="12" sm="6">
-                                    <MudSelect T="int" MultiSelection="true"
-                                               @bind-SelectedValues="actionPlan.PicIds" Label="PIC"
-                                               Variant="Variant.Outlined" Margin="Margin.Dense"
-                                               Required="true" RequiredError="Pilih minimal satu PIC untuk Action Plan ini."
-                                               Disabled="@(Pics.Length == 0)">
-                                        @foreach (var item in Pics)
+                                    <MudAutocomplete T="ReferenceOption" Value="@actionPlan.PendingPic"
+                                                     ValueChanged="@(pic => AddActionPlanPic(actionPlan, pic))"
+                                                     SearchFunc="@((string value, CancellationToken cancellationToken) =>
+                                                         SearchActionPlanPicsAsync(actionPlan, value, cancellationToken))"
+                                                     ToStringFunc="PicToString"
+                                                     Label="PIC" Placeholder="Ketik nama PIC..."
+                                                     Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                     MinCharacters="1" MaxItems="20" Clearable="true"
+                                                     ResetValueOnEmptyText="true" Immediate="true"
+                                                     Disabled="@(Pics.Length == 0)" />
+                                    <div class="d-flex flex-wrap gap-2 mt-2">
+                                        @foreach (var pic in GetSelectedPics(actionPlan))
                                         {
-                                            <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem>
+                                            <MudChip T="string" @key="pic.Id" Size="Size.Small"
+                                                     Variant="Variant.Outlined" Color="Color.Primary"
+                                                     Closeable="true"
+                                                     OnClose="@(() => RemoveActionPlanPic(actionPlan, pic.Id))">
+                                                @pic.Name
+                                            </MudChip>
                                         }
-                                    </MudSelect>
+                                    </div>
                                 </MudItem>
-                                <MudItem xs="12" sm="6">
+                                <MudItem xs="12">
                                     <MudTextField T="string" @bind-Value="actionPlan.Feedback"
                                                   Label="Feedback" Variant="Variant.Outlined"
-                                                  Margin="Margin.Dense" Lines="2" />
+                                                  Placeholder="Catat perkembangan, hasil, kendala, atau tindak lanjut..."
+                                                  Margin="Margin.Dense" Lines="4"
+                                                  Class="project-issue-text-field project-issue-feedback-input" />
                                 </MudItem>
                             </MudGrid>
                         </MudPaper>
@@ -177,6 +193,7 @@
     private string _statusProject = string.Empty;
     private DateTime? _tanggal = DateTime.Today;
     private int _issuerPicId;
+    private ReferenceOption? _selectedIssuerPic;
     private int _strategicActionId;
     private DateTime? _dueDate;
     private string? _validationMessage;
@@ -189,6 +206,7 @@
         _statusProject = value.StatusProject;
         _tanggal = value.Tanggal;
         _issuerPicId = value.IssuerPicId;
+        _selectedIssuerPic = Pics.FirstOrDefault(pic => pic.Id == _issuerPicId);
         _strategicActionId = value.StrategicActionId;
         _actionPlans = value.ActionPlans
             .Select(plan => new ActionPlanForm
@@ -208,6 +226,56 @@
     }
 
     private void AddActionPlan() => _actionPlans.Add(new ActionPlanForm());
+
+    private void OnIssuerPicSelected(ReferenceOption? pic)
+    {
+        _selectedIssuerPic = pic;
+        _issuerPicId = pic?.Id ?? 0;
+    }
+
+    private Task<IEnumerable<ReferenceOption>> SearchPicsAsync(
+        string value,
+        CancellationToken cancellationToken) =>
+        Task.FromResult<IEnumerable<ReferenceOption>>(FindPicMatches(value));
+
+    private Task<IEnumerable<ReferenceOption>> SearchActionPlanPicsAsync(
+        ActionPlanForm actionPlan,
+        string value,
+        CancellationToken cancellationToken) =>
+        Task.FromResult<IEnumerable<ReferenceOption>>(
+            FindPicMatches(value, actionPlan.PicIds));
+
+    private IEnumerable<ReferenceOption> FindPicMatches(
+        string value,
+        IReadOnlyCollection<int>? excludedPicIds = null)
+    {
+        IEnumerable<ReferenceOption> matches = string.IsNullOrWhiteSpace(value)
+            ? Pics
+            : Pics.Where(pic => pic.Name.Contains(value.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (excludedPicIds is not null)
+        {
+            matches = matches.Where(pic => !excludedPicIds.Contains(pic.Id));
+        }
+
+        return matches.Take(20);
+    }
+
+    private static string PicToString(ReferenceOption? pic) => pic?.Name ?? string.Empty;
+
+    private IEnumerable<ReferenceOption> GetSelectedPics(ActionPlanForm actionPlan) =>
+        Pics.Where(pic => actionPlan.PicIds.Contains(pic.Id));
+
+    private static void AddActionPlanPic(ActionPlanForm actionPlan, ReferenceOption? pic)
+    {
+        actionPlan.PendingPic = null;
+        if (pic is not null && !actionPlan.PicIds.Contains(pic.Id))
+        {
+            actionPlan.PicIds = actionPlan.PicIds.Append(pic.Id).ToArray();
+        }
+    }
+
+    private static void RemoveActionPlanPic(ActionPlanForm actionPlan, int picId) =>
+        actionPlan.PicIds = actionPlan.PicIds.Where(id => id != picId).ToArray();
 
     private void RemoveActionPlan(ActionPlanForm actionPlan)
     {
@@ -266,6 +334,7 @@
         public string ActionPlan { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public IReadOnlyCollection<int> PicIds { get; set; } = [];
+        public ReferenceOption? PendingPic { get; set; }
         public string? Feedback { get; set; }
     }
 }

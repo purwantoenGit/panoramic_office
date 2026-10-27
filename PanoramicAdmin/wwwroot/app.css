@@ -830,6 +830,49 @@ body, .mud-typography {
     border-color: #5b8def;
 }
 
+.project-issue-filters {
+    display: flex;
+    width: min(100%, 650px);
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.project-issue-filter-autocomplete {
+    width: 230px;
+    flex: 0 0 230px;
+}
+
+.project-issue-search {
+    width: min(100%, 390px);
+    max-width: none;
+}
+
+.project-issue-filter-autocomplete .mud-input-control-input-container,
+.project-issue-search .mud-input-control-input-container {
+    border-radius: 13px;
+    background: #f8faff;
+    transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.project-issue-filter-autocomplete .mud-input-outlined-border,
+.project-issue-search .mud-input-outlined-border {
+    border-color: #dce5f1;
+    border-radius: 13px;
+    transition: border-color 160ms ease;
+}
+
+.project-issue-filter-autocomplete:focus-within .mud-input-control-input-container,
+.project-issue-search:focus-within .mud-input-control-input-container {
+    background: #fff;
+    box-shadow: 0 0 0 4px rgb(75 112 198 / 9%);
+}
+
+.project-issue-filter-autocomplete:focus-within .mud-input-outlined-border,
+.project-issue-search:focus-within .mud-input-outlined-border {
+    border-color: #5b7fce;
+}
+
 .add-project-dialog .mud-dialog {
     border-radius: 20px;
     box-shadow: 0 24px 60px rgb(16 45 89 / 22%);
@@ -1041,7 +1084,7 @@ body, .mud-typography {
     background: linear-gradient(140deg, #4a7bd1, #6a5fce) !important;
     box-shadow: 0 3px 9px rgb(53 91 164 / 20%);
     color: #fff !important;
-    font-size: 0.68rem !important;
+    font-size: 0.75rem !important;
     font-weight: 800;
 }
 
@@ -1246,6 +1289,40 @@ body, .mud-typography {
     background: #fff4f2;
 }
 
+.project-issue-text-field .mud-input-control-input-container {
+    border-radius: 14px;
+    background: #f8faff;
+    transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.project-issue-text-field .mud-input-outlined-border {
+    border-color: #dce5f1;
+    border-radius: 14px;
+    transition: border-color 160ms ease;
+}
+
+.project-issue-text-field:hover .mud-input-outlined-border {
+    border-color: #aebfda;
+}
+
+.project-issue-text-field:focus-within .mud-input-control-input-container {
+    background: #fff;
+    box-shadow: 0 0 0 4px rgb(75 112 198 / 10%);
+}
+
+.project-issue-text-field:focus-within .mud-input-outlined-border {
+    border-color: #5b7fce;
+}
+
+.project-issue-text-field textarea {
+    line-height: 1.6;
+}
+
+.project-issue-action-plan-input textarea,
+.project-issue-feedback-input textarea {
+    padding-block: 12px;
+}
+
 .project-action-plan-letter {
     display: inline-grid;
     width: 34px;
@@ -1253,8 +1330,8 @@ body, .mud-typography {
     flex: 0 0 auto;
     place-items: center;
     border-radius: 11px;
-    background: linear-gradient(135deg, #477bd2, #695de0);
-    box-shadow: 0 5px 12px rgb(71 123 210 / 22%);
+    background: #173b70;
+    box-shadow: 0 5px 12px rgb(23 59 112 / 22%);
     color: #fff;
     font-size: 0.82rem;
     font-weight: 900;
@@ -1351,6 +1428,26 @@ body, .mud-typography {
     font-weight: 700 !important;
     line-height: 1.6 !important;
     white-space: pre-wrap;
+}
+
+.project-issue-plan-copy.project-plan-status-open {
+    border-left-color: #b42318;
+}
+
+.project-issue-plan-copy.project-plan-status-progress {
+    border-left-color: #b54708;
+}
+
+.project-issue-plan-copy.project-plan-status-hold {
+    border-left-color: #9a6109;
+}
+
+.project-issue-plan-copy.project-plan-status-complete {
+    border-left-color: #15803d;
+}
+
+.project-issue-plan-copy.project-plan-status-default {
+    border-left-color: #8793a3;
 }
 
 .project-issue-plan-divider {
@@ -1817,6 +1914,19 @@ body, .mud-typography {
     .project-list-heading {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .project-issue-filters {
+        width: 100%;
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .project-issue-filter-autocomplete,
+    .project-issue-search {
+        width: 100%;
+        max-width: none;
+        flex-basis: auto;
     }
 
     .project-action-plan-heading {

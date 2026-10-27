@@ -39,11 +39,26 @@
                 @ViewModel.FilteredIssues.Count dari @ViewModel.Issues.Count issue ditampilkan
             </MudText>
         </div>
-        <MudTextField T="string" Value="@ViewModel.SearchText" ValueChanged="OnSearchChanged"
-                      Placeholder="Cari project, status, issuer, action plan, atau PIC"
-                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                      Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"
-                      Clearable="true" Class="search-field" aria-label="Cari Project Issue" />
+        <div class="project-issue-filters">
+            <MudAutocomplete T="ReferenceOption" Value="@_selectedProject"
+                             ValueChanged="OnProjectSelected"
+                             Text="@_projectSearchText"
+                             TextChanged="OnProjectSearchTextChanged"
+                             SearchFunc="SearchProjectsAsync"
+                             ToStringFunc="ProjectOptionToString"
+                             Label="Filter Project" Placeholder="Ketik nama project..."
+                             Variant="Variant.Outlined" Margin="Margin.Dense"
+                             MinCharacters="1" MaxItems="20" Clearable="true" Immediate="true"
+                             ResetValueOnEmptyText="true"
+                             Class="project-issue-filter-autocomplete"
+                             aria-label="Ketik untuk memilih Project" />
+            <MudTextField T="string" Value="@ViewModel.SearchText" ValueChanged="OnSearchChanged"
+                          Placeholder="Cari project, status, issuer, action plan, atau PIC"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Clearable="true" Class="search-field project-issue-search"
+                          aria-label="Cari Project Issue" />
+        </div>
     </div>
 
     @if (ViewModel.IsLoading)
@@ -64,9 +79,7 @@
     else if (ViewModel.FilteredIssues.Count == 0)
     {
         <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
-            @(ViewModel.Issues.Count == 0
-                ? "Belum ada Project Issue."
-                : "Tidak ada issue yang cocok dengan pencarian.")
+            @GetEmptyStateMessage()
         </MudText>
     }
     else
@@ -79,6 +92,7 @@
                     <MudTh>Project / Status</MudTh>
                     <MudTh>Strategic Action</MudTh>
                     <MudTh>Issuer</MudTh>
+                    <MudTh>PIC</MudTh>
                     <MudTh>Tanggal / Due Date</MudTh>
                     <MudTh>Action Plan</MudTh>
                     <MudTh Class="project-actions-header">Aksi</MudTh>
@@ -116,6 +130,7 @@
                             <MudText Typo="Typo.body2" Class="project-issue-issuer">@context.Issuer</MudText>
                         </div>
                     </MudTd>
+                    <MudTd DataLabel="PIC">@GetIssuePicNames(context)</MudTd>
                     <MudTd DataLabel="Tanggal / Due Date">
                         <div class="project-issue-date-stack">
                             <div class="project-issue-date-item">
@@ -186,7 +201,7 @@
                 <ChildRowContent Context="issue">
                     @if (_expandedIssueId == issue.Id)
                     {
-                        <MudTd colspan="7" Class="project-issue-detail-cell">
+                        <MudTd colspan="8" Class="project-issue-detail-cell">
                             @if (issue.ActionPlans.Count == 0)
                             {
                                 <MudText Typo="Typo.body2" Class="project-issue-no-action-plans">
@@ -216,7 +231,7 @@
                                                         @foreach (var pic in plan.Pics)
                                                         {
                                                             <MudTooltip Text="@pic.Name">
-                                                                <MudAvatar Color="Color.Primary" Size="Size.Small"
+                                                                <MudAvatar Color="Color.Primary" Size="Size.Medium"
                                                                            Class="project-issue-pic-avatar"
                                                                            aria-label="@pic.Name">
                                                                     @GetInitials(pic.Name)
@@ -233,7 +248,8 @@
                                                     @plan.Status
                                                 </MudChip>
                                             </div>
-                                            <MudText Typo="Typo.body2" Class="project-issue-plan-copy">
+                                            <MudText Typo="Typo.body2"
+                                                     Class="@($"project-issue-plan-copy {GetStatusClass(plan.Status)}")">
                                                 @plan.ActionPlan
                                             </MudText>
                                             <MudDivider Class="project-issue-plan-divider" />
@@ -264,6 +280,8 @@
 
 @code {
     private int? _expandedIssueId;
+    private ReferenceOption? _selectedProject;
+    private string _projectSearchText = string.Empty;
 
     private static string GetStatusClass(string status) =>
         status.Trim().ToUpperInvariant() switch
@@ -318,10 +336,66 @@
     {
         ViewModel.StateChanged += OnViewModelStateChanged;
         await ViewModel.LoadAsync();
+        _selectedProject = ViewModel.Projects.FirstOrDefault(
+            project => project.Id == ViewModel.SelectedProjectId);
     }
 
     private void OnViewModelStateChanged() => _ = InvokeAsync(StateHasChanged);
     private void OnSearchChanged(string? text) => ViewModel.Search(text);
+    private void OnProjectSelected(ReferenceOption? project)
+    {
+        _selectedProject = project;
+        ViewModel.FilterByProject(project?.Id);
+    }
+
+    private void OnProjectSearchTextChanged(string? text)
+    {
+        _projectSearchText = text ?? string.Empty;
+        ViewModel.FilterByProjectName(_projectSearchText);
+
+        if (_selectedProject is not null &&
+            !string.Equals(_selectedProject.Name, _projectSearchText.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            _selectedProject = null;
+            ViewModel.FilterByProject(null);
+        }
+    }
+
+    private Task<IEnumerable<ReferenceOption>> SearchProjectsAsync(
+        string value,
+        CancellationToken cancellationToken)
+    {
+        var matches = string.IsNullOrWhiteSpace(value)
+            ? ViewModel.Projects.Take(20)
+            : ViewModel.Projects.Where(project =>
+                    project.Name.Contains(value.Trim(), StringComparison.OrdinalIgnoreCase))
+                .Take(20);
+        return Task.FromResult<IEnumerable<ReferenceOption>>(matches);
+    }
+
+    private static string ProjectOptionToString(ReferenceOption? project) =>
+        project?.Name ?? string.Empty;
+
+    private static string GetIssuePicNames(ProjectIssueRow issue)
+    {
+        var names = issue.ActionPlans
+            .SelectMany(plan => plan.Pics)
+            .DistinctBy(pic => pic.Id)
+            .Select(pic => pic.Name)
+            .ToArray();
+
+        return names.Length == 0 ? "—" : string.Join(", ", names);
+    }
+
+    private string GetEmptyStateMessage() =>
+        ViewModel.Issues.Count == 0
+            ? "Belum ada Project Issue."
+            : ViewModel.SelectedProjectId.HasValue ||
+              !string.IsNullOrWhiteSpace(_projectSearchText) ||
+              !string.IsNullOrWhiteSpace(ViewModel.SearchText)
+                ? "Tidak ada issue yang cocok dengan filter project atau pencarian."
+                : "Tidak ada issue yang cocok dengan pencarian.";
+
     private void ToggleDetails(int issueId) =>
         _expandedIssueId = _expandedIssueId == issueId ? null : issueId;
 

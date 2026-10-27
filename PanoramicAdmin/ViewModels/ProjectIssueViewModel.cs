@@ -20,6 +20,8 @@ public sealed class ProjectIssueViewModel(
     public IReadOnlyList<ReferenceOption> StrategicActions { get; private set; } = [];
     public IReadOnlyList<string> ProjectStatuses { get; private set; } = [];
     public string SearchText { get; private set; } = string.Empty;
+    public string ProjectNameFilter { get; private set; } = string.Empty;
+    public int? SelectedProjectId { get; private set; }
     public string? DatabaseError { get; private set; }
     public int? PendingDeleteId { get; private set; }
     public bool IsLoading { get; private set; } = true;
@@ -121,21 +123,38 @@ public sealed class ProjectIssueViewModel(
         NotifyStateChanged();
     }
 
+    public void FilterByProject(int? projectId)
+    {
+        SelectedProjectId = projectId;
+        ApplyFilter();
+        NotifyStateChanged();
+    }
+
+    public void FilterByProjectName(string? projectName)
+    {
+        ProjectNameFilter = projectName ?? string.Empty;
+        ApplyFilter();
+        NotifyStateChanged();
+    }
+
     private void ApplyFilter()
     {
         FilteredIssues = Issues
             .Where(issue =>
-                issue.Project.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                issue.StatusProject.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                issue.Issuer.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                issue.StrategicAction.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                issue.ActionPlans.Any(plan =>
-                    plan.ActionPlan.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                    plan.Status.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                    plan.Pics.Any(pic => pic.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase)) ||
-                    (plan.Feedback?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false)) ||
-                issue.Tanggal.ToString("dd/MM/yyyy").Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                (issue.DueDate?.ToString("dd/MM/yyyy").Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false))
+                (SelectedProjectId is null || issue.ProjectId == SelectedProjectId.Value) &&
+                (string.IsNullOrWhiteSpace(ProjectNameFilter) ||
+                 issue.Project.Contains(ProjectNameFilter.Trim(), StringComparison.OrdinalIgnoreCase)) &&
+                (issue.Project.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                 issue.StatusProject.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                 issue.Issuer.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                 issue.StrategicAction.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                 issue.ActionPlans.Any(plan =>
+                     plan.ActionPlan.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                     plan.Status.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                     plan.Pics.Any(pic => pic.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase)) ||
+                     (plan.Feedback?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false)) ||
+                 issue.Tanggal.ToString("dd/MM/yyyy").Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                 (issue.DueDate?.ToString("dd/MM/yyyy").Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false)))
             .Select((issue, index) => issue with { No = index + 1 })
             .ToList();
     }
