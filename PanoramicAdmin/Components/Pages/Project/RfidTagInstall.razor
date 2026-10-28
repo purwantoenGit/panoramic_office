@@ -1,0 +1,225 @@
+@page "/rfid-tag-install"
+@using PanoramicAdmin.Models
+@using PanoramicAdmin.ViewModels
+@inject RfidTagInstallViewModel ViewModel
+
+<PageTitle>RFID Tag Install | Panoramic Office</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.h4" Class="page-title">RFID Tag Install</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Unit berstatus 1 dengan equip class DT, EX, GR, atau DZ, dikelompokkan berdasarkan district dan EGI.
+        </MudText>
+    </div>
+</div>
+
+<MudPaper Class="section-card project-list-card" Elevation="0">
+    <div class="section-heading project-list-heading">
+        <div>
+            <MudText Typo="Typo.h6" Class="section-title">Data Peralatan</MudText>
+            <MudText Typo="Typo.body2" Class="section-subtitle">
+                @ViewModel.Districts.Count district · @ViewModel.EquipClassGroups.Sum(group => group.EgiColumns.Count) EGI columns
+            </MudText>
+        </div>
+        <div class="rfid-filter-controls">
+            <MudSelect T="string" Label="District"
+                       SelectedValues="@ViewModel.SelectedDistricts"
+                       SelectedValuesChanged="OnDistrictsChanged"
+                       MultiSelection="true" SelectAll="true" Clearable="true"
+                       SelectAllText="Pilih semua" Variant="Variant.Outlined"
+                       Margin="Margin.Dense" Class="search-field"
+                       aria-label="Filter berdasarkan district">
+                @foreach (var district in ViewModel.DistrictOptions)
+                {
+                    <MudSelectItem T="string" Value="@district">@district</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField T="string" Value="@ViewModel.SearchText" ValueChanged="OnSearchChanged"
+                          Placeholder="Cari unit no, district, atau EGI"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true" DebounceInterval="300" Variant="Variant.Outlined"
+                          Margin="Margin.Dense" Clearable="true" Class="search-field"
+                          aria-label="Cari unit no, district, atau EGI" />
+        </div>
+    </div>
+
+    @if (ViewModel.IsLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            Memuat data RFID...
+        </MudText>
+    }
+    else if (ViewModel.LoadError is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="ma-4">
+            <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                <span>@ViewModel.LoadError</span>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                           OnClick="@(() => ViewModel.LoadAsync(ViewModel.SearchText))">
+                    Coba lagi
+                </MudButton>
+            </div>
+        </MudAlert>
+    }
+    else if (ViewModel.Districts.Count == 0)
+    {
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            Tidak ada data yang cocok.
+        </MudText>
+    }
+    else
+    {
+        <div class="project-table-wrap">
+            <div class="rfid-count-legend" aria-label="Keterangan angka hitungan">
+                <span class="rfid-count-legend-example">(32) 31 / 32</span>
+                <span><strong>Dalam kurung:</strong> Unit Aktif Auto CN 30 Days Transaksi ke belakang</span>
+                <span><strong>Angka pertama:</strong> Manual (Claim Site)</span>
+                <span><strong>Angka kedua:</strong> Auto (System)</span>
+            </div>
+            <table class="rfid-pivot-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2" scope="col">District</th>
+                        @foreach (var equipClass in ViewModel.EquipClassGroups)
+                        {
+                            <th class="@GetEquipClassHeaderClass(equipClass.Code)"
+                                colspan="@equipClass.EgiColumns.Count" scope="colgroup">
+                                @equipClass.Code (@equipClass.Description)
+                            </th>
+                        }
+                    </tr>
+                    <tr>
+                        @foreach (var equipClass in ViewModel.EquipClassGroups)
+                        {
+                            @foreach (var egi in equipClass.EgiColumns)
+                            {
+                                <th scope="col">@egi</th>
+                            }
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var district in ViewModel.Districts)
+                    {
+                        <tr class="@GetDistrictRowClass(district.District)">
+                            <th scope="row" class="rfid-pivot-district">@district.District</th>
+                            @foreach (var equipClass in ViewModel.EquipClassGroups)
+                            {
+                                @foreach (var egi in equipClass.EgiColumns)
+                                {
+                                    var pivotKey = new RfidPivotKey(equipClass.Code, egi);
+                                    var cellKey = new RfidManualUnitKey(
+                                        district.District, equipClass.Code, egi);
+                                    var unitCount = district.Counts.GetValueOrDefault(pivotKey);
+                                    var manualCount = ViewModel.GetManualCount(cellKey);
+                                    var rfidInputCount = ViewModel.GetRfidInputCount(
+                                        district.District, equipClass.Code, egi);
+                                    var isRatioEmpty = unitCount == 0 && manualCount.GetValueOrDefault() == 0;
+                                    var isCellEmpty = isRatioEmpty && rfidInputCount == 0;
+                                    <td class="rfid-pivot-count-cell">
+                                        @if (ViewModel.IsEditing(cellKey))
+                                        {
+                                            <div class="rfid-pivot-cell-editor @GetManualCountStatusClass(unitCount, ViewModel.GetEditValue(cellKey))">
+                                                <span class="rfid-registration-count">(@rfidInputCount)</span>
+                                                <MudNumericField T="int?"
+                                                                 Value="@ViewModel.GetEditValue(cellKey)"
+                                                                 ValueChanged="@((int? value) => ViewModel.SetEditValue(cellKey, value))"
+                                                                 Min="0" Immediate="true" HideSpinButtons="true"
+                                                                 Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                                 Class="rfid-manual-count-input"
+                                                                 aria-label="@($"Jumlah tambahan {cellKey.District} {cellKey.EquipClass} {cellKey.Egi}")" />
+                                                <span class="rfid-pivot-cell-separator">/</span>
+                                                <span>@FormatCount(unitCount)</span>
+                                                <MudIconButton Icon="@Icons.Material.Filled.Save"
+                                                               Color="Color.Primary" Size="Size.Small"
+                                                               OnClick="@(() => ViewModel.SaveManualCountAsync(cellKey))"
+                                                               Disabled="@ViewModel.IsSaving(cellKey)"
+                                                               aria-label="Simpan jumlah tambahan" />
+                                                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                                               Color="Color.Default" Size="Size.Small"
+                                                               OnClick="@(() => ViewModel.CancelEdit(cellKey))"
+                                                               Disabled="@ViewModel.IsSaving(cellKey)"
+                                                               aria-label="Batal mengubah jumlah tambahan" />
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <button type="button"
+                                                    class="rfid-pivot-cell-value @(isRatioEmpty ? "rfid-pivot-cell-empty" : GetManualCountStatusClass(unitCount, manualCount))"
+                                                    @onclick="@(() => ViewModel.BeginEdit(cellKey))"
+                                                    aria-label="@($"Ubah jumlah tambahan {cellKey.District} {cellKey.EquipClass} {cellKey.Egi}")">
+                                                @if (!isCellEmpty)
+                                                {
+                                                    <span class="rfid-registration-count">(@rfidInputCount)</span>
+                                                }
+                                                @if (isRatioEmpty)
+                                                {
+                                                    <span>-</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>@FormatCount(manualCount)</span>
+                                                    <span class="rfid-pivot-cell-separator">/</span>
+                                                    <span>@FormatCount(unitCount)</span>
+                                                }
+                                            </button>
+                                        }
+                                    </td>
+                                }
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</MudPaper>
+
+@code {
+    protected override Task OnInitializedAsync() => ViewModel.LoadAsync();
+
+    private Task OnSearchChanged(string? text) => ViewModel.LoadAsync(text);
+
+    private void OnDistrictsChanged(IReadOnlyCollection<string> districts) =>
+        ViewModel.SetSelectedDistricts(districts);
+
+    private static string FormatCount(int? count) =>
+        count is null or 0 ? "-" : count.Value.ToString();
+
+    private static string GetManualCountStatusClass(int sourceCount, int? manualCount)
+    {
+        var additionalCount = manualCount.GetValueOrDefault();
+        if (sourceCount > 0 && additionalCount == 0)
+        {
+            return "rfid-pivot-cell-status-red";
+        }
+
+        if (additionalCount >= 1)
+        {
+            return additionalCount < sourceCount
+                ? "rfid-pivot-cell-status-orange"
+                : "rfid-pivot-cell-status-green";
+        }
+
+        return string.Empty;
+    }
+
+    private static string GetEquipClassHeaderClass(string code) =>
+        $"rfid-pivot-group-header rfid-pivot-group-{code.ToLowerInvariant()}";
+
+    private static string GetDistrictRowClass(string district) =>
+        district.Trim().ToUpperInvariant() switch
+        {
+            "BTSJ" => "rfid-highlight-btsj",
+            "KPCS" => "rfid-highlight-kpcs",
+            "KIDE" => "rfid-highlight-kide",
+            "MTBU" => "rfid-highlight-mtbu",
+            "BRCG" => "rfid-highlight-brcg",
+            "VIPO" => "rfid-highlight-vipo",
+            "BRCB" => "rfid-highlight-brcb",
+            "SMMS" => "rfid-highlight-smms",
+            _ => string.Empty
+        };
+}

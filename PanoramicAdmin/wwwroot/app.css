@@ -997,6 +997,206 @@ body, .mud-typography {
     overflow-x: auto;
 }
 
+.rfid-count-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 18px;
+    padding: 8px 12px;
+    color: #65758d;
+    font-size: 0.82rem;
+}
+
+.rfid-count-legend-example {
+    color: #34445b;
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.rfid-registration-count {
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.rfid-filter-controls {
+    display: flex;
+    width: min(100%, 740px);
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.rfid-filter-controls .search-field {
+    flex: 1 1 250px;
+}
+
+.rfid-pivot-table {
+    width: 100%;
+    min-width: max-content;
+    border-collapse: separate;
+    border-spacing: 0;
+    color: #34445b;
+}
+
+.rfid-pivot-table th,
+.rfid-pivot-table td {
+    padding: 8px 5px;
+    border-bottom: 1px solid #e8edf5;
+    white-space: nowrap;
+}
+
+.rfid-pivot-table thead th {
+    background: #f7f9fc;
+    color: #65758d;
+    font-size: 0.74rem;
+    font-weight: 800;
+    text-align: center;
+}
+
+.rfid-pivot-table thead .rfid-pivot-group-header {
+    font-size: 0.78rem;
+}
+
+.rfid-pivot-table thead .rfid-pivot-group-dt {
+    background: #e8f1ff;
+    color: #2859a6;
+    box-shadow: inset 0 3px #5384d4;
+}
+
+.rfid-pivot-table thead .rfid-pivot-group-ex {
+    background: #e7f7f0;
+    color: #26734f;
+    box-shadow: inset 0 3px #45a77a;
+}
+
+.rfid-pivot-table thead .rfid-pivot-group-gr {
+    background: #fff4df;
+    color: #936515;
+    box-shadow: inset 0 3px #dfaa43;
+}
+
+.rfid-pivot-table thead .rfid-pivot-group-dz {
+    background: #f0eaff;
+    color: #6747a5;
+    box-shadow: inset 0 3px #8b70d3;
+}
+
+.rfid-pivot-table .rfid-pivot-district {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: #fff;
+    font-weight: 700;
+    padding-right: 10px;
+    text-align: left;
+}
+
+.rfid-pivot-table tbody td {
+    text-align: center;
+}
+
+.rfid-pivot-count-cell {
+    min-width: 82px;
+}
+
+.rfid-pivot-cell-value,
+.rfid-pivot-cell-editor {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+}
+
+.rfid-pivot-cell-value {
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border: 0;
+    background-color: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.rfid-pivot-cell-status-green,
+.rfid-pivot-cell-status-orange,
+.rfid-pivot-cell-status-red {
+    border-radius: 6px;
+    color: #fff;
+    padding: 2px 5px;
+}
+
+.rfid-pivot-cell-status-green {
+    background-color: #2e7d32;
+}
+
+.rfid-pivot-cell-status-orange {
+    background-color: #ed8c00;
+}
+
+.rfid-pivot-cell-status-red {
+    background-color: rgb(244 67 54 / 16%);
+    color: #212121;
+}
+
+.rfid-pivot-cell-empty {
+    color: #a0a9b5;
+    font-weight: 500;
+}
+
+.rfid-pivot-cell-status-green .rfid-pivot-cell-separator,
+.rfid-pivot-cell-status-orange .rfid-pivot-cell-separator {
+    color: rgb(255 255 255 / 75%);
+}
+
+.rfid-pivot-cell-status-red .rfid-pivot-cell-separator {
+    color: rgb(33 33 33 / 70%);
+}
+
+.rfid-pivot-cell-separator {
+    color: #8a97a8;
+    font-weight: 500;
+}
+
+.rfid-manual-count-input {
+    width: 76px;
+}
+
+.rfid-pivot-cell-value:focus-visible {
+    outline: 2px solid #5384d4;
+    outline-offset: 2px;
+}
+
+.rfid-pivot-cell-value .rfid-count-edit-button {
+    display: none !important;
+}
+
+.rfid-pivot-table tbody tr:hover td,
+.rfid-pivot-table tbody tr:hover .rfid-pivot-district {
+    background: #f8faff;
+}
+
+.rfid-pivot-table tbody tr.rfid-highlight-btsj > td,
+.rfid-pivot-table tbody tr.rfid-highlight-btsj > .rfid-pivot-district,
+.rfid-pivot-table tbody tr.rfid-highlight-kpcs > td,
+.rfid-pivot-table tbody tr.rfid-highlight-kpcs > .rfid-pivot-district,
+.rfid-pivot-table tbody tr.rfid-highlight-kide > td,
+.rfid-pivot-table tbody tr.rfid-highlight-kide > .rfid-pivot-district,
+.rfid-pivot-table tbody tr.rfid-highlight-mtbu > td,
+.rfid-pivot-table tbody tr.rfid-highlight-mtbu > .rfid-pivot-district,
+.rfid-pivot-table tbody tr.rfid-highlight-brcg > td,
+.rfid-pivot-table tbody tr.rfid-highlight-brcg > .rfid-pivot-district,
+.rfid-pivot-table tbody tr.rfid-highlight-vipo > td,
+.rfid-pivot-table tbody tr.rfid-highlight-vipo > .rfid-pivot-district,
+.rfid-pivot-table tbody tr.rfid-highlight-brcb > td,
+.rfid-pivot-table tbody tr.rfid-highlight-brcb > .rfid-pivot-district,
+.rfid-pivot-table tbody tr.rfid-highlight-smms > td,
+.rfid-pivot-table tbody tr.rfid-highlight-smms > .rfid-pivot-district {
+    background-color: #edf4ff;
+}
+
 .project-issue-primary,
 .project-issue-meta {
     display: flex;
@@ -1914,6 +2114,17 @@ body, .mud-typography {
     .project-list-heading {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .rfid-filter-controls {
+        width: 100%;
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .rfid-filter-controls .search-field {
+        width: 100%;
+        max-width: none;
     }
 
     .project-issue-filters {

@@ -84,3 +84,13 @@ Status Project. For legacy IDs that have no matching Strategic Action, the
 script inserts placeholder names (`Strategic Action {id}`) so the new foreign
 key can be created. Existing Strategic Action rows are left unchanged. The
 legacy `pano_master_activity_plan` table, if present, is not dropped.
+
+## RFID Tag Install database setup
+
+The RFID Tag Install page reads equipment data from `tbl_r_equip` using the
+`ConnectionStrings:RfidDb` connection string, which should be stored in User
+Secrets rather than committed to the repository. Run
+`Database/Scripts/Create_RfidTagManualUnit.sql` against `db_panoramic` to create
+`dbo.pano_add_unit_rfid_tag`. The application stores each manually entered
+additional unit count by District, Equip Class, and EGI in this table; clearing
+the value and saving removes that entry.

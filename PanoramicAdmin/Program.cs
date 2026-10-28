@@ -34,6 +34,9 @@ builder.Services.AddTransient<MasterIssueViewModel>();
 builder.Services.AddTransient<VirtualOfficeViewModel>();
 builder.Services.AddTransient<StrategicActionViewModel>();
 builder.Services.AddTransient<ProjectIssueViewModel>();
+builder.Services.AddTransient<RfidEquipmentService>();
+builder.Services.AddTransient<RfidManualUnitService>();
+builder.Services.AddTransient<RfidTagInstallViewModel>();
 
 var app = builder.Build();
 

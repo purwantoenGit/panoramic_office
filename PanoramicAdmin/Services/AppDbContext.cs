@@ -17,6 +17,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ProjectIssue> ProjectIssues => Set<ProjectIssue>();
     public DbSet<ProjectIssueActionPlan> ProjectIssueActionPlans => Set<ProjectIssueActionPlan>();
     public DbSet<ProjectIssueActionPlanPic> ProjectIssueActionPlanPics => Set<ProjectIssueActionPlanPic>();
+    public DbSet<RfidTagManualUnit> RfidTagManualUnits => Set<RfidTagManualUnit>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -192,6 +193,31 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .WithMany()
                 .HasForeignKey(assignment => assignment.PicId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<RfidTagManualUnit>(entity =>
+        {
+            entity.ToTable("pano_add_unit_rfid_tag", "dbo", table =>
+                table.HasCheckConstraint(
+                    "CK_pano_add_unit_rfid_tag_AdditionalUnitCount",
+                    "[AdditionalUnitCount] >= 0"));
+            entity.Property(record => record.District)
+                .HasMaxLength(200)
+                .IsRequired();
+            entity.Property(record => record.EquipClass)
+                .HasMaxLength(10)
+                .IsRequired();
+            entity.Property(record => record.Egi)
+                .HasMaxLength(100)
+                .IsRequired();
+            entity.HasIndex(record => new
+                {
+                    record.District,
+                    record.EquipClass,
+                    record.Egi
+                })
+                .IsUnique()
+                .HasDatabaseName("UX_pano_add_unit_rfid_tag_Cell");
         });
     }
 }
