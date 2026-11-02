@@ -52,6 +52,8 @@ public sealed class SopEvaluationViewModel(
 
             await using var db = await dbContextFactory.CreateDbContextAsync();
             _evaluations = await db.SopEvaluations.AsNoTracking()
+                .Include(evaluation => evaluation.Documents)
+                .ThenInclude(document => document.Children)
                 .OrderBy(evaluation => evaluation.ApplicationName)
                 .ThenBy(evaluation => evaluation.SopCategory)
                 .ToListAsync();
@@ -163,13 +165,24 @@ public sealed class SopEvaluationViewModel(
             return;
         }
 
-        if (input.DocumentTitle?.Length > 250 ||
-            input.DocumentNumber?.Length > 100 ||
-            input.Revision?.Length > 50 ||
-            input.OwnerName?.Length > 150 ||
-            input.EvidenceUrl?.Length > 1000)
+        if (input.OwnerName?.Length > 150 ||
+            input.Documents.Any(document =>
+                string.IsNullOrWhiteSpace(document.Title) ||
+                document.Title.Trim().Length > 250 ||
+                document.DocumentNumber?.Length > 100 ||
+                document.Revision?.Length > 50 ||
+                document.EvidenceUrl?.Length > 1000 ||
+                document.Children.Any(child =>
+                    child.DocumentType is not ("INK" or "STD") ||
+                    string.IsNullOrWhiteSpace(child.Title) ||
+                    child.Title.Trim().Length > 250 ||
+                    child.DocumentNumber?.Length > 100 ||
+                    child.Revision?.Length > 50 ||
+                    child.EvidenceUrl?.Length > 1000)))
         {
-            snackbar.Add("Periksa panjang judul, nomor, revisi, PIC, atau tautan bukti.", Severity.Warning);
+            snackbar.Add(
+                "Periksa judul dan panjang data dokumen, nomor, revisi, PIC, atau tautan bukti.",
+                Severity.Warning);
             return;
         }
 
@@ -178,9 +191,12 @@ public sealed class SopEvaluationViewModel(
         try
         {
             await using var db = await dbContextFactory.CreateDbContextAsync();
-            var evaluation = await db.SopEvaluations.SingleOrDefaultAsync(item =>
-                item.ApplicationName == input.ApplicationName &&
-                item.SopCategory == input.SopCategory);
+            var evaluation = await db.SopEvaluations
+                .Include(item => item.Documents)
+                .ThenInclude(document => document.Children)
+                .SingleOrDefaultAsync(item =>
+                    item.ApplicationName == input.ApplicationName &&
+                    item.SopCategory == input.SopCategory);
             if (evaluation is null)
             {
                 evaluation = new SopEvaluation
@@ -192,11 +208,32 @@ public sealed class SopEvaluationViewModel(
             }
 
             evaluation.Level = input.Level;
-            evaluation.DocumentTitle = Normalize(input.DocumentTitle);
-            evaluation.DocumentNumber = Normalize(input.DocumentNumber);
-            evaluation.Revision = Normalize(input.Revision);
+            db.SopEvaluationDocuments.RemoveRange(evaluation.Documents);
+            evaluation.Documents.Clear();
+            foreach (var document in input.Documents)
+            {
+                evaluation.Documents.Add(new SopEvaluationDocument
+                {
+                    Title = document.Title.Trim(),
+                    DocumentNumber = Normalize(document.DocumentNumber),
+                    Revision = Normalize(document.Revision),
+                    EvidenceUrl = Normalize(document.EvidenceUrl),
+                    Children = document.Children.Select(child => new SopEvaluationChildDocument
+                    {
+                        DocumentType = child.DocumentType,
+                        Title = child.Title.Trim(),
+                        DocumentNumber = Normalize(child.DocumentNumber),
+                        Revision = Normalize(child.Revision),
+                        EvidenceUrl = Normalize(child.EvidenceUrl)
+                    }).ToList()
+                });
+            }
+
+            evaluation.DocumentTitle = null;
+            evaluation.DocumentNumber = null;
+            evaluation.Revision = null;
             evaluation.OwnerName = Normalize(input.OwnerName);
-            evaluation.EvidenceUrl = Normalize(input.EvidenceUrl);
+            evaluation.EvidenceUrl = null;
             evaluation.EvaluationDate = input.EvaluationDate?.Date;
             evaluation.Findings = Normalize(input.Findings);
             evaluation.FollowUpAction = Normalize(input.FollowUpAction);
@@ -276,12 +313,23 @@ public sealed record SopEvaluationInput(
     string ApplicationName,
     string SopCategory,
     int Level,
-    string? DocumentTitle,
-    string? DocumentNumber,
-    string? Revision,
+    IReadOnlyList<SopEvaluationDocumentInput> Documents,
     string? OwnerName,
-    string? EvidenceUrl,
     DateTime? EvaluationDate,
     string? Findings,
     string? FollowUpAction,
     DateTime? FollowUpDueDate);
+
+public sealed record SopEvaluationDocumentInput(
+    string Title,
+    string? DocumentNumber,
+    string? Revision,
+    string? EvidenceUrl,
+    IReadOnlyList<SopEvaluationChildDocumentInput> Children);
+
+public sealed record SopEvaluationChildDocumentInput(
+    string DocumentType,
+    string Title,
+    string? DocumentNumber,
+    string? Revision,
+    string? EvidenceUrl);

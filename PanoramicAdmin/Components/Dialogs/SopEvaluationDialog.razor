@@ -19,68 +19,184 @@
         <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
             Fokus: @Category.Focus
         </MudAlert>
-        <MudGrid Spacing="2">
-            <MudItem xs="12">
-                <MudSelect T="int" Value="@_level" ValueChanged="OnLevelChanged"
-                           Label="Level Evaluasi" Variant="Variant.Outlined" Margin="Margin.Dense"
-                           Required="true" RequiredError="Pilih level evaluasi.">
-                    @for (var level = 0; level <= 4; level++)
-                    {
-                        var levelValue = level;
-                        <MudSelectItem T="int" Value="@levelValue">
-                            @levelValue · @SopEvaluationCatalog.GetLevelName(levelValue)
-                        </MudSelectItem>
-                    }
-                </MudSelect>
-                @if (_level >= 0)
-                {
-                    <MudText Typo="Typo.caption" Class="sop-dialog-level-description">
-                        @SopEvaluationCatalog.GetLevelDescription(_level)
+
+        <MudPaper Class="sop-document-section" Elevation="0">
+            <div class="sop-document-section-heading">
+                <div>
+                    <MudText Typo="Typo.subtitle1" Class="sop-document-section-title">
+                        Dokumen Pendukung
                     </MudText>
+                    <MudText Typo="Typo.caption">
+                        Tambahkan beberapa SOP, lalu tambahkan INK atau STD sebagai dokumen turunannya.
+                    </MudText>
+                </div>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add" OnClick="AddSopDocument">
+                    Tambah SOP
+                </MudButton>
+            </div>
+
+            @if (_documents.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-3">
+                    Belum ada dokumen. Penilaian tetap dapat disimpan tanpa dokumen.
+                </MudAlert>
+            }
+            else
+            {
+                @for (var index = 0; index < _documents.Count; index++)
+                {
+                    var document = _documents[index];
+                    <MudPaper @key="document.Id" Class="sop-document-card" Elevation="0">
+                        <div class="sop-document-card-heading">
+                            <div class="sop-document-card-title">
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
+                                    SOP
+                                </MudChip>
+                                <MudText Typo="Typo.subtitle2">Dokumen SOP @(index + 1)</MudText>
+                            </div>
+                            <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error"
+                                           Size="Size.Small" aria-label="@($"Hapus SOP {index + 1}")"
+                                           OnClick="@(() => RemoveSopDocument(document))" />
+                        </div>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" sm="6">
+                                <MudTextField T="string" @bind-Value="document.Title" Label="Judul SOP"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="250"
+                                              Required="true" RequiredError="Judul SOP wajib diisi." />
+                            </MudItem>
+                            <MudItem xs="12" sm="3">
+                                <MudTextField T="string" @bind-Value="document.DocumentNumber" Label="Nomor"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="100" />
+                            </MudItem>
+                            <MudItem xs="12" sm="3">
+                                <MudTextField T="string" @bind-Value="document.Revision" Label="Revisi"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="50" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField T="string" @bind-Value="document.EvidenceUrl" Label="Tautan dokumen"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="1000"
+                                              Placeholder="https://..." />
+                            </MudItem>
+                        </MudGrid>
+
+                        <div class="sop-child-document-heading">
+                            <MudText Typo="Typo.body2">Dokumen turunan</MudText>
+                            <div>
+                                <MudButton Variant="Variant.Text" Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Add"
+                                           OnClick="@(() => AddChildDocument(document, "INK"))">
+                                    Tambah INK
+                                </MudButton>
+                                <MudButton Variant="Variant.Text" Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Add"
+                                           OnClick="@(() => AddChildDocument(document, "STD"))">
+                                    Tambah STD
+                                </MudButton>
+                            </div>
+                        </div>
+
+                        @if (document.Children.Count == 0)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Belum ada INK atau STD untuk SOP ini.
+                            </MudText>
+                        }
+                        @foreach (var child in document.Children)
+                        {
+                            <div @key="child.Id" class="sop-child-document-card">
+                                <div class="sop-document-card-heading">
+                                    <div class="sop-document-card-title">
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                            @child.DocumentType
+                                        </MudChip>
+                                        <MudText Typo="Typo.caption">Dokumen turunan</MudText>
+                                    </div>
+                                    <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   aria-label="@($"Hapus {child.DocumentType}: {child.Title}")"
+                                                   OnClick="@(() => RemoveChildDocument(document, child))" />
+                                </div>
+                                <MudGrid Spacing="2">
+                                    <MudItem xs="12" sm="6">
+                                        <MudTextField T="string" @bind-Value="child.Title" Label="Judul"
+                                                      Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="250"
+                                                      Required="true" RequiredError="Judul dokumen wajib diisi." />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="3">
+                                        <MudTextField T="string" @bind-Value="child.DocumentNumber" Label="Nomor"
+                                                      Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="100" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="3">
+                                        <MudTextField T="string" @bind-Value="child.Revision" Label="Revisi"
+                                                      Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="50" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudTextField T="string" @bind-Value="child.EvidenceUrl" Label="Tautan dokumen"
+                                                      Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="1000"
+                                                      Placeholder="https://..." />
+                                    </MudItem>
+                                </MudGrid>
+                            </div>
+                        }
+                    </MudPaper>
                 }
-            </MudItem>
-            <MudItem xs="12" sm="8">
-                <MudTextField T="string" @bind-Value="_documentTitle" Label="Judul SOP"
-                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="250"
-                              Placeholder="Contoh: Prosedur Operasional Aplikasi OPA" />
-            </MudItem>
-            <MudItem xs="12" sm="4">
-                <MudTextField T="string" @bind-Value="_documentNumber" Label="Nomor Dokumen"
-                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="100" />
-            </MudItem>
-            <MudItem xs="12" sm="4">
-                <MudTextField T="string" @bind-Value="_revision" Label="Revisi"
-                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="50" />
-            </MudItem>
-            <MudItem xs="12" sm="4">
-                <MudTextField T="string" @bind-Value="_ownerName" Label="PIC / Owner"
-                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="150" />
-            </MudItem>
-            <MudItem xs="12" sm="4">
-                <MudDatePicker @bind-Date="_evaluationDate" Label="Tanggal Evaluasi"
-                               Variant="Variant.Outlined" Margin="Margin.Dense"
-                               DateFormat="dd/MM/yyyy" Clearable="true" />
-            </MudItem>
-            <MudItem xs="12">
-                <MudTextField T="string" @bind-Value="_evidenceUrl" Label="Tautan Bukti / Dokumen"
-                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="1000"
-                              Placeholder="https://..." />
-            </MudItem>
-            <MudItem xs="12">
-                <MudTextField T="string" @bind-Value="_findings" Label="Temuan / Catatan Evaluasi"
-                              Variant="Variant.Outlined" Margin="Margin.Dense" Lines="3"
-                              Placeholder="Catat bukti implementasi, hasil pemeriksaan, atau gap yang ditemukan." />
-            </MudItem>
-            <MudItem xs="12">
-                <MudTextField T="string" @bind-Value="_followUpAction" Label="Tindak Lanjut"
-                              Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" />
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudDatePicker @bind-Date="_followUpDueDate" Label="Target Tindak Lanjut"
-                               Variant="Variant.Outlined" Margin="Margin.Dense"
-                               DateFormat="dd/MM/yyyy" Clearable="true" />
-            </MudItem>
-        </MudGrid>
+            }
+        </MudPaper>
+
+        <MudPaper Class="sop-assessment-section" Elevation="0">
+            <MudText Typo="Typo.subtitle1" Class="sop-document-section-title">
+                Penilaian Keseluruhan
+            </MudText>
+            <MudText Typo="Typo.caption" Class="d-block mb-3">
+                Satu level penilaian berlaku untuk seluruh SOP, INK, dan STD pada area evaluasi ini.
+            </MudText>
+            <MudGrid Spacing="2">
+                <MudItem xs="12">
+                    <MudSelect T="int" Value="@_level" ValueChanged="OnLevelChanged"
+                               Label="Level Evaluasi" Variant="Variant.Outlined" Margin="Margin.Dense"
+                               Required="true" RequiredError="Pilih level evaluasi.">
+                        @for (var level = 0; level <= 4; level++)
+                        {
+                            var levelValue = level;
+                            <MudSelectItem T="int" Value="@levelValue">
+                                @levelValue · @SopEvaluationCatalog.GetLevelName(levelValue)
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+                    @if (_level >= 0)
+                    {
+                        <MudText Typo="Typo.caption" Class="sop-dialog-level-description">
+                            @SopEvaluationCatalog.GetLevelDescription(_level)
+                        </MudText>
+                    }
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" @bind-Value="_ownerName" Label="PIC / Owner Evaluasi"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="150" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="_evaluationDate" Label="Tanggal Evaluasi"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense"
+                                   DateFormat="dd/MM/yyyy" Clearable="true" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField T="string" @bind-Value="_findings" Label="Temuan / Catatan Evaluasi"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Lines="3"
+                                  Placeholder="Catat bukti implementasi, hasil pemeriksaan, atau gap yang ditemukan." />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField T="string" @bind-Value="_followUpAction" Label="Tindak Lanjut"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="_followUpDueDate" Label="Target Tindak Lanjut"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense"
+                                   DateFormat="dd/MM/yyyy" Clearable="true" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
         @if (_validationMessage is not null)
         {
             <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">
@@ -107,12 +223,9 @@
     [Parameter] public SopEvaluationCategory Category { get; set; } = default!;
     [Parameter] public SopEvaluation? InitialValue { get; set; }
 
+    private readonly List<SopDocumentDraft> _documents = [];
     private int _level = -1;
-    private string? _documentTitle;
-    private string? _documentNumber;
-    private string? _revision;
     private string? _ownerName;
-    private string? _evidenceUrl;
     private DateTime? _evaluationDate;
     private string? _findings;
     private string? _followUpAction;
@@ -127,16 +240,37 @@
         }
 
         _level = value.Level ?? -1;
-        _documentTitle = value.DocumentTitle;
-        _documentNumber = value.DocumentNumber;
-        _revision = value.Revision;
         _ownerName = value.OwnerName;
-        _evidenceUrl = value.EvidenceUrl;
         _evaluationDate = value.EvaluationDate;
         _findings = value.Findings;
         _followUpAction = value.FollowUpAction;
         _followUpDueDate = value.FollowUpDueDate;
+        _documents.AddRange(value.Documents.Select(document => new SopDocumentDraft
+        {
+            Title = document.Title,
+            DocumentNumber = document.DocumentNumber,
+            Revision = document.Revision,
+            EvidenceUrl = document.EvidenceUrl,
+            Children = document.Children.Select(child => new ChildDocumentDraft
+            {
+                DocumentType = child.DocumentType,
+                Title = child.Title,
+                DocumentNumber = child.DocumentNumber,
+                Revision = child.Revision,
+                EvidenceUrl = child.EvidenceUrl
+            }).ToList()
+        }));
     }
+
+    private void AddSopDocument() => _documents.Add(new SopDocumentDraft());
+
+    private static void AddChildDocument(SopDocumentDraft document, string type) =>
+        document.Children.Add(new ChildDocumentDraft { DocumentType = type });
+
+    private void RemoveSopDocument(SopDocumentDraft document) => _documents.Remove(document);
+
+    private static void RemoveChildDocument(SopDocumentDraft document, ChildDocumentDraft child) =>
+        document.Children.Remove(child);
 
     private void OnLevelChanged(int level)
     {
@@ -152,15 +286,30 @@
             return;
         }
 
+        if (_documents.Any(document =>
+                string.IsNullOrWhiteSpace(document.Title) ||
+                document.Children.Any(child => string.IsNullOrWhiteSpace(child.Title))))
+        {
+            _validationMessage = "Isi judul setiap SOP dan dokumen turunannya, atau hapus dokumen yang kosong.";
+            return;
+        }
+
         MudDialog.Close(DialogResult.Ok(new SopEvaluationInput(
             ApplicationName,
             Category.Name,
             _level,
-            _documentTitle,
-            _documentNumber,
-            _revision,
+            _documents.Select(document => new SopEvaluationDocumentInput(
+                document.Title,
+                document.DocumentNumber,
+                document.Revision,
+                document.EvidenceUrl,
+                document.Children.Select(child => new SopEvaluationChildDocumentInput(
+                    child.DocumentType,
+                    child.Title,
+                    child.DocumentNumber,
+                    child.Revision,
+                    child.EvidenceUrl)).ToList())).ToList(),
             _ownerName,
-            _evidenceUrl,
             _evaluationDate,
             _findings,
             _followUpAction,
@@ -168,4 +317,24 @@
     }
 
     private void Cancel() => MudDialog.Cancel();
+
+    private sealed class SopDocumentDraft
+    {
+        public Guid Id { get; } = Guid.NewGuid();
+        public string Title { get; set; } = string.Empty;
+        public string? DocumentNumber { get; set; }
+        public string? Revision { get; set; }
+        public string? EvidenceUrl { get; set; }
+        public List<ChildDocumentDraft> Children { get; set; } = [];
+    }
+
+    private sealed class ChildDocumentDraft
+    {
+        public Guid Id { get; } = Guid.NewGuid();
+        public required string DocumentType { get; init; }
+        public string Title { get; set; } = string.Empty;
+        public string? DocumentNumber { get; set; }
+        public string? Revision { get; set; }
+        public string? EvidenceUrl { get; set; }
+    }
 }

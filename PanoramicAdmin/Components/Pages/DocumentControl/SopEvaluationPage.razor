@@ -157,9 +157,12 @@
                                         {
                                             <span class="sop-assessment-score">@assessment.Level / 4</span>
                                         }
-                                        @if (!string.IsNullOrWhiteSpace(assessment.DocumentTitle))
+                                        @if (assessment.Documents.Count > 0)
                                         {
-                                            <span class="sop-assessment-document">@assessment.DocumentTitle</span>
+                                            <span class="sop-assessment-document">
+                                                @assessment.Documents.Count SOP ·
+                                                @assessment.Documents.Sum(document => document.Children.Count) INK/STD
+                                            </span>
                                         }
                                         else if (assessment.Level is null or 0)
                                         {
@@ -253,7 +256,7 @@
         {
             CloseOnEscapeKey = true,
             FullWidth = true,
-            MaxWidth = MaxWidth.Medium
+            MaxWidth = MaxWidth.Large
         };
         var dialog = await DialogService.ShowAsync<SopEvaluationDialog>(
             "Evaluasi SOP", parameters, options);

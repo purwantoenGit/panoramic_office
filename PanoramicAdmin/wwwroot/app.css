@@ -2476,6 +2476,68 @@ body, .mud-typography {
     color: #64748b !important;
 }
 
+.sop-document-section,
+.sop-assessment-section {
+    padding: 16px;
+    border: 1px solid #e6ecf4;
+    border-radius: 12px !important;
+}
+
+.sop-assessment-section {
+    margin-top: 16px;
+    background: #f8faff;
+}
+
+.sop-document-section-heading,
+.sop-document-card-heading,
+.sop-document-card-title,
+.sop-child-document-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.sop-document-section-title {
+    color: #183b70;
+    font-weight: 700;
+}
+
+.sop-document-card {
+    margin-top: 12px;
+    padding: 14px;
+    border: 1px solid #dce5f1;
+    border-radius: 10px !important;
+}
+
+.sop-document-card-heading {
+    margin-bottom: 8px;
+}
+
+.sop-document-card-title {
+    justify-content: flex-start;
+}
+
+.sop-child-document-heading {
+    margin: 12px 0 8px;
+    padding-top: 10px;
+    border-top: 1px solid #e6ecf4;
+}
+
+.sop-child-document-heading > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.sop-child-document-card {
+    margin-top: 8px;
+    padding: 12px;
+    border: 1px solid #e6ecf4;
+    border-radius: 8px;
+    background: #f8faff;
+}
+
 @media (max-width: 900px) {
     .sop-evaluation-card > .section-heading,
     .sop-evaluation-filters {
@@ -2501,6 +2563,17 @@ body, .mud-typography {
 }
 
 @media (max-width: 600px) {
+    .sop-document-section,
+    .sop-assessment-section {
+        padding: 12px;
+    }
+
+    .sop-document-section-heading,
+    .sop-child-document-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
     .sop-summary-card {
         min-height: 110px;
     }

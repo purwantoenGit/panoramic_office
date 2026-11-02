@@ -19,6 +19,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ProjectIssueActionPlanPic> ProjectIssueActionPlanPics => Set<ProjectIssueActionPlanPic>();
     public DbSet<RfidTagManualUnit> RfidTagManualUnits => Set<RfidTagManualUnit>();
     public DbSet<SopEvaluation> SopEvaluations => Set<SopEvaluation>();
+    public DbSet<SopEvaluationDocument> SopEvaluationDocuments => Set<SopEvaluationDocument>();
+    public DbSet<SopEvaluationChildDocument> SopEvaluationChildDocuments => Set<SopEvaluationChildDocument>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -252,6 +254,46 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 })
                 .IsUnique()
                 .HasDatabaseName("UX_pano_sop_evaluasi_Application_Category");
+        });
+
+        modelBuilder.Entity<SopEvaluationDocument>(entity =>
+        {
+            entity.ToTable("pano_sop_evaluasi_dokumen", "dbo");
+            entity.Property(document => document.Title)
+                .HasMaxLength(250)
+                .IsRequired();
+            entity.Property(document => document.DocumentNumber).HasMaxLength(100);
+            entity.Property(document => document.Revision).HasMaxLength(50);
+            entity.Property(document => document.EvidenceUrl).HasMaxLength(1000);
+            entity.HasOne(document => document.Evaluation)
+                .WithMany(evaluation => evaluation.Documents)
+                .HasForeignKey(document => document.SopEvaluationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(document => document.SopEvaluationId)
+                .HasDatabaseName("IX_pano_sop_evaluasi_dokumen_EvaluationId");
+        });
+
+        modelBuilder.Entity<SopEvaluationChildDocument>(entity =>
+        {
+            entity.ToTable("pano_sop_evaluasi_dokumen_anak", "dbo", table =>
+                table.HasCheckConstraint(
+                    "CK_pano_sop_evaluasi_dokumen_anak_Type",
+                    "[DocumentType] IN (N'INK', N'STD')"));
+            entity.Property(document => document.DocumentType)
+                .HasMaxLength(3)
+                .IsRequired();
+            entity.Property(document => document.Title)
+                .HasMaxLength(250)
+                .IsRequired();
+            entity.Property(document => document.DocumentNumber).HasMaxLength(100);
+            entity.Property(document => document.Revision).HasMaxLength(50);
+            entity.Property(document => document.EvidenceUrl).HasMaxLength(1000);
+            entity.HasOne(document => document.ParentDocument)
+                .WithMany(parent => parent.Children)
+                .HasForeignKey(document => document.SopEvaluationDocumentId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(document => document.SopEvaluationDocumentId)
+                .HasDatabaseName("IX_pano_sop_evaluasi_dokumen_anak_ParentDocumentId");
         });
     }
 }

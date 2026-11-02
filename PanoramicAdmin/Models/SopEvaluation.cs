@@ -6,6 +6,7 @@ public sealed class SopEvaluation
     public required string ApplicationName { get; set; }
     public required string SopCategory { get; set; }
     public int? Level { get; set; }
+    public ICollection<SopEvaluationDocument> Documents { get; set; } = new List<SopEvaluationDocument>();
     public string? DocumentTitle { get; set; }
     public string? DocumentNumber { get; set; }
     public string? Revision { get; set; }
@@ -16,6 +17,30 @@ public sealed class SopEvaluation
     public string? FollowUpAction { get; set; }
     public DateTime? FollowUpDueDate { get; set; }
     public DateTime UpdatedAt { get; set; }
+}
+
+public sealed class SopEvaluationDocument
+{
+    public int Id { get; set; }
+    public int SopEvaluationId { get; set; }
+    public required string Title { get; set; }
+    public string? DocumentNumber { get; set; }
+    public string? Revision { get; set; }
+    public string? EvidenceUrl { get; set; }
+    public SopEvaluation? Evaluation { get; set; }
+    public ICollection<SopEvaluationChildDocument> Children { get; set; } = new List<SopEvaluationChildDocument>();
+}
+
+public sealed class SopEvaluationChildDocument
+{
+    public int Id { get; set; }
+    public int SopEvaluationDocumentId { get; set; }
+    public required string DocumentType { get; set; }
+    public required string Title { get; set; }
+    public string? DocumentNumber { get; set; }
+    public string? Revision { get; set; }
+    public string? EvidenceUrl { get; set; }
+    public SopEvaluationDocument? ParentDocument { get; set; }
 }
 
 public sealed record SopEvaluationCategory(string Name, string Focus, string Priority);
