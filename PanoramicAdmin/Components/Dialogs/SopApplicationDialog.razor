@@ -1,0 +1,64 @@
+<MudDialog Class="sop-evaluation-dialog">
+    <TitleContent>
+        <div class="add-project-header">
+            <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Rounded="true">
+                <MudIcon Icon="@Icons.Material.Filled.Apps" />
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.h6" Class="add-project-title">Tambah Aplikasi</MudText>
+                <MudText Typo="Typo.caption" Class="add-project-subtitle">
+                    Tambahkan aplikasi untuk dievaluasi.
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField T="string" @bind-Value="_applicationName" Label="Nama Aplikasi"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="100"
+                      Required="true" RequiredError="Nama aplikasi wajib diisi."
+                      Placeholder="Contoh: OPA" />
+        @if (_validationMessage is not null)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">
+                @_validationMessage
+            </MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <div class="add-project-actions">
+            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Batal</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save"
+                       StartIcon="@Icons.Material.Filled.Add" Class="add-project-save">
+                Tambahkan
+            </MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _applicationName = string.Empty;
+    private string? _validationMessage;
+
+    private void Save()
+    {
+        var applicationName = _applicationName.Trim();
+        if (string.IsNullOrWhiteSpace(applicationName))
+        {
+            _validationMessage = "Nama aplikasi wajib diisi.";
+            return;
+        }
+
+        if (applicationName.Length > 100)
+        {
+            _validationMessage = "Nama aplikasi maksimal 100 karakter.";
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(applicationName));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

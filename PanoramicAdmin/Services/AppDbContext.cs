@@ -18,6 +18,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ProjectIssueActionPlan> ProjectIssueActionPlans => Set<ProjectIssueActionPlan>();
     public DbSet<ProjectIssueActionPlanPic> ProjectIssueActionPlanPics => Set<ProjectIssueActionPlanPic>();
     public DbSet<RfidTagManualUnit> RfidTagManualUnits => Set<RfidTagManualUnit>();
+    public DbSet<SopEvaluation> SopEvaluations => Set<SopEvaluation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -218,6 +219,39 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 })
                 .IsUnique()
                 .HasDatabaseName("UX_pano_add_unit_rfid_tag_Cell");
+        });
+
+        modelBuilder.Entity<SopEvaluation>(entity =>
+        {
+            entity.ToTable("pano_sop_evaluasi", "dbo", table =>
+                table.HasCheckConstraint(
+                    "CK_pano_sop_evaluasi_Level",
+                    "[Level] IS NULL OR [Level] BETWEEN 0 AND 4"));
+            entity.Property(evaluation => evaluation.ApplicationName)
+                .HasMaxLength(100)
+                .IsRequired();
+            entity.Property(evaluation => evaluation.SopCategory)
+                .HasMaxLength(100)
+                .IsRequired();
+            entity.Property(evaluation => evaluation.Level)
+                .HasColumnType("tinyint");
+            entity.Property(evaluation => evaluation.DocumentTitle).HasMaxLength(250);
+            entity.Property(evaluation => evaluation.DocumentNumber).HasMaxLength(100);
+            entity.Property(evaluation => evaluation.Revision).HasMaxLength(50);
+            entity.Property(evaluation => evaluation.OwnerName).HasMaxLength(150);
+            entity.Property(evaluation => evaluation.EvidenceUrl).HasMaxLength(1000);
+            entity.Property(evaluation => evaluation.EvaluationDate).HasColumnType("date");
+            entity.Property(evaluation => evaluation.FollowUpDueDate).HasColumnType("date");
+            entity.Property(evaluation => evaluation.UpdatedAt)
+                .HasColumnType("datetime2(0)")
+                .HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.HasIndex(evaluation => new
+                {
+                    evaluation.ApplicationName,
+                    evaluation.SopCategory
+                })
+                .IsUnique()
+                .HasDatabaseName("UX_pano_sop_evaluasi_Application_Category");
         });
     }
 }

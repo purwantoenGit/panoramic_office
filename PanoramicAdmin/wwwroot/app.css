@@ -2163,3 +2163,349 @@ body, .mud-typography {
         flex-basis: calc(100% - 60px);
     }
 }
+
+.sop-summary-grid {
+    margin-bottom: 20px;
+}
+
+.sop-summary-card {
+    display: flex;
+    min-height: 132px;
+    flex-direction: column;
+    justify-content: center;
+    padding: 18px 20px;
+    border: 1px solid #e6ecf4;
+    border-radius: 16px !important;
+    background: #fff;
+    color: #64748b;
+}
+
+.sop-summary-card .mud-typography-h4 {
+    margin: 3px 0;
+    color: #183b70;
+    font-weight: 800;
+}
+
+.sop-summary-readiness {
+    border-color: #cbdcf5;
+    background: linear-gradient(135deg, #f3f8ff, #fff);
+}
+
+.sop-summary-verified .mud-typography-h4 {
+    color: #15803d;
+}
+
+.sop-summary-unassessed .mud-typography-h4 {
+    color: #b54708;
+}
+
+.sop-evaluation-card {
+    overflow: hidden;
+}
+
+.sop-evaluation-card > .section-heading {
+    align-items: flex-start;
+}
+
+.sop-evaluation-filters {
+    display: flex;
+    width: min(100%, 520px);
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.sop-evaluation-filters .search-field {
+    width: 250px;
+}
+
+.sop-status-filter {
+    width: 220px;
+}
+
+.sop-evaluation-table-wrap {
+    overflow: auto;
+    border-top: 1px solid #e7edf5;
+}
+
+.sop-evaluation-table {
+    width: 100%;
+    min-width: 1540px;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.sop-evaluation-table th,
+.sop-evaluation-table td {
+    padding: 12px;
+    border-right: 1px solid #e7edf5;
+    border-bottom: 1px solid #e7edf5;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.sop-evaluation-table thead th {
+    width: 220px;
+    min-width: 220px;
+    background: #f5f8fd;
+    color: #183b70;
+    font-weight: 700;
+    vertical-align: top;
+}
+
+.sop-evaluation-table thead th:first-child,
+.sop-evaluation-table tbody th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    width: 175px;
+    min-width: 175px;
+}
+
+.sop-evaluation-table thead th:first-child {
+    z-index: 2;
+}
+
+.sop-evaluation-table thead th:last-child {
+    width: 150px;
+    min-width: 150px;
+}
+
+.sop-category-heading {
+    min-height: 40px;
+    color: #1e3a5f;
+    font-size: 0.82rem;
+    line-height: 1.35;
+}
+
+.sop-category-focus {
+    min-height: 64px;
+    margin: 7px 0 9px;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 400;
+    line-height: 1.45;
+}
+
+.sop-priority-critical,
+.sop-priority-high {
+    height: 23px !important;
+    font-size: 0.67rem !important;
+    font-weight: 800 !important;
+}
+
+.sop-priority-critical {
+    border-color: #f5c2c7 !important;
+    background: #fff1f2 !important;
+    color: #b42318 !important;
+}
+
+.sop-priority-high {
+    border-color: #f3d9a8 !important;
+    background: #fff8e8 !important;
+    color: #9a6109 !important;
+}
+
+.sop-application-cell {
+    background: #fff;
+    color: #1e3a5f;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.sop-application-cell .mud-icon-root {
+    margin-right: 7px;
+    color: #5478bd;
+    vertical-align: middle;
+}
+
+.sop-assessment-button {
+    display: flex;
+    width: 100%;
+    min-height: 92px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-left-width: 3px;
+    border-radius: 9px;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    transition: box-shadow 140ms ease, transform 140ms ease;
+}
+
+.sop-assessment-button:not(:disabled):hover {
+    box-shadow: 0 3px 12px rgb(34 55 88 / 12%);
+    transform: translateY(-1px);
+}
+
+.sop-assessment-button:focus-visible {
+    outline: 3px solid rgb(75 112 198 / 30%);
+    outline-offset: 2px;
+}
+
+.sop-assessment-button:disabled {
+    cursor: wait;
+    opacity: 0.75;
+}
+
+.sop-assessment-status {
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.sop-assessment-score {
+    font-size: 0.72rem;
+    font-weight: 700;
+    opacity: 0.82;
+}
+
+.sop-assessment-document,
+.sop-assessment-hint {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 0.68rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sop-assessment-hint {
+    opacity: 0.72;
+}
+
+.sop-level-unassessed {
+    border-color: #d7dee8;
+    border-left-color: #98a2b3;
+    background: #f7f9fc;
+    color: #64748b;
+}
+
+.sop-level-0 {
+    border-color: #f4d0cd;
+    border-left-color: #b42318;
+    background: #fff3f2;
+    color: #a4261a;
+}
+
+.sop-level-1 {
+    border-color: #d8dfe8;
+    border-left-color: #667085;
+    background: #f4f6f9;
+    color: #475467;
+}
+
+.sop-level-2 {
+    border-color: #c9dcf5;
+    border-left-color: #3469ad;
+    background: #f0f6ff;
+    color: #28578f;
+}
+
+.sop-level-3 {
+    border-color: #f0d7a8;
+    border-left-color: #b7791f;
+    background: #fff8e9;
+    color: #8d5c10;
+}
+
+.sop-level-4 {
+    border-color: #c5e8d2;
+    border-left-color: #15803d;
+    background: #effaf3;
+    color: #176b38;
+}
+
+.sop-readiness-cell {
+    min-width: 150px;
+    text-align: center !important;
+}
+
+.sop-readiness-value {
+    color: #183b70;
+    font-weight: 800 !important;
+}
+
+.sop-readiness-progress {
+    margin: 5px 0;
+}
+
+.sop-evaluation-legend {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(150px, 1fr));
+    gap: 10px;
+    padding: 16px;
+    border-top: 1px solid #e7edf5;
+    background: #fbfcfe;
+}
+
+.sop-legend-title,
+.sop-readiness-formula {
+    grid-column: 1 / -1;
+    color: #52627a;
+    font-weight: 700;
+}
+
+.sop-level-legend {
+    display: flex;
+    min-height: 72px;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px;
+    border: 1px solid;
+    border-radius: 10px;
+    font-size: 0.69rem;
+    line-height: 1.4;
+}
+
+.sop-level-legend span {
+    opacity: 0.85;
+}
+
+.sop-readiness-formula {
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.sop-dialog-level-description {
+    display: block;
+    margin: 4px 0 0 2px;
+    color: #64748b !important;
+}
+
+@media (max-width: 900px) {
+    .sop-evaluation-card > .section-heading,
+    .sop-evaluation-filters {
+        width: 100%;
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .sop-evaluation-filters .search-field,
+    .sop-status-filter {
+        width: 100%;
+        max-width: none;
+    }
+
+    .sop-evaluation-legend {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sop-legend-title,
+    .sop-readiness-formula {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 600px) {
+    .sop-summary-card {
+        min-height: 110px;
+    }
+
+    .sop-evaluation-legend {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

@@ -37,6 +37,7 @@ builder.Services.AddTransient<ProjectIssueViewModel>();
 builder.Services.AddTransient<RfidEquipmentService>();
 builder.Services.AddTransient<RfidManualUnitService>();
 builder.Services.AddTransient<RfidTagInstallViewModel>();
+builder.Services.AddTransient<SopEvaluationViewModel>();
 
 var app = builder.Build();
 

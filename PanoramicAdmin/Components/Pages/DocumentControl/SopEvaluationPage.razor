@@ -1,0 +1,285 @@
+@page "/sop-evaluation"
+@implements IDisposable
+@using PanoramicAdmin.Components.Dialogs
+@using PanoramicAdmin.Models
+@using PanoramicAdmin.ViewModels
+@inject IDialogService DialogService
+@inject SopEvaluationViewModel ViewModel
+
+<PageTitle>SOP Evaluation | Panoramic Office</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.h4" Class="page-title">SOP Evaluation</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Pantau kesiapan SOP berdasarkan aplikasi dan area evaluasi.
+        </MudText>
+    </div>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenApplicationDialogAsync"
+               Disabled="@(ViewModel.IsLoading || ViewModel.IsSaving || ViewModel.DatabaseError is not null)">
+        Tambah Aplikasi
+    </MudButton>
+</div>
+
+@if (!ViewModel.IsLoading && ViewModel.DatabaseError is null)
+{
+    <MudGrid Spacing="2" Class="sop-summary-grid">
+        <MudItem xs="12" sm="6" lg="3">
+            <MudPaper Class="sop-summary-card sop-summary-readiness" Elevation="0">
+                <MudText Typo="Typo.overline">SOP Readiness</MudText>
+                <MudText Typo="Typo.h4">
+                    @(ViewModel.OverallReadiness is { } readiness ? $"{readiness:0}%" : "—")
+                </MudText>
+                <MudText Typo="Typo.caption">Dari aspek yang sudah dinilai</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <MudPaper Class="sop-summary-card" Elevation="0">
+                <MudText Typo="Typo.overline">Aspek Dievaluasi</MudText>
+                <MudText Typo="Typo.h4">@ViewModel.AssessedCount</MudText>
+                <MudText Typo="Typo.caption">Dari @(ViewModel.Applications.Count * SopEvaluationCatalog.Categories.Count) aspek</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <MudPaper Class="sop-summary-card sop-summary-verified" Elevation="0">
+                <MudText Typo="Typo.overline">Verified</MudText>
+                <MudText Typo="Typo.h4">@ViewModel.VerifiedCount</MudText>
+                <MudText Typo="Typo.caption">Aspek terverifikasi</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <MudPaper Class="sop-summary-card sop-summary-unassessed" Elevation="0">
+                <MudText Typo="Typo.overline">Belum Dinilai</MudText>
+                <MudText Typo="Typo.h4">@ViewModel.UnassessedCount</MudText>
+                <MudText Typo="Typo.caption">Not Available: @ViewModel.NotAvailableCount</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+<MudPaper Class="section-card sop-evaluation-card" Elevation="0">
+    <div class="section-heading">
+        <div>
+            <MudText Typo="Typo.h6" Class="section-title">Matriks Evaluasi SOP</MudText>
+            <MudText Typo="Typo.body2" Class="section-subtitle">
+                Klik level pada setiap aspek untuk mengisi atau memperbarui evaluasi.
+            </MudText>
+        </div>
+        <div class="sop-evaluation-filters">
+            <MudTextField T="string" Value="@ViewModel.SearchText" ValueChanged="OnSearchChanged"
+                          Placeholder="Cari aplikasi" Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+                          DebounceInterval="250" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Clearable="true" Class="search-field" aria-label="Cari aplikasi SOP" />
+            <MudSelect T="string" Value="@ViewModel.StatusFilter" ValueChanged="OnStatusFilterChanged"
+                       Label="Status evaluasi" Variant="Variant.Outlined" Margin="Margin.Dense"
+                       Class="sop-status-filter" aria-label="Filter status evaluasi">
+                <MudSelectItem Value="@("all")">Semua status</MudSelectItem>
+                <MudSelectItem Value="@("unassessed")">Belum dinilai</MudSelectItem>
+                @for (var level = 0; level <= 4; level++)
+                {
+                    <MudSelectItem Value="@level.ToString()">@SopEvaluationCatalog.GetLevelName(level)</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+    </div>
+
+    @if (ViewModel.IsLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            Memuat data SOP Evaluation...
+        </MudText>
+    }
+    else if (ViewModel.DatabaseError is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="ma-4">
+            <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                <span>@ViewModel.DatabaseError</span>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                           OnClick="ViewModel.LoadAsync" Disabled="@ViewModel.IsSaving">
+                    Coba lagi
+                </MudButton>
+            </div>
+        </MudAlert>
+    }
+    else if (ViewModel.FilteredApplications.Count == 0)
+    {
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            @(ViewModel.Applications.Count == 0
+                ? "Belum ada aplikasi. Tambahkan aplikasi untuk mulai evaluasi."
+                : "Tidak ada aplikasi yang cocok dengan filter.")
+        </MudText>
+    }
+    else
+    {
+        <div class="sop-evaluation-table-wrap">
+            <table class="sop-evaluation-table">
+                <thead>
+                    <tr>
+                        <th scope="col" class="sop-application-heading">Aplikasi / Sistem</th>
+                        @foreach (var category in SopEvaluationCatalog.Categories)
+                        {
+                            <th scope="col">
+                                <div class="sop-category-heading">@category.Name</div>
+                                <div class="sop-category-focus">@category.Focus</div>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                         Class="@(category.Priority == "Critical" ? "sop-priority-critical" : "sop-priority-high")">
+                                    @category.Priority
+                                </MudChip>
+                            </th>
+                        }
+                        <th scope="col" class="sop-readiness-heading">Readiness</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var application in ViewModel.FilteredApplications)
+                    {
+                        <tr @key="application.Name">
+                            <th scope="row" class="sop-application-cell">
+                                <MudIcon Icon="@Icons.Material.Filled.Apps" Size="Size.Small" />
+                                <span>@application.Name</span>
+                            </th>
+                            @foreach (var category in SopEvaluationCatalog.Categories)
+                            {
+                                var assessment = ViewModel.GetAssessment(application, category.Name);
+                                <td>
+                                    <button type="button"
+                                            class="@GetAssessmentButtonClass(assessment.Level)"
+                                            @onclick="@(() => OpenEvaluationDialogAsync(application.Name, category, assessment))"
+                                            disabled="@ViewModel.IsSaving"
+                                            aria-label="@($"Evaluasi {category.Name} untuk {application.Name}: {SopEvaluationCatalog.GetLevelName(assessment.Level)}")">
+                                        <span class="sop-assessment-status">
+                                            @SopEvaluationCatalog.GetLevelName(assessment.Level)
+                                        </span>
+                                        @if (assessment.Level.HasValue)
+                                        {
+                                            <span class="sop-assessment-score">@assessment.Level / 4</span>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(assessment.DocumentTitle))
+                                        {
+                                            <span class="sop-assessment-document">@assessment.DocumentTitle</span>
+                                        }
+                                        else if (assessment.Level is null or 0)
+                                        {
+                                            <span class="sop-assessment-hint">Klik untuk mengisi</span>
+                                        }
+                                    </button>
+                                </td>
+                            }
+                            <td class="sop-readiness-cell">
+                                @if (application.Readiness is { } applicationReadiness)
+                                {
+                                    <MudText Typo="Typo.subtitle1" Class="sop-readiness-value">
+                                        @($"{applicationReadiness:0}%")
+                                    </MudText>
+                                    <MudProgressLinear Value="@((double)applicationReadiness)" Color="Color.Primary"
+                                                       Rounded="true" Class="sop-readiness-progress" />
+                                    <MudText Typo="Typo.caption">
+                                        @application.AssessedCount / @SopEvaluationCatalog.Categories.Count dinilai
+                                    </MudText>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Belum dinilai</MudText>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <div class="sop-evaluation-legend">
+        <MudText Typo="Typo.caption" Class="sop-legend-title">Level Kesiapan SOP</MudText>
+        @for (var level = 0; level <= 4; level++)
+        {
+            <span class="@GetLevelLegendClass(level)">
+                <strong>@level · @SopEvaluationCatalog.GetLevelName(level)</strong>
+                <span>@SopEvaluationCatalog.GetLevelDescription(level)</span>
+            </span>
+        }
+        <MudText Typo="Typo.caption" Class="sop-readiness-formula">
+            SOP Readiness = total skor aktual ÷ (4 × jumlah aspek yang dinilai) × 100%.
+            Aspek yang belum dinilai tidak dihitung sebagai skor 0.
+        </MudText>
+    </div>
+</MudPaper>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        ViewModel.StateChanged += OnViewModelStateChanged;
+        await ViewModel.LoadAsync();
+    }
+
+    private void OnViewModelStateChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnSearchChanged(string? text) => ViewModel.Search(text);
+    private void OnStatusFilterChanged(string? status) => ViewModel.FilterByStatus(status);
+
+    private static string GetAssessmentButtonClass(int? level) => level switch
+    {
+        0 => "sop-assessment-button sop-level-0",
+        1 => "sop-assessment-button sop-level-1",
+        2 => "sop-assessment-button sop-level-2",
+        3 => "sop-assessment-button sop-level-3",
+        4 => "sop-assessment-button sop-level-4",
+        _ => "sop-assessment-button sop-level-unassessed"
+    };
+
+    private static string GetLevelLegendClass(int level) => level switch
+    {
+        0 => "sop-level-legend sop-level-0",
+        1 => "sop-level-legend sop-level-1",
+        2 => "sop-level-legend sop-level-2",
+        3 => "sop-level-legend sop-level-3",
+        _ => "sop-level-legend sop-level-4"
+    };
+
+    private async Task OpenEvaluationDialogAsync(
+        string applicationName,
+        SopEvaluationCategory category,
+        SopEvaluation assessment)
+    {
+        var parameters = new DialogParameters
+        {
+            ["ApplicationName"] = applicationName,
+            ["Category"] = category,
+            ["InitialValue"] = assessment
+        };
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Medium
+        };
+        var dialog = await DialogService.ShowAsync<SopEvaluationDialog>(
+            "Evaluasi SOP", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: SopEvaluationInput input })
+        {
+            await ViewModel.SaveEvaluationAsync(input);
+        }
+    }
+
+    private async Task OpenApplicationDialogAsync()
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Small
+        };
+        var dialog = await DialogService.ShowAsync<SopApplicationDialog>(
+            "Tambah Aplikasi", new DialogParameters(), options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: string applicationName })
+        {
+            await ViewModel.CreateApplicationAsync(applicationName);
+        }
+    }
+
+    public void Dispose() => ViewModel.StateChanged -= OnViewModelStateChanged;
+}
