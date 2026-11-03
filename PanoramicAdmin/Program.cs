@@ -37,6 +37,8 @@ builder.Services.AddTransient<ProjectIssueViewModel>();
 builder.Services.AddTransient<RfidEquipmentService>();
 builder.Services.AddTransient<RfidManualUnitService>();
 builder.Services.AddTransient<RfidTagInstallViewModel>();
+builder.Services.AddTransient<PitStopMappingService>();
+builder.Services.AddTransient<PitStopMappingViewModel>();
 builder.Services.AddTransient<SopEvaluationViewModel>();
 builder.Services.AddTransient<SmartRefuelingImplementationViewModel>();
 

@@ -1,0 +1,76 @@
+@page "/pit-stop-ft-mapping"
+@using PanoramicAdmin.ViewModels
+@inject PitStopMappingViewModel ViewModel
+
+<PageTitle>Pit Stop &amp; FT Mapping | Smart Refueling</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.h4" Class="page-title">Pit Stop &amp; FT Mapping</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Pantau instalasi RFID pada Pit Stop dan Fuel Truck per district.
+        </MudText>
+    </div>
+</div>
+
+<MudTabs Elevation="0" Color="Color.Primary" Rounded="true" Border="true" Class="smart-refueling-tabs">
+    <MudTabPanel Text="PIT STOP" Icon="@Icons.Material.Filled.LocalGasStation">
+        <WarehouseStatusMatrix Title="Status Instalasi FP - All Sites"
+                               WarehouseName="Fuel Point"
+                               WarehousePrefix="FP"
+                               WarehouseIds="@ViewModel.WarehouseIds"
+                               Districts="@ViewModel.Districts"
+                               FilteredDistricts="@ViewModel.FilteredDistricts"
+                               DistrictCount="@ViewModel.DistrictCount"
+                               TotalDst="@ViewModel.TotalDst"
+                               RfidInstalled="@ViewModel.RfidInstalled"
+                               FilteredRfidInstalled="@ViewModel.GetFilteredRfidInstalled()"
+                               SearchText="@ViewModel.SearchText"
+                               SelectedDays="@ViewModel.SelectedDays"
+                               LastUpdated="@ViewModel.LastUpdated"
+                               LoadError="@ViewModel.LoadError"
+                               IsLoading="@ViewModel.IsLoading"
+                               SearchChanged="OnSearchChanged"
+                               DaysChanged="OnDaysChanged"
+                               RetryRequested="RetryPitStopAsync" />
+    </MudTabPanel>
+
+    <MudTabPanel Text="FUEL TRUCK" Icon="@Icons.Material.Filled.LocalShipping">
+        <WarehouseStatusMatrix Title="Status Instalasi FT - All Sites"
+                               WarehouseName="Fuel Truck"
+                               WarehousePrefix="FT"
+                               WarehouseIds="@ViewModel.FuelTruckWarehouseIds"
+                               Districts="@ViewModel.FuelTruckDistricts"
+                               FilteredDistricts="@ViewModel.FilteredFuelTruckDistricts"
+                               DistrictCount="@ViewModel.FuelTruckDistrictCount"
+                               TotalDst="@ViewModel.FuelTruckTotalDst"
+                               RfidInstalled="@ViewModel.FuelTruckRfidInstalled"
+                               FilteredRfidInstalled="@ViewModel.GetFilteredFuelTruckRfidInstalled()"
+                               SearchText="@ViewModel.SearchText"
+                               SelectedDays="@ViewModel.SelectedDays"
+                               LastUpdated="@ViewModel.FuelTruckLastUpdated"
+                               LoadError="@ViewModel.FuelTruckLoadError"
+                               IsLoading="@ViewModel.IsFuelTruckLoading"
+                               SearchChanged="OnSearchChanged"
+                               DaysChanged="OnDaysChanged"
+                               RetryRequested="RetryFuelTruckAsync" />
+    </MudTabPanel>
+
+    <MudTabPanel Text="RFID TAG" Icon="@Icons.Material.Filled.Nfc">
+        <RfidTagInstallTable />
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    protected override Task OnInitializedAsync() => ViewModel.LoadAllAsync();
+
+    private Task OnSearchChanged(string? text)
+    {
+        ViewModel.Search(text);
+        return Task.CompletedTask;
+    }
+
+    private Task OnDaysChanged(int days) => ViewModel.LoadAllAsync(days);
+    private Task RetryPitStopAsync() => ViewModel.LoadPitStopAsync();
+    private Task RetryFuelTruckAsync() => ViewModel.LoadFuelTruckAsync();
+}

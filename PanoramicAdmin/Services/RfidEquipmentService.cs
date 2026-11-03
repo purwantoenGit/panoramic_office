@@ -201,7 +201,7 @@ public sealed class RfidEquipmentService(
         return counts;
     }
 
-    private SqlConnection CreateConnection()
+    internal SqlConnection CreateConnection()
     {
         var connectionString = configuration.GetConnectionString("RfidDb");
         if (string.IsNullOrWhiteSpace(connectionString))

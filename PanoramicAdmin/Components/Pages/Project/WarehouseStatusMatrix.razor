@@ -1,0 +1,166 @@
+@using PanoramicAdmin.Models
+
+<MudGrid Spacing="2" Class="pit-stop-summary">
+    <MudItem xs="12" sm="4">
+        <MudPaper Class="pit-stop-summary-card pit-stop-summary-primary" Elevation="0">
+            <MudText Typo="Typo.overline">RFID INSTALLED</MudText>
+            <MudText Typo="Typo.h4">@($"{RfidInstalled:0.##}%")</MudText>
+            <MudText Typo="Typo.caption">Dari @TotalDst @WarehouseName aktif</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudPaper Class="pit-stop-summary-card" Elevation="0">
+            <MudText Typo="Typo.overline">DISTRICT</MudText>
+            <MudText Typo="Typo.h4">@DistrictCount</MudText>
+            <MudText Typo="Typo.caption">Dengan transaksi pada periode terpilih</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudPaper Class="pit-stop-summary-card" Elevation="0">
+            <MudText Typo="Typo.overline">@WarehouseName.ToUpperInvariant()</MudText>
+            <MudText Typo="Typo.h4">@WarehouseIds.Count</MudText>
+            <MudText Typo="Typo.caption">Kode @WarehousePrefix dengan aktivitas</MudText>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudPaper Class="section-card pit-stop-card" Elevation="0">
+    <div class="pit-stop-table-heading">
+        <div>
+            <MudText Typo="Typo.h6" Class="section-title">@Title</MudText>
+            <MudText Typo="Typo.body2" Class="section-subtitle">
+                Berdasarkan transaksi `tbl_t_log_sheet_detail` selama @SelectedDays hari terakhir.
+                @if (LastUpdated is { } updated)
+                {
+                    <span> Diperbarui @updated.ToString("dd MMM yyyy, HH:mm").</span>
+                }
+            </MudText>
+        </div>
+        <div class="pit-stop-controls">
+            <MudTextField T="string" Value="@SearchText" ValueChanged="OnSearchChanged"
+                          Placeholder="Cari district" Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+                          DebounceInterval="250" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Clearable="true" Class="pit-stop-search" aria-label="Cari district" />
+            <MudSelect T="int" Value="@SelectedDays" ValueChanged="OnDaysChanged"
+                       Label="Periode" Variant="Variant.Outlined" Margin="Margin.Dense"
+                       Class="pit-stop-days">
+                <MudSelectItem T="int" Value="7">7 hari</MudSelectItem>
+                <MudSelectItem T="int" Value="14">14 hari</MudSelectItem>
+                <MudSelectItem T="int" Value="30">30 hari</MudSelectItem>
+            </MudSelect>
+        </div>
+    </div>
+
+    @if (IsLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            Memuat status instalasi @WarehouseName...
+        </MudText>
+    }
+    else if (LoadError is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="ma-4">
+            <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                <span>@LoadError</span>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="OnRetryAsync">
+                    Coba lagi
+                </MudButton>
+            </div>
+        </MudAlert>
+    }
+    else if (FilteredDistricts.Count == 0)
+    {
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            @(Districts.Count == 0
+                ? $"Tidak ada aktivitas {WarehousePrefix} pada periode ini."
+                : "Tidak ada district yang cocok dengan pencarian.")
+        </MudText>
+    }
+    else
+    {
+        <div class="pit-stop-table-wrap">
+            <table class="pit-stop-table">
+                <thead>
+                    <tr>
+                        <th scope="col" class="pit-stop-district-column">DISTRICT</th>
+                        <th scope="col" class="pit-stop-percent-column">RFID INSTALLED</th>
+                        @foreach (var warehouseId in WarehouseIds)
+                        {
+                            <th scope="col">@warehouseId</th>
+                        }
+                        <th scope="col" class="pit-stop-dst-column">DST</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var district in FilteredDistricts)
+                    {
+                        <tr @key="district.District">
+                            <th scope="row" class="pit-stop-district-column">@district.District</th>
+                            <td class="pit-stop-percent-column">@($"{district.RfidInstalled:0.##}%")</td>
+                            @foreach (var warehouseId in WarehouseIds)
+                            {
+                                var status = district.WarehouseStatuses.GetValueOrDefault(warehouseId, "-");
+                                <td class="@GetStatusClass(status)">
+                                    @if (status == "RFID")
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
+                                    }
+                                    @status
+                                </td>
+                            }
+                            <td class="pit-stop-dst-column">@district.Dst</td>
+                        </tr>
+                    }
+                    <tr class="pit-stop-total-row">
+                        <th scope="row" class="pit-stop-district-column">TOTAL AVERAGE</th>
+                        <td class="pit-stop-percent-column">@($"{FilteredRfidInstalled:0.##}%")</td>
+                        @foreach (var warehouseId in WarehouseIds)
+                        {
+                            <td aria-label="@warehouseId tidak diringkas">—</td>
+                        }
+                        <td class="pit-stop-dst-column">—</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pit-stop-legend">
+            <span><i class="pit-stop-legend-swatch pit-stop-status-rfid"></i>RFID terdeteksi</span>
+            <span><i class="pit-stop-legend-swatch pit-stop-status-manual"></i>Transaksi manual</span>
+            <span><i class="pit-stop-legend-swatch"></i>Tidak ada transaksi pada periode ini</span>
+        </div>
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string WarehouseName { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string WarehousePrefix { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyList<string> WarehouseIds { get; set; } = [];
+    [Parameter] public IReadOnlyList<PitStopDistrictRow> Districts { get; set; } = [];
+    [Parameter] public IReadOnlyList<PitStopDistrictRow> FilteredDistricts { get; set; } = [];
+    [Parameter] public int DistrictCount { get; set; }
+    [Parameter] public int TotalDst { get; set; }
+    [Parameter] public decimal RfidInstalled { get; set; }
+    [Parameter] public decimal FilteredRfidInstalled { get; set; }
+    [Parameter] public string SearchText { get; set; } = string.Empty;
+    [Parameter] public int SelectedDays { get; set; }
+    [Parameter] public DateTime? LastUpdated { get; set; }
+    [Parameter] public string? LoadError { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public EventCallback<string?> SearchChanged { get; set; }
+    [Parameter] public EventCallback<int> DaysChanged { get; set; }
+    [Parameter] public EventCallback RetryRequested { get; set; }
+
+    private Task OnSearchChanged(string? text) => SearchChanged.InvokeAsync(text);
+    private Task OnDaysChanged(int days) => DaysChanged.InvokeAsync(days);
+    private Task OnRetryAsync() => RetryRequested.InvokeAsync();
+
+    private static string GetStatusClass(string status) => status switch
+    {
+        "RFID" => "pit-stop-status-rfid",
+        "MANUAL" => "pit-stop-status-manual",
+        _ => "pit-stop-status-empty"
+    };
+}
