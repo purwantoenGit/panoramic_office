@@ -1,0 +1,322 @@
+@page "/smart-refueling-roadmap"
+@using PanoramicAdmin.Components.Dialogs
+@using PanoramicAdmin.Models
+@using PanoramicAdmin.ViewModels
+@inject IDialogService DialogService
+@inject SmartRefuelingImplementationViewModel ImplementationViewModel
+
+<PageTitle>Roadmap Project | Smart Refueling</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.h4" Class="page-title">Roadmap Project</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Tahapan implementasi Smart Refueling berdasarkan phase dan step.
+        </MudText>
+    </div>
+</div>
+
+<MudGrid Spacing="2" Class="smart-refueling-dashboard">
+    <MudItem xs="6" sm="4" lg="2">
+        <MudPaper Class="smart-refueling-dashboard-card" Elevation="0">
+            <MudText Typo="Typo.overline">Total Site Implementasi</MudText>
+            <MudText Typo="Typo.h4">@ImplementationViewModel.Items.Count</MudText>
+            <MudText Typo="Typo.caption">Site terdaftar</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" sm="4" lg="2">
+        <MudPaper Class="smart-refueling-dashboard-card smart-refueling-dashboard-done" Elevation="0">
+            <MudText Typo="Typo.overline">Done</MudText>
+            <MudText Typo="Typo.h4">@ImplementationViewModel.DoneCount</MudText>
+            <MudText Typo="Typo.caption">Status per kuartal</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" sm="4" lg="2">
+        <MudPaper Class="smart-refueling-dashboard-card smart-refueling-dashboard-progress" Elevation="0">
+            <MudText Typo="Typo.overline">Progress</MudText>
+            <MudText Typo="Typo.h4">@ImplementationViewModel.ProgressCount</MudText>
+            <MudText Typo="Typo.caption">Status per kuartal</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" sm="4" lg="2">
+        <MudPaper Class="smart-refueling-dashboard-card smart-refueling-dashboard-overdue" Elevation="0">
+            <MudText Typo="Typo.overline">Overdue</MudText>
+            <MudText Typo="Typo.h4">@ImplementationViewModel.OverdueCount</MudText>
+            <MudText Typo="Typo.caption">Status per kuartal</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" sm="4" lg="2">
+        <MudPaper Class="smart-refueling-dashboard-card smart-refueling-dashboard-plan" Elevation="0">
+            <MudText Typo="Typo.overline">Plan</MudText>
+            <MudText Typo="Typo.h4">@ImplementationViewModel.PlanCount</MudText>
+            <MudText Typo="Typo.caption">Status per kuartal</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" sm="4" lg="2">
+        <MudPaper Class="smart-refueling-dashboard-card smart-refueling-dashboard-unplanned" Elevation="0">
+            <MudText Typo="Typo.overline">Unplanned</MudText>
+            <MudText Typo="Typo.h4">@ImplementationViewModel.UnplannedCount</MudText>
+            <MudText Typo="Typo.caption">Status per kuartal</MudText>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudTabs Elevation="0" Color="Color.Primary" Rounded="true">
+    <MudTabPanel Text="Roadmap" Icon="@Icons.Material.Filled.Timeline">
+        <MudPaper Class="section-card smart-refueling-roadmap-card" Elevation="0">
+            <div class="smart-refueling-roadmap-heading">
+                <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large">
+                    <MudIcon Icon="@Icons.Material.Filled.LocalGasStation" />
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.h6" Class="section-title">Smart Refueling</MudText>
+                    <MudText Typo="Typo.body2" Class="section-subtitle">
+                        Dari pemetaan kebutuhan dan pilot hingga implementasi serta serah terima operasional.
+                    </MudText>
+                </div>
+            </div>
+
+            @foreach (var phaseGroup in RoadmapPhases)
+            {
+                <section class="smart-refueling-roadmap-year" aria-label="@($"Roadmap {phaseGroup.Name}")">
+                    <div class="smart-refueling-roadmap-year-heading">
+                        <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium">
+                            @phaseGroup.Name
+                        </MudChip>
+                        <MudText Typo="Typo.subtitle2">@phaseGroup.Focus</MudText>
+                    </div>
+                    <div class="smart-refueling-roadmap-phases">
+                        @foreach (var step in phaseGroup.Steps)
+                        {
+                            <MudPaper Class="smart-refueling-roadmap-phase" Elevation="0">
+                                <MudText Typo="Typo.overline" Class="smart-refueling-roadmap-period">
+                                    @step.Name
+                                </MudText>
+                                <MudText Typo="Typo.subtitle1" Class="smart-refueling-roadmap-phase-title">
+                                    @step.Title
+                                </MudText>
+                                <MudText Typo="Typo.body2" Class="smart-refueling-roadmap-description">
+                                    @step.Description
+                                </MudText>
+                                <div class="smart-refueling-roadmap-deliverable">
+                                    <MudIcon Icon="@Icons.Material.Filled.TaskAlt" Size="Size.Small" Color="Color.Primary" />
+                                    <MudText Typo="Typo.caption">@step.Deliverable</MudText>
+                                </div>
+                            </MudPaper>
+                        }
+                    </div>
+                </section>
+            }
+        </MudPaper>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Tabel Implementasi Smart Refueling" Icon="@Icons.Material.Filled.TableChart">
+        <MudPaper Class="section-card smart-refueling-implementation-card" Elevation="0">
+            <div class="section-heading smart-refueling-implementation-heading">
+                <div>
+                    <MudText Typo="Typo.h6" Class="section-title">Implementasi Smart Refueling</MudText>
+                    <MudText Typo="Typo.body2" Class="section-subtitle">
+                        Pantau status implementasi per site dan aktivitas pada setiap periode.
+                    </MudText>
+                </div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => OpenDialogAsync(null))"
+                           Disabled="@(ImplementationViewModel.IsLoading || ImplementationViewModel.IsSaving || ImplementationViewModel.DatabaseError is not null)">
+                    Tambah Implementasi
+                </MudButton>
+            </div>
+
+            <div class="smart-refueling-implementation-legend" aria-label="Status implementasi">
+                @foreach (var status in SmartRefuelingImplementationCatalog.Statuses)
+                {
+                    <span class="@GetStatusClass(status)">@status</span>
+                }
+            </div>
+
+            @if (ImplementationViewModel.IsLoading)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+                    Memuat data implementasi...
+                </MudText>
+            }
+            else if (ImplementationViewModel.DatabaseError is not null)
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="ma-4">
+                    <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                        <span>@ImplementationViewModel.DatabaseError</span>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="ImplementationViewModel.LoadAsync">
+                            Coba lagi
+                        </MudButton>
+                    </div>
+                </MudAlert>
+            }
+            else if (ImplementationViewModel.Items.Count == 0)
+            {
+                <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+                    Belum ada data implementasi. Tambahkan site dan aktivitas untuk mulai memantau.
+                </MudText>
+            }
+            else
+            {
+                <div class="smart-refueling-implementation-table-wrap">
+                    <table class="smart-refueling-implementation-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Site</th>
+                                <th scope="col">Activity</th>
+                                @foreach (var period in SmartRefuelingImplementationCatalog.Periods)
+                                {
+                                    <th scope="col">@period</th>
+                                }
+                                <th scope="col">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in ImplementationViewModel.Items)
+                            {
+                                <tr @key="item.Id">
+                                    <th scope="row">@item.Site</th>
+                                    <td>@item.Activity</td>
+                                    @for (var index = 0; index < item.Statuses.Count; index++)
+                                    {
+                                        var status = item.Statuses[index];
+                                        <td>
+                                            @if (status is not null)
+                                            {
+                                                <span class="@GetStatusClass(status)">@status</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="smart-refueling-status-empty">—</span>
+                                            }
+                                        </td>
+                                    }
+                                    <td>
+                                        @if (_pendingDeleteId == item.Id)
+                                        {
+                                            <div class="smart-refueling-implementation-actions">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Check" Color="Color.Error"
+                                                               Size="Size.Small" OnClick="@(() => DeleteAsync(item.Id))"
+                                                               Disabled="@ImplementationViewModel.IsSaving"
+                                                               aria-label="Konfirmasi hapus implementasi" />
+                                                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default"
+                                                               Size="Size.Small" OnClick="CancelDelete"
+                                                               Disabled="@ImplementationViewModel.IsSaving"
+                                                               aria-label="Batal hapus implementasi" />
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="smart-refueling-implementation-actions">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary"
+                                                               Size="Size.Small" OnClick="@(() => OpenDialogAsync(item))"
+                                                               Disabled="@ImplementationViewModel.IsSaving"
+                                                               aria-label="@($"Edit {item.Activity} - {item.Site}")" />
+                                                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error"
+                                                               Size="Size.Small" OnClick="@(() => RequestDelete(item.Id))"
+                                                               Disabled="@ImplementationViewModel.IsSaving"
+                                                               aria-label="@($"Hapus {item.Activity} - {item.Site}")" />
+                                            </div>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </MudPaper>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    private static readonly IReadOnlyList<RoadmapPhaseGroup> RoadmapPhases =
+    [
+        new("Phase 1", "Fondasi, pengembangan, dan validasi awal",
+        [
+            new("Step 1", "Kajian dan kebutuhan",
+                "Petakan proses pengisian BBM, kebutuhan site, pengguna, unit, serta kondisi perangkat dan jaringan.",
+                "Dokumen kebutuhan dan baseline proses Smart Refueling"),
+            new("Step 2", "Desain solusi",
+                "Rancang alur RFID, pencatatan transaksi, integrasi perangkat, kebutuhan data, dan dashboard monitoring.",
+                "Desain proses, arsitektur, dan rencana implementasi"),
+            new("Step 3", "Pengembangan dan persiapan pilot",
+                "Siapkan konfigurasi sistem, pemetaan RFID ke unit, perangkat refueling, akses pengguna, dan skenario pengujian.",
+                "MVP dan lokasi pilot siap diuji"),
+            new("Step 4", "Pilot Smart Refueling",
+                "Jalankan pilot pada lokasi terbatas, pantau transaksi aktual, uji alur operasional, dan catat kendala.",
+                "Hasil pilot, daftar kendala, dan rekomendasi perbaikan")
+        ]),
+        new("Phase 2", "Penyempurnaan, perluasan, dan operasional",
+        [
+            new("Step 5", "Evaluasi dan penyempurnaan",
+                "Tindak lanjuti hasil pilot, perbaiki akurasi data dan alur transaksi, lalu validasi kembali bersama pengguna.",
+                "Sistem dan proses siap untuk perluasan"),
+            new("Step 6", "Integrasi dan rollout bertahap",
+                "Perluas implementasi ke site prioritas dan validasi integrasi serta pelaporan sesuai kebutuhan operasional.",
+                "Implementasi bertahap pada site prioritas"),
+            new("Step 7", "Optimasi dan adopsi pengguna",
+                "Pantau keandalan, kualitas transaksi, penggunaan RFID, serta kebutuhan pelatihan dan dukungan site.",
+                "Peningkatan adopsi dan daftar optimasi lanjutan"),
+            new("Step 8", "Stabilisasi dan serah terima",
+                "Selesaikan isu prioritas, tetapkan prosedur dukungan, dokumentasi, pemilik layanan, dan mekanisme evaluasi.",
+                "Serah terima ke operasional dan rencana pengembangan berikutnya")
+        ])
+    ];
+
+    private int? _pendingDeleteId;
+
+    protected override async Task OnInitializedAsync() =>
+        await ImplementationViewModel.LoadAsync();
+
+    private static string GetStatusClass(string status) => status switch
+    {
+        "Done" => "smart-refueling-status smart-refueling-status-done",
+        "Progress" => "smart-refueling-status smart-refueling-status-progress",
+        "Overdue" => "smart-refueling-status smart-refueling-status-overdue",
+        "Plan" => "smart-refueling-status smart-refueling-status-plan",
+        "Unplanned" => "smart-refueling-status smart-refueling-status-unplanned",
+        _ => "smart-refueling-status"
+    };
+
+    private async Task OpenDialogAsync(SmartRefuelingImplementationRow? item)
+    {
+        var parameters = new DialogParameters
+        {
+            ["InitialValue"] = item,
+            ["DialogTitle"] = item is null ? "Tambah Implementasi" : "Edit Implementasi",
+            ["SiteOptions"] = ImplementationViewModel.ActiveSites
+        };
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Large
+        };
+        var dialog = await DialogService.ShowAsync<SmartRefuelingImplementationDialog>(
+            item is null ? "Tambah Implementasi" : "Edit Implementasi", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: SmartRefuelingImplementationInput input })
+        {
+            await ImplementationViewModel.SaveAsync(input);
+        }
+    }
+
+    private void RequestDelete(int id) => _pendingDeleteId = id;
+    private void CancelDelete() => _pendingDeleteId = null;
+
+    private async Task DeleteAsync(int id)
+    {
+        await ImplementationViewModel.DeleteAsync(id);
+        _pendingDeleteId = null;
+    }
+
+    private sealed record RoadmapPhaseGroup(string Name, string Focus, IReadOnlyList<RoadmapStep> Steps);
+
+    private sealed record RoadmapStep(
+        string Name,
+        string Title,
+        string Description,
+        string Deliverable);
+}

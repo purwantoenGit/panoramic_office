@@ -21,6 +21,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SopEvaluation> SopEvaluations => Set<SopEvaluation>();
     public DbSet<SopEvaluationDocument> SopEvaluationDocuments => Set<SopEvaluationDocument>();
     public DbSet<SopEvaluationChildDocument> SopEvaluationChildDocuments => Set<SopEvaluationChildDocument>();
+    public DbSet<SmartRefuelingImplementation> SmartRefuelingImplementations => Set<SmartRefuelingImplementation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -254,6 +255,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 })
                 .IsUnique()
                 .HasDatabaseName("UX_pano_sop_evaluasi_Application_Category");
+        });
+
+        modelBuilder.Entity<SmartRefuelingImplementation>(entity =>
+        {
+            entity.ToTable("pano_smart_refueling_implementation", "dbo");
+            entity.Property(item => item.Site).HasMaxLength(150).IsRequired();
+            entity.Property(item => item.Activity).HasMaxLength(250).IsRequired();
+            entity.Property(item => item.Status2026Q1).HasMaxLength(20);
+            entity.Property(item => item.Status2026Q2).HasMaxLength(20);
+            entity.Property(item => item.Status2026Q3).HasMaxLength(20);
+            entity.Property(item => item.Status2026Q4).HasMaxLength(20);
+            entity.Property(item => item.Status2027Q1).HasMaxLength(20);
+            entity.Property(item => item.Status2027Q2).HasMaxLength(20);
+            entity.Property(item => item.Status2027Q3).HasMaxLength(20);
+            entity.Property(item => item.Status2027Q4).HasMaxLength(20);
+            entity.HasIndex(item => new { item.Site, item.Activity })
+                .HasDatabaseName("IX_pano_smart_refueling_implementation_Site_Activity");
         });
 
         modelBuilder.Entity<SopEvaluationDocument>(entity =>

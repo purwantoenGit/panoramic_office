@@ -90,12 +90,27 @@ public sealed class MasterSitesViewModel(
 
     public async Task CreateAsync(AddMasterSiteDialog.MasterSiteInput input)
     {
+        var sitesValue = input.Sites.Trim();
+        if (string.IsNullOrWhiteSpace(sitesValue) || sitesValue.Length > 150)
+        {
+            snackbar.Add(string.IsNullOrWhiteSpace(sitesValue)
+                ? "Sites wajib diisi."
+                : "Sites maksimal 150 karakter.", Severity.Warning);
+            return;
+        }
+
         IsSaving = true;
         NotifyStateChanged();
         try
         {
             await using var db = await dbContextFactory.CreateDbContextAsync();
-            db.MasterSites.Add(new MasterSite { Sites = input.Sites, Status = input.Status });
+            if (await IsDuplicateSiteAsync(db, sitesValue))
+            {
+                snackbar.Add($"Site \"{sitesValue}\" sudah terdaftar.", Severity.Warning);
+                return;
+            }
+
+            db.MasterSites.Add(new MasterSite { Sites = sitesValue, Status = input.Status });
             await db.SaveChangesAsync();
             SearchText = string.Empty;
             snackbar.Add("Site berhasil ditambahkan.", Severity.Success);
@@ -149,6 +164,14 @@ public sealed class MasterSitesViewModel(
         try
         {
             await using var db = await dbContextFactory.CreateDbContextAsync();
+            if (await IsDuplicateSiteAsync(db, sitesValue, id))
+            {
+                EditError = $"Site \"{sitesValue}\" sudah terdaftar.";
+                snackbar.Add(EditError, Severity.Warning);
+                NotifyStateChanged();
+                return;
+            }
+
             var site = await db.MasterSites.SingleOrDefaultAsync(item => item.Id == id);
             if (site is null)
             {
@@ -246,6 +269,20 @@ public sealed class MasterSitesViewModel(
             snackbar.Add(fallbackMessage, Severity.Error);
         }
         NotifyStateChanged();
+    }
+
+    private static async Task<bool> IsDuplicateSiteAsync(
+        AppDbContext db,
+        string sitesValue,
+        int? excludedId = null)
+    {
+        var existingSites = await db.MasterSites.AsNoTracking()
+            .Where(site => excludedId == null || site.Id != excludedId)
+            .Select(site => site.Sites)
+            .ToListAsync();
+
+        return existingSites.Any(existingSite =>
+            string.Equals(existingSite.Trim(), sitesValue, StringComparison.OrdinalIgnoreCase));
     }
 
     private void NotifyStateChanged() => StateChanged?.Invoke();

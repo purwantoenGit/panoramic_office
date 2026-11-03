@@ -2168,6 +2168,27 @@ body, .mud-typography {
     margin-bottom: 20px;
 }
 
+.sop-document-summary-grid {
+    margin-top: -8px;
+    margin-bottom: 20px;
+}
+
+.sop-document-summary-card {
+    min-height: 112px;
+}
+
+.sop-document-summary-counts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.sop-document-summary-counts .mud-typography-h6 {
+    color: #183b70;
+    font-weight: 800;
+}
+
 .sop-summary-card {
     display: flex;
     min-height: 132px;
@@ -2201,6 +2222,245 @@ body, .mud-typography {
 
 .sop-evaluation-card {
     overflow: hidden;
+}
+
+.smart-refueling-roadmap-card {
+    padding: 24px;
+}
+
+.smart-refueling-roadmap-heading {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 26px;
+}
+
+.smart-refueling-roadmap-year + .smart-refueling-roadmap-year {
+    margin-top: 30px;
+}
+
+.smart-refueling-roadmap-year-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    color: #475569;
+}
+
+.smart-refueling-roadmap-phases {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.smart-refueling-roadmap-phase {
+    min-height: 210px;
+    padding: 17px;
+    border: 1px solid #e6ecf4;
+    border-top: 3px solid #5478bd;
+    border-radius: 12px !important;
+    background: linear-gradient(180deg, #f8faff, #fff 45%);
+}
+
+.smart-refueling-roadmap-period {
+    color: #5478bd;
+    font-weight: 800;
+}
+
+.smart-refueling-roadmap-phase-title {
+    margin: 4px 0 8px;
+    color: #183b70;
+    font-weight: 700;
+}
+
+.smart-refueling-roadmap-description {
+    color: #64748b;
+    line-height: 1.55;
+}
+
+.smart-refueling-roadmap-deliverable {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px solid #e6ecf4;
+    color: #475569;
+}
+
+.smart-refueling-roadmap-deliverable .mud-icon-root {
+    flex: 0 0 auto;
+}
+
+.smart-refueling-dashboard {
+    margin-bottom: 18px;
+}
+
+.smart-refueling-dashboard-card {
+    display: flex;
+    min-height: 120px;
+    flex-direction: column;
+    justify-content: center;
+    padding: 16px;
+    border: 1px solid #e6ecf4;
+    border-radius: 14px !important;
+    background: #fff;
+    color: #64748b;
+}
+
+.smart-refueling-dashboard-card .mud-typography-h4 {
+    margin: 3px 0;
+    color: #183b70;
+    font-weight: 800;
+}
+
+.smart-refueling-dashboard-done .mud-typography-h4 {
+    color: #166534;
+}
+
+.smart-refueling-dashboard-progress .mud-typography-h4,
+.smart-refueling-dashboard-plan .mud-typography-h4 {
+    color: #92400e;
+}
+
+.smart-refueling-dashboard-overdue .mud-typography-h4 {
+    color: #b91c1c;
+}
+
+.smart-refueling-dashboard-unplanned .mud-typography-h4 {
+    color: #7e22ce;
+}
+
+.smart-refueling-implementation-card {
+    margin-top: 20px;
+    overflow: hidden;
+}
+
+.smart-refueling-implementation-heading {
+    padding: 22px 24px 0;
+}
+
+.smart-refueling-implementation-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 24px 16px;
+}
+
+.smart-refueling-implementation-table-wrap {
+    overflow-x: auto;
+    padding: 0 24px 24px;
+}
+
+.smart-refueling-implementation-table {
+    width: 100%;
+    min-width: 1450px;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.78rem;
+}
+
+.smart-refueling-implementation-table th,
+.smart-refueling-implementation-table td {
+    padding: 12px 10px;
+    border-right: 1px solid #e7edf5;
+    border-bottom: 1px solid #e7edf5;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.smart-refueling-implementation-table thead th {
+    position: sticky;
+    top: 0;
+    min-width: 105px;
+    background: #eaf2ff;
+    color: #183b70;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.smart-refueling-implementation-table thead th:first-child,
+.smart-refueling-implementation-table tbody th {
+    min-width: 130px;
+    text-align: left;
+}
+
+.smart-refueling-implementation-table thead th:nth-child(2),
+.smart-refueling-implementation-table tbody td:nth-child(2) {
+    min-width: 200px;
+    text-align: left;
+}
+
+.smart-refueling-implementation-table tbody th {
+    color: #334155;
+    font-weight: 700;
+}
+
+.smart-refueling-status {
+    display: inline-flex;
+    min-width: 66px;
+    justify-content: center;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
+.smart-refueling-status-done {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.smart-refueling-status-progress {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.smart-refueling-status-overdue {
+    background: #fef3c7;
+    color: #b91c1c;
+}
+
+.smart-refueling-status-plan {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.smart-refueling-status-unplanned {
+    background: #f3e8ff;
+    color: #7e22ce;
+}
+
+.smart-refueling-status-empty {
+    color: #94a3b8;
+}
+
+.smart-refueling-implementation-actions {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+}
+
+@media (max-width: 1200px) {
+    .smart-refueling-roadmap-phases {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .smart-refueling-roadmap-card {
+        padding: 16px;
+    }
+
+    .smart-refueling-roadmap-phases {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .smart-refueling-roadmap-phase {
+        min-height: 0;
+    }
 }
 
 .sop-evaluation-card > .section-heading {
@@ -2363,12 +2623,21 @@ body, .mud-typography {
     opacity: 0.82;
 }
 
-.sop-assessment-document,
+.sop-assessment-document-counts,
 .sop-assessment-hint {
     display: block;
     max-width: 100%;
     overflow: hidden;
     font-size: 0.68rem;
+}
+
+.sop-assessment-document-counts {
+    display: grid;
+    gap: 2px;
+}
+
+.sop-assessment-document-counts > span {
+    overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }

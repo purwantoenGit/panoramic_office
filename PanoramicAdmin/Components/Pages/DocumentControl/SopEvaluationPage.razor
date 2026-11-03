@@ -31,7 +31,7 @@
                 <MudText Typo="Typo.h4">
                     @(ViewModel.OverallReadiness is { } readiness ? $"{readiness:0}%" : "—")
                 </MudText>
-                <MudText Typo="Typo.caption">Dari aspek yang sudah dinilai</MudText>
+                <MudText Typo="Typo.caption">Dari seluruh aspek</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="12" sm="6" lg="3">
@@ -53,6 +53,29 @@
                 <MudText Typo="Typo.overline">Belum Dinilai</MudText>
                 <MudText Typo="Typo.h4">@ViewModel.UnassessedCount</MudText>
                 <MudText Typo="Typo.caption">Not Available: @ViewModel.NotAvailableCount</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Spacing="2" Class="sop-document-summary-grid">
+        <MudItem xs="12" md="6">
+            <MudPaper Class="sop-summary-card sop-document-summary-card" Elevation="0">
+                <MudText Typo="Typo.overline">Dokumen PAMA</MudText>
+                <div class="sop-document-summary-counts">
+                    <div><MudText Typo="Typo.caption">SOP</MudText><MudText Typo="Typo.h6">@ViewModel.PamaDocumentCounts.Sop</MudText></div>
+                    <div><MudText Typo="Typo.caption">INK</MudText><MudText Typo="Typo.h6">@ViewModel.PamaDocumentCounts.Ink</MudText></div>
+                    <div><MudText Typo="Typo.caption">STD</MudText><MudText Typo="Typo.h6">@ViewModel.PamaDocumentCounts.Std</MudText></div>
+                </div>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="sop-summary-card sop-document-summary-card" Elevation="0">
+                <MudText Typo="Typo.overline">Dokumen SITE</MudText>
+                <div class="sop-document-summary-counts">
+                    <div><MudText Typo="Typo.caption">SOP</MudText><MudText Typo="Typo.h6">@ViewModel.SiteDocumentCounts.Sop</MudText></div>
+                    <div><MudText Typo="Typo.caption">INK</MudText><MudText Typo="Typo.h6">@ViewModel.SiteDocumentCounts.Ink</MudText></div>
+                    <div><MudText Typo="Typo.caption">STD</MudText><MudText Typo="Typo.h6">@ViewModel.SiteDocumentCounts.Std</MudText></div>
+                </div>
             </MudPaper>
         </MudItem>
     </MudGrid>
@@ -144,6 +167,22 @@
                             @foreach (var category in SopEvaluationCatalog.Categories)
                             {
                                 var assessment = ViewModel.GetAssessment(application, category.Name);
+                                var sopDocuments = assessment.Documents
+                                    .Where(document => !string.IsNullOrWhiteSpace(document.Title))
+                                    .ToList();
+                                var childDocuments = assessment.Documents
+                                    .SelectMany(document => document.Children)
+                                    .ToList();
+                                var inkDocuments = childDocuments
+                                    .Where(document => document.DocumentType == "INK")
+                                    .ToList();
+                                var stdDocuments = childDocuments
+                                    .Where(document => document.DocumentType == "STD")
+                                    .ToList();
+                                var pamaSopCount = sopDocuments.Count(document => IsNationalDocument(document.DocumentNumber));
+                                var pamaInkCount = inkDocuments.Count(document => IsNationalDocument(document.DocumentNumber));
+                                var pamaStdCount = stdDocuments.Count(document => IsNationalDocument(document.DocumentNumber));
+                                var hasSupportingDocuments = sopDocuments.Count > 0 || childDocuments.Count > 0;
                                 <td>
                                     <button type="button"
                                             class="@GetAssessmentButtonClass(assessment.Level)"
@@ -157,11 +196,11 @@
                                         {
                                             <span class="sop-assessment-score">@assessment.Level / 4</span>
                                         }
-                                        @if (assessment.Documents.Count > 0)
+                                        @if (hasSupportingDocuments)
                                         {
-                                            <span class="sop-assessment-document">
-                                                @assessment.Documents.Count SOP ·
-                                                @assessment.Documents.Sum(document => document.Children.Count) INK/STD
+                                            <span class="sop-assessment-document-counts">
+                                                <span>PAMA : (SOP: @pamaSopCount | INK: @pamaInkCount | STD: @pamaStdCount)</span>
+                                                <span>SITE : (SOP: @(sopDocuments.Count - pamaSopCount) | INK: @(inkDocuments.Count - pamaInkCount) | STD: @(stdDocuments.Count - pamaStdCount))</span>
                                             </span>
                                         }
                                         else if (assessment.Level is null or 0)
@@ -172,21 +211,14 @@
                                 </td>
                             }
                             <td class="sop-readiness-cell">
-                                @if (application.Readiness is { } applicationReadiness)
-                                {
-                                    <MudText Typo="Typo.subtitle1" Class="sop-readiness-value">
-                                        @($"{applicationReadiness:0}%")
-                                    </MudText>
-                                    <MudProgressLinear Value="@((double)applicationReadiness)" Color="Color.Primary"
-                                                       Rounded="true" Class="sop-readiness-progress" />
-                                    <MudText Typo="Typo.caption">
-                                        @application.AssessedCount / @SopEvaluationCatalog.Categories.Count dinilai
-                                    </MudText>
-                                }
-                                else
-                                {
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Belum dinilai</MudText>
-                                }
+                                <MudText Typo="Typo.subtitle1" Class="sop-readiness-value">
+                                    @($"{application.Readiness:0}%")
+                                </MudText>
+                                <MudProgressLinear Value="@((double)application.Readiness)" Color="Color.Primary"
+                                                   Rounded="true" Class="sop-readiness-progress" />
+                                <MudText Typo="Typo.caption">
+                                    @application.AssessedCount / @SopEvaluationCatalog.Categories.Count dinilai
+                                </MudText>
                             </td>
                         </tr>
                     }
@@ -205,8 +237,8 @@
             </span>
         }
         <MudText Typo="Typo.caption" Class="sop-readiness-formula">
-            SOP Readiness = total skor aktual ÷ (4 × jumlah aspek yang dinilai) × 100%.
-            Aspek yang belum dinilai tidak dihitung sebagai skor 0.
+            SOP Readiness = total skor aktual ÷ total skor maksimum × 100%.
+            Total skor maksimum mencakup seluruh aspek; aspek yang belum dinilai dihitung sebagai 0.
         </MudText>
     </div>
 </MudPaper>
@@ -240,6 +272,9 @@
         3 => "sop-level-legend sop-level-3",
         _ => "sop-level-legend sop-level-4"
     };
+
+    private static bool IsNationalDocument(string? documentNumber) =>
+        documentNumber?.Trim().StartsWith("PAMA", StringComparison.OrdinalIgnoreCase) == true;
 
     private async Task OpenEvaluationDialogAsync(
         string applicationName,

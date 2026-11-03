@@ -38,6 +38,7 @@ builder.Services.AddTransient<RfidEquipmentService>();
 builder.Services.AddTransient<RfidManualUnitService>();
 builder.Services.AddTransient<RfidTagInstallViewModel>();
 builder.Services.AddTransient<SopEvaluationViewModel>();
+builder.Services.AddTransient<SmartRefuelingImplementationViewModel>();
 
 var app = builder.Build();
 

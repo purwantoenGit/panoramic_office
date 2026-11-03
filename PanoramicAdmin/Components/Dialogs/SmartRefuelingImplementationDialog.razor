@@ -1,0 +1,116 @@
+@using PanoramicAdmin.Models
+@using PanoramicAdmin.ViewModels
+
+<MudDialog Class="add-project-dialog">
+    <TitleContent>
+        <div class="add-project-header">
+            <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Rounded="true">
+                <MudIcon Icon="@Icons.Material.Filled.LocalGasStation" />
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.h6" Class="add-project-title">@DialogTitle</MudText>
+                <MudText Typo="Typo.caption" Class="add-project-subtitle">
+                    Satu baris mewakili satu site dan aktivitas Smart Refueling.
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4">
+                <MudSelect T="string" Value="@_site" ValueChanged="SetSite"
+                           Label="Site" Variant="Variant.Outlined" Margin="Margin.Dense"
+                           Required="true" Disabled="@(!SiteOptions.Any())">
+                    @foreach (var site in SiteOptions)
+                    {
+                        <MudSelectItem T="string" Value="@site">@site</MudSelectItem>
+                    }
+                </MudSelect>
+                @if (SiteOptions.Count == 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Error">
+                        Tidak ada site aktif di Master Sites.
+                    </MudText>
+                }
+            </MudItem>
+            <MudItem xs="12" sm="8">
+                <MudTextField T="string" @bind-Value="_activity" Label="Activity"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" MaxLength="250" />
+            </MudItem>
+            @for (var index = 0; index < SmartRefuelingImplementationCatalog.Periods.Count; index++)
+            {
+                var periodIndex = index;
+                <MudItem xs="12" sm="6" md="4">
+                    <MudSelect T="string" Value="@_statuses[periodIndex]"
+                               ValueChanged="@(value => SetStatus(periodIndex, value))"
+                               Label="@SmartRefuelingImplementationCatalog.Periods[periodIndex]"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">
+                        @foreach (var status in SmartRefuelingImplementationCatalog.Statuses)
+                        {
+                            <MudSelectItem T="string" Value="@status">@status</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <div class="add-project-actions">
+            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Batal</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save"
+                       StartIcon="@Icons.Material.Filled.Check" Class="add-project-save">
+                Simpan
+            </MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public SmartRefuelingImplementationRow? InitialValue { get; set; }
+    [Parameter] public string DialogTitle { get; set; } = "Tambah Implementasi";
+    [Parameter] public IReadOnlyList<string> SiteOptions { get; set; } = [];
+
+    private string _site = string.Empty;
+    private string _activity = string.Empty;
+    private readonly string?[] _statuses = new string?[SmartRefuelingImplementationCatalog.Periods.Count];
+
+    protected override void OnInitialized()
+    {
+        if (InitialValue is not { } item)
+        {
+            return;
+        }
+
+        _site = item.Site;
+        _activity = item.Activity;
+        for (var index = 0; index < _statuses.Length; index++)
+        {
+            _statuses[index] = item.Statuses[index];
+        }
+    }
+
+    private void SetStatus(int index, string? value) => _statuses[index] = value;
+    private void SetSite(string? value) => _site = value ?? string.Empty;
+
+    private void Save()
+    {
+        var site = _site.Trim();
+        var activity = _activity.Trim();
+        if (string.IsNullOrWhiteSpace(site) || !SiteOptions.Contains(site, StringComparer.Ordinal) ||
+            string.IsNullOrWhiteSpace(activity))
+        {
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new SmartRefuelingImplementationInput(
+            InitialValue?.Id,
+            site,
+            activity,
+            _statuses.ToList())));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

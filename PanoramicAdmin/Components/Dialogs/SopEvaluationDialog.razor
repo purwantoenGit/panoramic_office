@@ -28,6 +28,7 @@
                     </MudText>
                     <MudText Typo="Typo.caption">
                         Tambahkan beberapa SOP, lalu tambahkan INK atau STD sebagai dokumen turunannya.
+                        Judul SOP boleh dikosongkan; judul INK/STD tetap wajib diisi.
                     </MudText>
                 </div>
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary"
@@ -50,38 +51,54 @@
                     <MudPaper @key="document.Id" Class="sop-document-card" Elevation="0">
                         <div class="sop-document-card-heading">
                             <div class="sop-document-card-title">
-                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
-                                    SOP
-                                </MudChip>
-                                <MudText Typo="Typo.subtitle2">Dokumen SOP @(index + 1)</MudText>
+                                @if (document.IsStandalone)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                        INK/STD
+                                    </MudChip>
+                                    <MudText Typo="Typo.subtitle2">Dokumen mandiri (tanpa SOP)</MudText>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
+                                        SOP
+                                    </MudChip>
+                                    <MudText Typo="Typo.subtitle2">Dokumen SOP @(index + 1)</MudText>
+                                }
                             </div>
-                            <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error"
-                                           Size="Size.Small" aria-label="@($"Hapus SOP {index + 1}")"
-                                           OnClick="@(() => RemoveSopDocument(document))" />
+                            @if (!document.IsStandalone)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error"
+                                               Size="Size.Small" aria-label="@($"Hapus SOP {index + 1}")"
+                                               OnClick="@(() => RemoveSopDocument(document))" />
+                            }
                         </div>
-                        <MudGrid Spacing="2">
-                            <MudItem xs="12" sm="6">
-                                <MudTextField T="string" @bind-Value="document.Title" Label="Judul SOP"
-                                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="250"
-                                              Required="true" RequiredError="Judul SOP wajib diisi." />
-                            </MudItem>
-                            <MudItem xs="12" sm="3">
-                                <MudTextField T="string" @bind-Value="document.DocumentNumber" Label="Nomor"
-                                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="100" />
-                            </MudItem>
-                            <MudItem xs="12" sm="3">
-                                <MudTextField T="string" @bind-Value="document.Revision" Label="Revisi"
-                                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="50" />
-                            </MudItem>
-                            <MudItem xs="12">
-                                <MudTextField T="string" @bind-Value="document.EvidenceUrl" Label="Tautan dokumen"
-                                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="1000"
-                                              Placeholder="https://..." />
-                            </MudItem>
-                        </MudGrid>
+                        @if (!document.IsStandalone)
+                        {
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12" sm="6">
+                                    <MudTextField T="string" @bind-Value="document.Title" Label="Judul SOP"
+                                                  Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="250"
+                                                  Required="false" />
+                                </MudItem>
+                                <MudItem xs="12" sm="3">
+                                    <MudTextField T="string" @bind-Value="document.DocumentNumber" Label="Nomor"
+                                                  Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="100" />
+                                </MudItem>
+                                <MudItem xs="12" sm="3">
+                                    <MudTextField T="string" @bind-Value="document.Revision" Label="Revisi"
+                                                  Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="50" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField T="string" @bind-Value="document.EvidenceUrl" Label="Tautan dokumen"
+                                                  Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="1000"
+                                                  Placeholder="https://..." />
+                                </MudItem>
+                            </MudGrid>
+                        }
 
                         <div class="sop-child-document-heading">
-                            <MudText Typo="Typo.body2">Dokumen turunan</MudText>
+                            <MudText Typo="Typo.body2">@(document.IsStandalone ? "Dokumen" : "Dokumen turunan")</MudText>
                             <div>
                                 <MudButton Variant="Variant.Text" Color="Color.Primary"
                                            StartIcon="@Icons.Material.Filled.Add"
@@ -251,6 +268,7 @@
             DocumentNumber = document.DocumentNumber,
             Revision = document.Revision,
             EvidenceUrl = document.EvidenceUrl,
+            IsStandalone = string.IsNullOrWhiteSpace(document.Title) && document.Children.Count > 0,
             Children = document.Children.Select(child => new ChildDocumentDraft
             {
                 DocumentType = child.DocumentType,
@@ -267,10 +285,29 @@
     private static void AddChildDocument(SopDocumentDraft document, string type) =>
         document.Children.Add(new ChildDocumentDraft { DocumentType = type });
 
-    private void RemoveSopDocument(SopDocumentDraft document) => _documents.Remove(document);
+    private void RemoveSopDocument(SopDocumentDraft document)
+    {
+        if (document.Children.Count == 0)
+        {
+            _documents.Remove(document);
+            return;
+        }
 
-    private static void RemoveChildDocument(SopDocumentDraft document, ChildDocumentDraft child) =>
+        document.Title = string.Empty;
+        document.DocumentNumber = null;
+        document.Revision = null;
+        document.EvidenceUrl = null;
+        document.IsStandalone = true;
+    }
+
+    private void RemoveChildDocument(SopDocumentDraft document, ChildDocumentDraft child)
+    {
         document.Children.Remove(child);
+        if (document.IsStandalone && document.Children.Count == 0)
+        {
+            _documents.Remove(document);
+        }
+    }
 
     private void OnLevelChanged(int level)
     {
@@ -287,10 +324,9 @@
         }
 
         if (_documents.Any(document =>
-                string.IsNullOrWhiteSpace(document.Title) ||
                 document.Children.Any(child => string.IsNullOrWhiteSpace(child.Title))))
         {
-            _validationMessage = "Isi judul setiap SOP dan dokumen turunannya, atau hapus dokumen yang kosong.";
+            _validationMessage = "Isi judul setiap dokumen turunan atau hapus dokumen turunan yang kosong.";
             return;
         }
 
@@ -325,6 +361,7 @@
         public string? DocumentNumber { get; set; }
         public string? Revision { get; set; }
         public string? EvidenceUrl { get; set; }
+        public bool IsStandalone { get; set; }
         public List<ChildDocumentDraft> Children { get; set; } = [];
     }
 

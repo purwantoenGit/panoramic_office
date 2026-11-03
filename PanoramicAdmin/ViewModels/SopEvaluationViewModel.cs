@@ -28,13 +28,33 @@ public sealed class SopEvaluationViewModel(
     public int UnassessedCount => Math.Max(
         0,
         Applications.Count * SopEvaluationCatalog.Categories.Count - AssessedCount);
-    public decimal? OverallReadiness => AssessedCount == 0
+    public SopEvaluationDocumentCounts PamaDocumentCounts => GetDocumentCounts(isNational: true);
+    public SopEvaluationDocumentCounts SiteDocumentCounts => GetDocumentCounts(isNational: false);
+    public decimal? OverallReadiness => Applications.Count == 0
         ? null
         : decimal.Round(
-            (decimal)_evaluations.Where(evaluation => evaluation.Level.HasValue)
-                .Sum(evaluation => evaluation.Level!.Value) /
-            (AssessedCount * 4) * 100,
+            (decimal)Applications.Sum(application => application.TotalScore) /
+            (Applications.Count * SopEvaluationCatalog.Categories.Count * 4) * 100,
             0);
+
+    private SopEvaluationDocumentCounts GetDocumentCounts(bool isNational)
+    {
+        var documents = _evaluations.SelectMany(evaluation => evaluation.Documents);
+        var sopDocuments = documents.Where(document =>
+            !string.IsNullOrWhiteSpace(document.Title) &&
+            IsNationalDocument(document.DocumentNumber) == isNational).ToList();
+        var childDocuments = documents.SelectMany(document => document.Children)
+            .Where(document => IsNationalDocument(document.DocumentNumber) == isNational)
+            .ToList();
+
+        return new SopEvaluationDocumentCounts(
+            sopDocuments.Count,
+            childDocuments.Count(document => document.DocumentType == "INK"),
+            childDocuments.Count(document => document.DocumentType == "STD"));
+    }
+
+    private static bool IsNationalDocument(string? documentNumber) =>
+        documentNumber?.Trim().StartsWith("PAMA", StringComparison.OrdinalIgnoreCase) == true;
 
     public async Task LoadAsync()
     {
@@ -167,7 +187,6 @@ public sealed class SopEvaluationViewModel(
 
         if (input.OwnerName?.Length > 150 ||
             input.Documents.Any(document =>
-                string.IsNullOrWhiteSpace(document.Title) ||
                 document.Title.Trim().Length > 250 ||
                 document.DocumentNumber?.Length > 100 ||
                 document.Revision?.Length > 50 ||
@@ -304,9 +323,9 @@ public sealed record SopEvaluationApplicationRow(
 {
     public int AssessedCount => Assessments.Values.Count(assessment => assessment.Level.HasValue);
     public int TotalScore => Assessments.Values.Sum(assessment => assessment.Level ?? 0);
-    public decimal? Readiness => AssessedCount == 0
-        ? null
-        : decimal.Round((decimal)TotalScore / (AssessedCount * 4) * 100, 0);
+    public decimal Readiness => decimal.Round(
+        (decimal)TotalScore / (SopEvaluationCatalog.Categories.Count * 4) * 100,
+        0);
 }
 
 public sealed record SopEvaluationInput(
@@ -333,3 +352,5 @@ public sealed record SopEvaluationChildDocumentInput(
     string? DocumentNumber,
     string? Revision,
     string? EvidenceUrl);
+
+public sealed record SopEvaluationDocumentCounts(int Sop, int Ink, int Std);
