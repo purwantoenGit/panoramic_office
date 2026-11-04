@@ -1,0 +1,203 @@
+@page "/scrum-project"
+
+<PageTitle>Scrum Monitoring | Panoramic Office</PageTitle>
+
+<div class="page-heading scrum-page-heading">
+    <div class="scrum-page-title">
+        <MudText Typo="Typo.overline" Class="scrum-eyebrow">DIGITAL INITIATIVE / AUTO CN</MudText>
+        <MudText Typo="Typo.h4" Class="page-title">Scrum Monitoring</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Pantau progres sprint, pekerjaan tim, dan tindak lanjut hambatan.
+        </MudText>
+    </div>
+    <div class="scrum-prototype-label">
+        <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" />
+        <MudText Typo="Typo.caption">Pratinjau · data contoh</MudText>
+    </div>
+</div>
+
+<MudPaper Class="scrum-sprint-overview mb-4" Elevation="0">
+    <div class="scrum-sprint-banner">
+        <div>
+            <div class="scrum-sprint-name">
+                <MudText Typo="Typo.overline">SPRINT 12</MudText>
+                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled"
+                         Icon="@Icons.Material.Filled.PlayArrow">
+                    Berjalan
+                </MudChip>
+            </div>
+            <MudText Typo="Typo.h5" Class="scrum-sprint-focus">
+                Kesiapan implementasi Auto CN
+            </MudText>
+            <div class="scrum-sprint-meta">
+                <span><MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" /> 02–13 November 2026</span>
+                <span><MudIcon Icon="@Icons.Material.Filled.Flag" Size="Size.Small" /> Fokus: implementasi &amp; operasional</span>
+            </div>
+        </div>
+        <div class="scrum-sprint-days">
+            <MudText Typo="Typo.h4">9</MudText>
+            <MudText Typo="Typo.caption">hari tersisa</MudText>
+        </div>
+    </div>
+
+    <div class="scrum-sprint-progress">
+        <div class="scrum-progress-label">
+            <MudText Typo="Typo.body2">Progres penyelesaian sprint</MudText>
+            <MudText Typo="Typo.body2"><strong>2 dari 10 task</strong><span> · 20%</span></MudText>
+        </div>
+        <MudProgressLinear Value="20" Color="Color.Primary" Rounded="true" Size="Size.Medium" />
+    </div>
+</MudPaper>
+
+<div class="scrum-metrics">
+        @foreach (var metric in _metrics)
+        {
+            <MudPaper Class="scrum-metric" Elevation="0">
+                <div class="scrum-metric-icon @metric.IconClass">
+                    <MudIcon Icon="@metric.Icon" Size="Size.Small" />
+                </div>
+                <div>
+                    <MudText Typo="Typo.caption" Class="scrum-metric-label">@metric.Label</MudText>
+                    <div class="scrum-metric-value-row">
+                        <MudText Typo="Typo.h5" Class="scrum-metric-value">@metric.Value</MudText>
+                        <MudText Typo="Typo.caption" Class="scrum-metric-note">@metric.Note</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        }
+</div>
+
+<div class="scrum-board-heading">
+    <div>
+        <MudText Typo="Typo.h6" Class="section-title">Papan sprint</MudText>
+        <MudText Typo="Typo.body2" Class="section-subtitle">
+            Distribusi task berdasarkan status pengerjaan.
+        </MudText>
+    </div>
+    <MudText Typo="Typo.caption" Class="scrum-board-total">10 task</MudText>
+</div>
+
+<div class="scrum-board-scroll">
+    <div class="scrum-board">
+    @foreach (var column in _columns)
+    {
+        <MudPaper Class="@($"scrum-column {column.ColumnClass}")" Elevation="0">
+            <div class="scrum-column-heading">
+                <div class="scrum-column-title">
+                    <span class="scrum-status-dot"></span>
+                    <MudText Typo="Typo.subtitle2">@column.Title</MudText>
+                </div>
+                <span class="scrum-column-count">@column.Tasks.Length</span>
+            </div>
+            <div class="scrum-column-tasks">
+                @foreach (var task in column.Tasks)
+                {
+                    <div class="scrum-task-card">
+                        <div class="scrum-task-meta">
+                            <MudText Typo="Typo.caption" Class="scrum-task-id">@task.Id</MudText>
+                            <span class="scrum-priority @task.PriorityClass">@task.Priority</span>
+                        </div>
+                        <MudText Typo="Typo.body2" Class="scrum-task-title">@task.Title</MudText>
+                        <div class="scrum-task-footer">
+                            <div class="scrum-task-owner">
+                                <MudAvatar Size="Size.Small" Color="Color.Primary" Class="scrum-owner-avatar">@task.Initials</MudAvatar>
+                                <MudText Typo="Typo.caption">@task.Owner</MudText>
+                            </div>
+                            <span class="scrum-task-due">
+                                <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" />
+                                @task.Due
+                            </span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </MudPaper>
+    }
+</div>
+</div>
+
+<MudPaper Class="scrum-blockers" Elevation="0">
+    <div class="scrum-blockers-heading">
+        <div>
+            <div class="scrum-blockers-title">
+                <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Color="Color.Error" />
+                <MudText Typo="Typo.h6" Class="section-title">Perlu tindak lanjut</MudText>
+                <span class="scrum-blocker-count">@_blockers.Length</span>
+            </div>
+            <MudText Typo="Typo.body2" Class="section-subtitle">
+                Hambatan aktif yang berpotensi memengaruhi target sprint.
+            </MudText>
+        </div>
+    </div>
+    <div class="scrum-blocker-list">
+        @foreach (var blocker in _blockers)
+        {
+            <div class="scrum-blocker-item">
+                <div class="scrum-blocker-indicator">
+                    <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small" />
+                </div>
+                <div class="scrum-blocker-copy">
+                    <MudText Typo="Typo.subtitle2" Class="scrum-blocker-name">@blocker.Title</MudText>
+                    <MudText Typo="Typo.body2" Class="scrum-blocker-detail">@blocker.Detail</MudText>
+                    <MudText Typo="Typo.caption" Class="scrum-blocker-next">
+                        Tindak lanjut: @blocker.NextStep
+                    </MudText>
+                </div>
+                <div class="scrum-blocker-owner">
+                    <MudText Typo="Typo.caption" Class="scrum-metric-label">PIC</MudText>
+                    <MudText Typo="Typo.body2">@blocker.Owner</MudText>
+                </div>
+            </div>
+        }
+    </div>
+</MudPaper>
+
+@code {
+    private readonly ScrumMetric[] _metrics =
+    [
+        new("Total task", "10", "di sprint ini", Icons.Material.Filled.Checklist, "scrum-icon-blue"),
+        new("Selesai", "2", "20% dari total", Icons.Material.Filled.TaskAlt, "scrum-icon-green"),
+        new("Berjalan", "3", "sedang dikerjakan", Icons.Material.Filled.Autorenew, "scrum-icon-violet"),
+        new("Blocker", "2", "perlu perhatian", Icons.Material.Filled.ReportProblem, "scrum-icon-red")
+    ];
+
+    private readonly ScrumColumn[] _columns =
+    [
+        new("Belum dimulai", "scrum-column-todo",
+        [
+            new("Finalisasi daftar unit prioritas", "ACN-021", "Rina", "RI", "Sedang", "priority-medium", "06 Nov"),
+            new("Siapkan materi sosialisasi site", "ACN-024", "Dimas", "DI", "Rendah", "priority-low", "09 Nov"),
+            new("Review SOP operasional", "ACN-027", "Budi", "BU", "Sedang", "priority-medium", "10 Nov")
+        ]),
+        new("Sedang dikerjakan", "scrum-column-progress",
+        [
+            new("Validasi mapping Pit Stop", "ACN-018", "Rina", "RI", "Tinggi", "priority-high", "05 Nov"),
+            new("Uji integrasi RFID", "ACN-019", "Dimas", "DI", "Tinggi", "priority-high", "06 Nov"),
+            new("Sinkronisasi data equipment", "ACN-022", "Budi", "BU", "Sedang", "priority-medium", "09 Nov")
+        ]),
+        new("Dalam review", "scrum-column-review",
+        [
+            new("Verifikasi hasil instalasi tag", "ACN-016", "Sari", "SA", "Sedang", "priority-medium", "05 Nov"),
+            new("Persetujuan alur fueling", "ACN-017", "Andi", "AN", "Tinggi", "priority-high", "06 Nov")
+        ]),
+        new("Selesai", "scrum-column-done",
+        [
+            new("Kick-off sprint Auto CN", "ACN-011", "Andi", "AN", "Rendah", "priority-low", "02 Nov"),
+            new("Kumpulkan kebutuhan site", "ACN-013", "Sari", "SA", "Sedang", "priority-medium", "03 Nov")
+        ])
+    ];
+
+    private readonly ScrumBlocker[] _blockers =
+    [
+        new("Menunggu konfirmasi jadwal site", "Jadwal instalasi RFID untuk Site A belum dikonfirmasi.",
+            "Rina", "Konfirmasi jadwal dengan PIC site sebelum 06 Nov."),
+        new("Akses data equipment belum tersedia", "Tim belum dapat memulai pengujian integrasi.",
+            "Dimas", "Koordinasikan akses dengan tim operasional.")
+    ];
+
+    private sealed record ScrumMetric(string Label, string Value, string Note, string Icon, string IconClass);
+    private sealed record ScrumColumn(string Title, string ColumnClass, ScrumTask[] Tasks);
+    private sealed record ScrumTask(
+        string Title, string Id, string Owner, string Initials, string Priority, string PriorityClass, string Due);
+    private sealed record ScrumBlocker(string Title, string Detail, string Owner, string NextStep);
+}
