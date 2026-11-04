@@ -1,0 +1,42 @@
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">
+            Site <strong>@Site</strong> &middot; @Label
+        </MudText>
+        <MudNumericField T="int?" @bind-Value="_value" Label="Act (Kirim)" Min="0"
+                         Immediate="true" HideSpinButtons="true"
+                         Variant="Variant.Outlined" Margin="Margin.Dense" />
+        <MudTextField T="string" @bind-Value="_note" Label="Ket" MaxLength="500"
+                      Lines="3" Immediate="true" Class="mt-3"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Batal</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Simpan</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string Site { get; set; } = string.Empty;
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public int? Value { get; set; }
+    [Parameter] public string? Note { get; set; }
+
+    private int? _value;
+    private string? _note;
+
+    protected override void OnInitialized()
+    {
+        _value = Value;
+        _note = Note;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Save() => MudDialog.Close(DialogResult.Ok(new EquipmentManualEdit(_value, _note)));
+
+    public sealed record EquipmentManualEdit(int? Value, string? Note);
+}

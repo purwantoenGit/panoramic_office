@@ -48,21 +48,6 @@ public sealed class PitStopMappingService(RfidEquipmentService equipmentService)
             WHERE [whouse_id] LIKE @WarehousePattern
               AND [issued_date] >= DATEADD(DAY, -@Days, CONVERT(date, GETDATE()))
               AND [issued_date] < DATEADD(DAY, 1, CONVERT(date, GETDATE()))
-              AND
-              (
-                  (@WarehousePrefix = N'FP' AND [dstrct_code] NOT IN
-                   (
-                       N'ABKL', N'ARIA', N'BAYA', N'BBSO', N'BEKB', N'BPOP',
-                       N'BRCS', N'BTSJ', N'ERKA', N'HMNT', N'KPCT', N'NPRL',
-                       N'INDO', N'KPCB', N'TCMM', N'TOPB'
-                   ))
-                  OR
-                  (@WarehousePrefix = N'FT' AND [dstrct_code] NOT IN
-                   (
-                       N'ABKL', N'BAYA', N'BBSO', N'BPOP', N'HMNT', N'NPRL',
-                       N'ARIA', N'ASMI', N'BEKB', N'BRCS', N'INDO', N'TCMM', N'TOPB'
-                   ))
-              )
             GROUP BY
                 UPPER(LTRIM(RTRIM(CONVERT(nvarchar(50), [dstrct_code])))),
                 UPPER(LTRIM(RTRIM(CONVERT(nvarchar(50), [whouse_id]))))

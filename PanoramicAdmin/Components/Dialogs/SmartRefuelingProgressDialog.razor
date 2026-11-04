@@ -1,0 +1,81 @@
+@using PanoramicAdmin.Models
+
+<MudDialog Class="smart-refueling-progress-dialog">
+    <TitleContent>
+        <div class="add-project-header smart-refueling-progress-header">
+            <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Rounded="true">
+                <MudIcon Icon="@Icons.Material.Filled.Insights" />
+            </MudAvatar>
+            <div>
+                <div class="smart-refueling-progress-title-row">
+                    <MudText Typo="Typo.h6" Class="add-project-title">Progress Implementasi</MudText>
+                    <span class="smart-refueling-progress-status">@Status</span>
+                </div>
+                <MudText Typo="Typo.caption" Class="add-project-subtitle">
+                    @Site · @Activity · @Period
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined" Class="mb-4">
+            Data aktual per saat ini. Pit Stop dan Fuel Truck berdasarkan transaksi 7 hari terakhir;
+            RFID berdasarkan transaksi 30 hari terakhir.
+        </MudAlert>
+        <div class="smart-refueling-progress-metrics">
+            <MudPaper Class="@MetricClass(Progress.PitStop)" Elevation="0">
+                <MudText Typo="Typo.body2" Class="smart-refueling-progress-title">Pit Stop Implemented</MudText>
+                <MudText Typo="Typo.h6" Class="smart-refueling-progress-value">
+                    @ValueText(Progress.PitStop)
+                    <span>@PercentText(Progress.PitStop)</span>
+                </MudText>
+            </MudPaper>
+            <MudPaper Class="@MetricClass(Progress.FuelTruck)" Elevation="0">
+                <MudText Typo="Typo.body2" Class="smart-refueling-progress-title">Fuel Truck Implemented</MudText>
+                <MudText Typo="Typo.h6" Class="smart-refueling-progress-value">
+                    @ValueText(Progress.FuelTruck)
+                    <span>@PercentText(Progress.FuelTruck)</span>
+                </MudText>
+            </MudPaper>
+            <MudPaper Class="@MetricClass(Progress.Rfid)" Elevation="0">
+                <MudText Typo="Typo.body2" Class="smart-refueling-progress-title">RFID Implemented</MudText>
+                <MudText Typo="Typo.h6" Class="smart-refueling-progress-value">
+                    @ValueText(Progress.Rfid)
+                    <span>@PercentText(Progress.Rfid)</span>
+                </MudText>
+            </MudPaper>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Close">Tutup</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired] public string Site { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Activity { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Period { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Status { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public SmartRefuelingLiveProgress Progress { get; set; } = default!;
+
+    private static string MetricClass(SmartRefuelingProgressMetric metric)
+    {
+        var state = metric.Total <= 0
+            ? "progress-na"
+            : metric.Implemented <= 0
+            ? "progress-zero"
+            : metric.Implemented >= metric.Total ? "progress-done" : "progress-partial";
+        return $"smart-refueling-progress-metric {state}";
+    }
+
+    private static string ValueText(SmartRefuelingProgressMetric metric) =>
+        metric.Total <= 0 ? "N/A" : $"{metric.Implemented} of {metric.Total}";
+
+    private static string PercentText(SmartRefuelingProgressMetric metric) =>
+        metric.Total <= 0 ? "(Tidak ada unit)" : $"({metric.Percentage:0.##}%)";
+
+    private void Close() => MudDialog.Close();
+}

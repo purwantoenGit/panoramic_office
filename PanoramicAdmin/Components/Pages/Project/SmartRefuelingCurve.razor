@@ -1,0 +1,317 @@
+@page "/smart-refueling-curve"
+@using System.Globalization
+@using PanoramicAdmin.Models
+@using PanoramicAdmin.ViewModels
+@inject SmartRefuelingImplementationViewModel ViewModel
+@inject ILogger<SmartRefuelingCurve> Logger
+
+<PageTitle>Curve Project | Panoramic Office</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.h4" Class="page-title">Curve Project</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Kurva progres per jobsite (per bulan) berdasarkan Tabel Implementasi.
+        </MudText>
+    </div>
+</div>
+
+@if (_isLoading)
+{
+    <MudPaper Class="section-card" Elevation="0">
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">Loading Data...mohon ditunggu!</MudText>
+    </MudPaper>
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="ma-4">
+        <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+            <span>@_error</span>
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="LoadAsync">Coba lagi</MudButton>
+        </div>
+    </MudAlert>
+}
+else if (_sites.Count == 0)
+{
+    <MudPaper Class="section-card" Elevation="0">
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            Belum ada site pada Tabel Implementasi Smart Refueling.
+        </MudText>
+    </MudPaper>
+}
+else
+{
+    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mb-2">
+        Plan: dari Tabel Implementasi (kuartal terjadwal selain Unplanned, dibagi rata per bulan). Actual: dari progres Sub Activity Auto CN - Auto HM di bawah grafik. Tiap fase berbobot sama (20%), sub-item dibagi rata di dalam fase. Progres tiap sub-item diisi 0-100% dan tercatat pada tanggal update.
+    </MudText>
+    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pt-3">
+    @foreach (var site in _sites)
+    {
+        <MudTabPanel Text="@site.Name" @key="site.Name">
+        <MudPaper Class="section-card curve-site-card" Elevation="0">
+            <div class="curve-site-header">
+                <MudText Typo="Typo.h6">@site.Name</MudText>
+                <span class="curve-legend"><i class="curve-dot curve-plan"></i>Plan</span>
+                <span class="curve-legend"><i class="curve-dot curve-actual"></i>Actual</span>
+                <MudText Typo="Typo.caption" Class="ml-auto">
+                    Plan @site.PlanNow.ToString("0")% · Actual @ActualOf(site.Name)[CurrentMonth].ToString("0")% (bulan ini)
+                </MudText>
+            </div>
+            @CurveSvg(site)
+            @Checklist(site.Name)
+            <div class="smart-refueling-implementation-table-wrap">
+                <table class="smart-refueling-implementation-table" style="min-width:0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Langkah (Activity)</th>
+                            @foreach (var period in SmartRefuelingImplementationCatalog.Periods)
+                            {
+                                <th scope="col">@period</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in site.Rows)
+                        {
+                            <tr>
+                                <th scope="row">@row.Activity</th>
+                                @foreach (var status in row.Statuses)
+                                {
+                                    <td>
+                                        @if (!string.IsNullOrWhiteSpace(status))
+                                        {
+                                            <span class="@StatusClass(status)">@status</span>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </MudPaper>
+        </MudTabPanel>
+    }
+    </MudTabs>
+}
+
+@code {
+    private const int StartYear = 2026;
+    private const int MonthCount = 24;
+
+    private static readonly string[] MonthNames = CultureInfo.GetCultureInfo("id-ID").DateTimeFormat.AbbreviatedMonthNames;
+
+    private List<SiteCurve> _sites = [];
+    private IReadOnlyDictionary<(string Site, string Key), CurveProgressValue> _progress =
+        new Dictionary<(string, string), CurveProgressValue>();
+    private bool _isLoading = true;
+    private string? _error;
+
+    private static int CurrentMonth
+    {
+        get
+        {
+            var today = DateTime.Today;
+            return Math.Clamp((today.Year - StartYear) * 12 + today.Month - 1, 0, MonthCount - 1);
+        }
+    }
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            await ViewModel.LoadAsync();
+            _progress = await ViewModel.GetCurveProgressAsync();
+            _sites = ViewModel.Items
+                .GroupBy(item => item.Site, StringComparer.OrdinalIgnoreCase)
+                .Select(group => BuildCurve(group.Key, group.ToList()))
+                .ToList();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load curve project data.");
+            _error = "Data Curve Project gagal dimuat.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static SiteCurve BuildCurve(string name, List<SmartRefuelingImplementationRow> rows)
+    {
+        var plan = new double[MonthCount];
+        foreach (var row in rows)
+        {
+            var scheduled = row.Statuses.Count(IsScheduled);
+            if (scheduled == 0)
+            {
+                continue;
+            }
+
+            for (var month = 0; month < MonthCount; month++)
+            {
+                for (var quarter = 0; quarter < row.Statuses.Count; quarter++)
+                {
+                    var status = row.Statuses[quarter];
+                    if (!IsScheduled(status))
+                    {
+                        continue;
+                    }
+
+                    var elapsed = Math.Clamp((month - quarter * 3 + 1) / 3.0, 0, 1);
+                    var weight = elapsed / scheduled * 100.0 / rows.Count;
+                    plan[month] += weight;
+                }
+            }
+        }
+
+        return new SiteCurve(name, rows, plan, plan[CurrentMonth]);
+    }
+
+    private int PercentOf(string site, string key) =>
+        _progress.TryGetValue((site.ToUpperInvariant(), key), out var value) ? value.Percent : 0;
+
+    private double PhasePercent(string site, int phaseIndex) =>
+        SmartRefuelingCurveCatalog.Phases[phaseIndex].LeafKeys(phaseIndex).Average(key => (double)PercentOf(site, key));
+
+    private double OverallPercent(string site) =>
+        Enumerable.Range(0, SmartRefuelingCurveCatalog.Phases.Count).Average(index => PhasePercent(site, index));
+
+    private double[] ActualOf(string site)
+    {
+        var actual = new double[MonthCount];
+        var phases = SmartRefuelingCurveCatalog.Phases;
+        for (var phaseIndex = 0; phaseIndex < phases.Count; phaseIndex++)
+        {
+            var keys = phases[phaseIndex].LeafKeys(phaseIndex).ToList();
+            foreach (var key in keys)
+            {
+                if (!_progress.TryGetValue((site.ToUpperInvariant(), key), out var value) || value.Percent == 0)
+                {
+                    continue;
+                }
+
+                var start = Math.Max((value.UpdatedOn.Year - StartYear) * 12 + value.UpdatedOn.Month - 1, 0);
+                for (var month = start; month < MonthCount; month++)
+                {
+                    actual[month] += value.Percent / (double)keys.Count / phases.Count;
+                }
+            }
+        }
+
+        return actual;
+    }
+
+    private async Task SaveProgressAsync(string site, string key, int? percent)
+    {
+        var value = Math.Clamp(percent ?? 0, 0, 100);
+        if (await ViewModel.SaveCurveProgressAsync(site, key, value))
+        {
+            var updated = new Dictionary<(string Site, string Key), CurveProgressValue>(_progress)
+            {
+                [(site.ToUpperInvariant(), key)] = new CurveProgressValue(value, DateTime.Today)
+            };
+            _progress = updated;
+        }
+    }
+
+    private RenderFragment Checklist(string site) => __builder =>
+    {
+        var phases = SmartRefuelingCurveCatalog.Phases;
+        <MudText Typo="Typo.subtitle1" Class="mt-2 mb-1">
+            Sub Activity Auto CN - Auto HM <span class="eq-dash-plan">· Total @OverallPercent(site).ToString("0")%</span>
+        </MudText>
+        <MudExpansionPanels MultiExpansion="true" Elevation="0" Class="curve-checklist">
+            @for (var phaseIndex = 0; phaseIndex < phases.Count; phaseIndex++)
+            {
+                var phase = phases[phaseIndex];
+                var pIndex = phaseIndex;
+                <MudExpansionPanel Text="@($"{phase.Name} — {PhasePercent(site, pIndex):0}%")">
+                    @for (var groupIndex = 0; groupIndex < phase.Groups.Count; groupIndex++)
+                    {
+                        var group = phase.Groups[groupIndex];
+                        var gIndex = groupIndex;
+                        var labels = group.Items.Count == 0 ? [group.Title] : group.Items;
+                        if (group.Items.Count > 0)
+                        {
+                            <div class="curve-group-title">@group.Title</div>
+                        }
+                        @for (var itemIndex = 0; itemIndex < labels.Count; itemIndex++)
+                        {
+                            var key = SmartRefuelingCurveCatalog.Key(pIndex, gIndex, itemIndex);
+                            var label = labels[itemIndex];
+                            _progress.TryGetValue((site.ToUpperInvariant(), key), out var saved);
+                            <div class="curve-item-row">
+                                <span class="curve-item-label">@label</span>
+                                <MudNumericField T="int?" Value="@(saved?.Percent ?? 0)"
+                                                 ValueChanged="@((int? v) => SaveProgressAsync(site, key, v))"
+                                                 Min="0" Max="100" HideSpinButtons="true" Adornment="Adornment.End"
+                                                 AdornmentText="%" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                 Class="curve-item-input" />
+                                <span class="curve-item-date">@(saved is null ? "-" : saved.UpdatedOn.ToString("dd MMM yyyy", CultureInfo.GetCultureInfo("id-ID")))</span>
+                            </div>
+                        }
+                    }
+                </MudExpansionPanel>
+            }
+        </MudExpansionPanels>
+    };
+
+    private static bool IsScheduled(string? status) =>
+        !string.IsNullOrWhiteSpace(status) && status != "Unplanned";
+
+    private static string StatusClass(string status) => status switch
+    {
+        "Done" => "smart-refueling-status smart-refueling-status-done",
+        "Progress" => "smart-refueling-status smart-refueling-status-progress",
+        "Overdue" => "smart-refueling-status smart-refueling-status-overdue",
+        "Plan" => "smart-refueling-status smart-refueling-status-plan",
+        _ => "smart-refueling-status smart-refueling-status-unplanned"
+    };
+
+    private static string Num(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private static MarkupString SvgText(double x, double y, string anchor, string content) =>
+        new($"<text x=\"{Num(x)}\" y=\"{Num(y)}\" text-anchor=\"{anchor}\" class=\"curve-label\">{System.Net.WebUtility.HtmlEncode(content)}</text>");
+
+    private static string Points(double[] values, int count, double left, double top, double width, double height)
+    {
+        var step = width / (MonthCount - 1);
+        return string.Join(' ', Enumerable.Range(0, count).Select(i =>
+            $"{Num(left + i * step)},{Num(top + height - Math.Min(values[i], 100) / 100 * height)}"));
+    }
+
+    private RenderFragment CurveSvg(SiteCurve site) => __builder =>
+    {
+        const double left = 40, top = 10, width = 780, height = 170;
+        var step = width / (MonthCount - 1);
+        var now = CurrentMonth;
+        <svg class="curve-svg" viewBox="0 0 840 220" role="img" aria-label="@($"Kurva progres {site.Name}")">
+            @foreach (var tick in new[] { 0, 25, 50, 75, 100 })
+            {
+                var y = top + height - tick / 100.0 * height;
+                <line x1="@Num(left)" x2="@Num(left + width)" y1="@Num(y)" y2="@Num(y)" class="curve-grid" />
+                @SvgText(left - 6, y + 3, "end", $"{tick}%")
+            }
+            @for (var month = 0; month < MonthCount; month += 3)
+            {
+                @SvgText(left + month * step, 205, "middle", $"{MonthNames[month % 12]} {(StartYear + month / 12) % 100}")
+            }
+            <line x1="@Num(left + now * step)" x2="@Num(left + now * step)" y1="@Num(top)" y2="@Num(top + height)" class="curve-today" />
+            <polyline points="@Points(site.Plan, MonthCount, left, top, width, height)" class="curve-line curve-plan-line" />
+            <polyline points="@Points(ActualOf(site.Name), now + 1, left, top, width, height)" class="curve-line curve-actual-line" />
+        </svg>
+    };
+
+    private sealed record SiteCurve(
+        string Name,
+        IReadOnlyList<SmartRefuelingImplementationRow> Rows,
+        double[] Plan,
+        double PlanNow);
+}

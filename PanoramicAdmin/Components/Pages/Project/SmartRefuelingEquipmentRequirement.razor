@@ -1,0 +1,283 @@
+@page "/smart-refueling-equipment-requirement"
+@using PanoramicAdmin.ViewModels
+@inject SmartRefuelingImplementationViewModel ViewModel
+@inject ILogger<SmartRefuelingEquipmentRequirement> Logger
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@using PanoramicAdmin.Components.Dialogs
+
+<PageTitle>Equipment Requirement | Panoramic Office</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.h4" Class="page-title">Equipment Requirement</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Kebutuhan peralatan implementasi Smart Refueling per site pada Tabel Implementasi.
+        </MudText>
+    </div>
+</div>
+
+@if (!_isLoading && _error is null && _rows.Count > 0)
+{
+    <MudGrid Spacing="2" Class="smart-refueling-dashboard">
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="smart-refueling-dashboard-card" Elevation="0">
+                <MudText Typo="Typo.overline">Total Site</MudText>
+                <MudText Typo="Typo.h4">@_rows.Count</MudText>
+                <MudText Typo="Typo.caption">Pada Tabel Implementasi</MudText>
+            </MudPaper>
+        </MudItem>
+        @DashboardCard("Jumlah Pit Stop", _rows.Sum(r => r.PitStopCount), _rows.Sum(r => r.PitStopAct), _rows.Sum(r => r.Manual.PitStop.GetValueOrDefault()))
+        @DashboardCard("Jumlah FT", _rows.Sum(r => r.FuelTruckCount), _rows.Sum(r => r.FuelTruckAct), _rows.Sum(r => r.Manual.FuelTruck.GetValueOrDefault()))
+        @DashboardCard("RFID Tag", _rows.Sum(RfidPlan), _rows.Sum(RfidAct), _rows.Sum(r => RfidManual(r.Manual).GetValueOrDefault()))
+    </MudGrid>
+}
+<MudPaper Class="section-card smart-refueling-implementation-card" Elevation="0">
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            Loading Data...mohon ditunggu!
+        </MudText>
+    }
+    else if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="ma-4">
+            <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                <span>@_error</span>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="LoadAsync">Coba lagi</MudButton>
+            </div>
+        </MudAlert>
+    }
+    else if (_rows.Count == 0)
+    {
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            Belum ada site pada Tabel Implementasi Smart Refueling.
+        </MudText>
+    }
+    else
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="px-4 pt-3 d-block">
+            Plan: kebutuhan dari data sistem. Act (Kirim): diisi manual per site (klik sel Act (Kirim) atau Ket untuk mengubah). Act: Pit Stop/FT yang sudah RFID (7 hari terakhir); RFID Tag dari unit dengan transaksi RFID 30 hari terakhir. RFID Tag = Anti Metal (unit HD/DT pada site tanpa Pit Stop) + Segel (unit RFID Tag, tidak termasuk HD pada site yang hanya memiliki Pit Stop tanpa FT).
+        </MudText>
+        <div class="smart-refueling-implementation-table-wrap">
+            <table class="smart-refueling-implementation-table equipment-requirement-table @(ShowSticker ? null : "eq-no-sticker")" style="min-width:0">
+                <thead>
+                    <tr>
+                        <th rowspan="2" scope="col">Sites</th>
+                        <th colspan="4" scope="colgroup" class="eq-g0">Jumlah Pit Stop</th>
+                        <th colspan="4" scope="colgroup" class="eq-g1">Jumlah FT</th>
+                        <th colspan="4" scope="colgroup" class="eq-g2">RFID Tag</th>
+                        @if (ShowSticker)
+                        {
+                            <th colspan="4" scope="colgroup" class="eq-g3">Tag Sticker</th>
+                        }
+                    </tr>
+                    <tr>
+                        @for (var group = 0; group < 5; group++)
+                        {
+                            if (group == 4 || (group == 3 && !ShowSticker))
+                            {
+                                continue;
+                            }
+
+                            var headClass = $"eq-g{group}";
+                            <th scope="col" class="@headClass">Plan<br />(by System)</th>
+                            <th scope="col" class="@headClass">Act<br />(by System)</th>
+                            <th scope="col" class="@headClass">Act<br />(Kirim)</th>
+                            <th scope="col" class="@headClass">Ket</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _rows)
+                    {
+                        <tr @key="row.Site">
+                            <th scope="row">@row.Site</th>
+                            <td>@Num(row.PitStopCount)</td>
+                            <td class="@ActClass(row.PitStopCount, row.PitStopAct)">@Num(row.PitStopAct)</td>
+                            @ManualCell(row, row.Manual.PitStop, 0)
+                            @KetCell(row, row.Manual.KetPitStop, 0)
+                            <td>@Num(row.FuelTruckCount)</td>
+                            <td class="@ActClass(row.FuelTruckCount, row.FuelTruckAct)">@Num(row.FuelTruckAct)</td>
+                            @ManualCell(row, row.Manual.FuelTruck, 1)
+                            @KetCell(row, row.Manual.KetFuelTruck, 1)
+                            <td>@Num(RfidPlan(row))</td>
+                            <td class="@ActClass(RfidPlan(row), RfidAct(row))">@Num(RfidAct(row))</td>
+                            @ManualCell(row, RfidManual(row.Manual), 2)
+                            @KetCell(row, RfidKet(row.Manual), 2)
+                            @if (ShowSticker)
+                            {
+                                <td>@(row.TagSticker?.ToString() ?? "-")</td>
+                                <td>@(row.TagStickerAct?.ToString() ?? "-")</td>
+                                @ManualCell(row, row.Manual.TagSticker, 3)
+                                @KetCell(row, row.Manual.KetTagSticker, 3)
+                            }
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="smart-refueling-total-row">
+                        <th scope="row">Total</th>
+                        <td>@Num(_rows.Sum(row => row.PitStopCount))</td>
+                        <td class="@ActClass(_rows.Sum(row => row.PitStopCount), _rows.Sum(row => row.PitStopAct))">@Num(_rows.Sum(row => row.PitStopAct))</td>
+                        <td class="@ActClass(_rows.Sum(row => row.PitStopCount), _rows.Sum(row => row.Manual.PitStop.GetValueOrDefault()))">@_rows.Sum(row => row.Manual.PitStop.GetValueOrDefault())</td>
+                        <td></td>
+                        <td>@Num(_rows.Sum(row => row.FuelTruckCount))</td>
+                        <td class="@ActClass(_rows.Sum(row => row.FuelTruckCount), _rows.Sum(row => row.FuelTruckAct))">@Num(_rows.Sum(row => row.FuelTruckAct))</td>
+                        <td class="@ActClass(_rows.Sum(row => row.FuelTruckCount), _rows.Sum(row => row.Manual.FuelTruck.GetValueOrDefault()))">@_rows.Sum(row => row.Manual.FuelTruck.GetValueOrDefault())</td>
+                        <td></td>
+                        <td>@Num(_rows.Sum(RfidPlan))</td>
+                        <td class="@ActClass(_rows.Sum(RfidPlan), _rows.Sum(RfidAct))">@Num(_rows.Sum(RfidAct))</td>
+                        <td class="@ActClass(_rows.Sum(RfidPlan), _rows.Sum(row => RfidManual(row.Manual).GetValueOrDefault()))">@_rows.Sum(row => RfidManual(row.Manual).GetValueOrDefault())</td>
+                        <td></td>
+                        @if (ShowSticker)
+                        {
+                            <td>-</td>
+                            <td>-</td>
+                            <td>@_rows.Sum(row => row.Manual.TagSticker.GetValueOrDefault())</td>
+                            <td></td>
+                        }
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    }
+</MudPaper>
+
+@code {
+    private IReadOnlyList<EquipmentRequirementRow> _rows = [];
+    private bool _isLoading = true;
+    private string? _error;
+    private const bool ShowSticker = false;
+
+    private static string Num(int value) => value == 0 ? "-" : value.ToString();
+
+    private static int PlanOf(EquipmentRequirementRow row, int index) => index switch
+    {
+        0 => row.PitStopCount,
+        1 => row.FuelTruckCount,
+        2 => RfidPlan(row),
+        3 => row.TagSticker ?? 0,
+        _ => row.TagSegel
+    };
+
+    private RenderFragment DashboardCard(string title, int plan, int act, int kirim) => __builder =>
+    {
+        var state = plan <= 0 ? null : act < plan ? "smart-refueling-dashboard-overdue" : "smart-refueling-dashboard-done";
+        <MudItem xs="6" sm="3">
+            <MudPaper Class="@($"smart-refueling-dashboard-card {state}")" Elevation="0">
+                <MudText Typo="Typo.overline">@title</MudText>
+                <MudText Typo="Typo.h4">@act.ToString("N0") <span class="eq-dash-plan">/ @plan.ToString("N0")</span></MudText>
+                <MudText Typo="Typo.caption">
+                    Act (by System): @(plan > 0 ? $"{act * 100.0 / plan:0.#}%" : "-") dari Plan · Act (Kirim): @kirim.ToString("N0")
+                </MudText>
+            </MudPaper>
+        </MudItem>
+    };
+
+    private static int RfidPlan(EquipmentRequirementRow row) => row.TagAntiMetal + row.TagSegel;
+
+    private static int RfidAct(EquipmentRequirementRow row) => row.TagAntiMetalAct + row.TagSegelAct;
+
+    private static int? RfidManual(EquipmentManualValues m) =>
+        m.TagAntiMetal is null && m.TagSegel is null ? null : m.TagAntiMetal.GetValueOrDefault() + m.TagSegel.GetValueOrDefault();
+
+    private static string? RfidKet(EquipmentManualValues m) =>
+        string.IsNullOrWhiteSpace(m.KetTagSegel) ? m.KetTagAntiMetal : m.KetTagSegel;
+
+    private static string? ManualClass(int plan, int? manual) =>
+        manual is null ? null : ActClass(plan, manual.Value);
+
+    private static string? ActClass(int plan, int act) =>
+        plan <= 0 ? null : act < plan ? "eq-act-low" : "eq-act-ok";
+
+    private static readonly string[] GroupLabels =
+        ["Jumlah Pit Stop", "Jumlah FT", "RFID Tag", "Tag Sticker", "RFID Tag"];
+
+    private RenderFragment ManualCell(EquipmentRequirementRow row, int? value, int index) => __builder =>
+    {
+        <td class="smart-refueling-editable-cell @ManualClass(PlanOf(row, index), value)" title="Klik untuk ubah"
+            @onclick="@(() => EditAsync(row, index))">
+            @(value?.ToString() ?? "-")
+        </td>
+    };
+
+    private RenderFragment KetCell(EquipmentRequirementRow row, string? value, int index) => __builder =>
+    {
+        <td class="smart-refueling-ket-cell smart-refueling-editable-cell" title="Klik untuk ubah"
+            @onclick="@(() => EditAsync(row, index))">
+            @(string.IsNullOrWhiteSpace(value) ? "-" : value)
+        </td>
+    };
+
+    private async Task EditAsync(EquipmentRequirementRow row, int index)
+    {
+        var m = row.Manual;
+        int?[] numbers = [m.PitStop, m.FuelTruck, m.TagAntiMetal, m.TagSticker, m.TagSegel];
+        string?[] notes = [m.KetPitStop, m.KetFuelTruck, m.KetTagAntiMetal, m.KetTagSticker, m.KetTagSegel];
+
+        if (index == 2)
+        {
+            numbers[4] = RfidManual(m);
+            notes[4] = RfidKet(m);
+            numbers[2] = null;
+            notes[2] = null;
+            index = 4;
+        }
+
+        var parameters = new DialogParameters
+        {
+            ["Site"] = row.Site,
+            ["Label"] = GroupLabels[index],
+            ["Value"] = numbers[index],
+            ["Note"] = notes[index]
+        };
+        var dialog = await DialogService.ShowAsync<EquipmentManualDialog>(
+            $"Act (Kirim) - {GroupLabels[index]}", parameters,
+            new DialogOptions { CloseOnEscapeKey = true, FullWidth = true, MaxWidth = MaxWidth.ExtraSmall });
+        var result = await dialog.Result;
+        if (result is not { Canceled: false, Data: EquipmentManualDialog.EquipmentManualEdit edit })
+        {
+            return;
+        }
+
+        if (edit.Value < 0)
+        {
+            Snackbar.Add("Act (Kirim) tidak boleh negatif.", Severity.Warning);
+            return;
+        }
+
+        numbers[index] = edit.Value;
+        notes[index] = string.IsNullOrWhiteSpace(edit.Note) ? null : edit.Note.Trim();
+        var values = new EquipmentManualValues(
+            numbers[0], numbers[1], numbers[2], numbers[3], numbers[4],
+            notes[0], notes[1], notes[2], notes[3], notes[4]);
+        if (await ViewModel.SaveManualActualAsync(row.Site, values))
+        {
+            _rows = _rows.Select(item => item.Site == row.Site ? item with { Manual = values } : item).ToList();
+        }
+    }
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            await ViewModel.LoadAsync();
+            _rows = await ViewModel.GetEquipmentRequirementsAsync(
+                ViewModel.Items.Select(item => item.Site));
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load equipment requirement data.");
+            _error = "Data Equipment Requirement gagal dimuat. Periksa koneksi data RFID.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

@@ -2,6 +2,55 @@
 @using PanoramicAdmin.ViewModels
 @inject RfidTagInstallViewModel ViewModel
 
+@if (!ViewModel.IsLoading && ViewModel.LoadError is null && ViewModel.Districts.Count > 0)
+{
+    var summary = GetSummary();
+    <MudGrid Spacing="2" Class="smart-refueling-dashboard">
+        <MudItem xs="6" sm="4" lg="2">
+            <MudPaper Class="smart-refueling-dashboard-card" Elevation="0">
+                <MudText Typo="Typo.overline">Total District</MudText>
+                <MudText Typo="Typo.h4">@ViewModel.Districts.Count</MudText>
+                <MudText Typo="Typo.caption">@summary.CellCount sel EGI</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="4" lg="2">
+            <MudPaper Class="smart-refueling-dashboard-card" Elevation="0">
+                <MudText Typo="Typo.overline">Total Unit</MudText>
+                <MudText Typo="Typo.h4">@summary.TotalUnits.ToString("N0")</MudText>
+                <MudText Typo="Typo.caption">Auto (System)</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="4" lg="2">
+            <MudPaper Class="smart-refueling-dashboard-card smart-refueling-dashboard-done" Elevation="0">
+                <MudText Typo="Typo.overline">Manual (Claim Site)</MudText>
+                <MudText Typo="Typo.h4">@summary.ManualUnits.ToString("N0")</MudText>
+                <MudText Typo="Typo.caption">@FormatPercent(summary.ManualUnits, summary.TotalUnits) dari total unit</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="4" lg="2">
+            <MudPaper Class="smart-refueling-dashboard-card smart-refueling-dashboard-progress" Elevation="0">
+                <MudText Typo="Typo.overline">Auto CN 30 Hari</MudText>
+                <MudText Typo="Typo.h4">@summary.AutoUnits.ToString("N0")</MudText>
+                <MudText Typo="Typo.caption">@FormatPercent(summary.AutoUnits, summary.TotalUnits) dari total unit</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="4" lg="2">
+            <MudPaper Class="smart-refueling-dashboard-card smart-refueling-dashboard-done" Elevation="0">
+                <MudText Typo="Typo.overline">Sel Lengkap</MudText>
+                <MudText Typo="Typo.h4">@summary.GreenCells</MudText>
+                <MudText Typo="Typo.caption">Manual ≥ unit sistem</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="6" sm="4" lg="2">
+            <MudPaper Class="smart-refueling-dashboard-card smart-refueling-dashboard-overdue" Elevation="0">
+                <MudText Typo="Typo.overline">Sel Belum Lengkap</MudText>
+                <MudText Typo="Typo.h4">@(summary.OrangeCells + summary.RedCells)</MudText>
+                <MudText Typo="Typo.caption">@summary.OrangeCells sebagian · @summary.RedCells belum diklaim</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
 <MudPaper Class="section-card project-list-card" Elevation="0">
     <div class="section-heading project-list-heading">
         <div>
@@ -169,6 +218,48 @@
     protected override Task OnInitializedAsync() => ViewModel.LoadAsync();
 
     private Task OnSearchChanged(string? text) => ViewModel.LoadAsync(text);
+
+    private sealed record RfidSummary(
+        int CellCount, int TotalUnits, int ManualUnits, int AutoUnits,
+        int GreenCells, int OrangeCells, int RedCells);
+
+    private RfidSummary GetSummary()
+    {
+        int cells = 0, total = 0, manual = 0, auto = 0, green = 0, orange = 0, red = 0;
+        foreach (var district in ViewModel.Districts)
+        {
+            foreach (var equipClass in ViewModel.EquipClassGroups)
+            {
+                foreach (var egi in equipClass.EgiColumns)
+                {
+                    var unitCount = district.Counts.GetValueOrDefault(new RfidPivotKey(equipClass.Code, egi));
+                    var manualCount = ViewModel.GetManualCount(
+                        new RfidManualUnitKey(district.District, equipClass.Code, egi)).GetValueOrDefault();
+                    var autoCount = ViewModel.GetRfidInputCount(district.District, equipClass.Code, egi);
+                    if (unitCount == 0 && manualCount == 0)
+                    {
+                        continue;
+                    }
+
+                    cells++;
+                    total += unitCount;
+                    manual += manualCount;
+                    auto += autoCount;
+                    switch (GetManualCountStatusClass(unitCount, manualCount))
+                    {
+                        case "rfid-pivot-cell-status-green": green++; break;
+                        case "rfid-pivot-cell-status-orange": orange++; break;
+                        case "rfid-pivot-cell-status-red": red++; break;
+                    }
+                }
+            }
+        }
+
+        return new RfidSummary(cells, total, manual, auto, green, orange, red);
+    }
+
+    private static string FormatPercent(int value, int total) =>
+        total == 0 ? "0%" : $"{(double)value / total * 100:0.#}%";
 
     private void OnDistrictsChanged(IReadOnlyCollection<string> districts) =>
         ViewModel.SetSelectedDistricts(districts);

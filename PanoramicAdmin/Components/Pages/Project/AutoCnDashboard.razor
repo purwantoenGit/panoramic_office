@@ -1,0 +1,318 @@
+@page "/auto-cn-dashboard"
+@using System.Globalization
+@using PanoramicAdmin.Models
+@using PanoramicAdmin.ViewModels
+@inject SmartRefuelingImplementationViewModel ImplementationViewModel
+@inject PitStopMappingViewModel PitStopViewModel
+@inject RfidTagInstallViewModel RfidViewModel
+@inject ILogger<AutoCnDashboard> Logger
+
+<PageTitle>Dashboard Auto CN | Panoramic Office</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.h4" Class="page-title">Dashboard Auto CN</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Ringkasan Roadmap Project, Equipment Requirement, Curve Project, Pit Stop &amp; FT Mapping dan RFID Tag Install.
+        </MudText>
+    </div>
+</div>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+
+@* Roadmap Project *@
+<div class="dash-section-title">
+    <MudText Typo="Typo.h6">Roadmap Project</MudText>
+    <MudLink Href="/smart-refueling-roadmap">Buka</MudLink>
+</div>
+@if (_roadmapError is not null)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">@_roadmapError</MudAlert>
+}
+else if (_roadmapLoaded)
+{
+    <MudGrid Spacing="2" Class="smart-refueling-dashboard">
+        @Card("Done", _doneCount.ToString(), "Status kuartal selesai", "smart-refueling-dashboard-done")
+        @Card("Progress", _progressCount.ToString(), "Sedang berjalan", "smart-refueling-dashboard-progress")
+        @Card("Overdue", _overdueCount.ToString(), "Melewati jadwal", "smart-refueling-dashboard-overdue")
+        @Card("Plan", _planCount.ToString(), "Terjadwal", null)
+        @Card("Unplanned", _unplannedCount.ToString(), "Tanpa jadwal", null)
+        @Card("Rata-rata Ach", _avgAch is null ? "-" : $"{_avgAch.Value:0.#}%", $"{_sites.Count} jobsite", null)
+    </MudGrid>
+}
+
+@* Equipment Requirement *@
+<div class="dash-section-title">
+    <MudText Typo="Typo.h6">Equipment Requirement</MudText>
+    <MudLink Href="/smart-refueling-equipment-requirement">Buka</MudLink>
+</div>
+@if (_equipmentLoaded)
+{
+    <MudGrid Spacing="2" Class="smart-refueling-dashboard">
+        @EquipCard("Jumlah Pit Stop", _equipment.Sum(r => r.PitStopCount), _equipment.Sum(r => r.PitStopAct), _equipment.Sum(r => r.Manual.PitStop.GetValueOrDefault()))
+        @EquipCard("Jumlah FT", _equipment.Sum(r => r.FuelTruckCount), _equipment.Sum(r => r.FuelTruckAct), _equipment.Sum(r => r.Manual.FuelTruck.GetValueOrDefault()))
+        @EquipCard("RFID Tag", _equipment.Sum(r => r.TagAntiMetal + r.TagSegel), _equipment.Sum(r => r.TagAntiMetalAct + r.TagSegelAct), _equipment.Sum(r => r.Manual.TagAntiMetal.GetValueOrDefault() + r.Manual.TagSegel.GetValueOrDefault()))
+    </MudGrid>
+}
+
+@* Curve Project *@
+<div class="dash-section-title">
+    <MudText Typo="Typo.h6">Curve Project</MudText>
+    <MudLink Href="/smart-refueling-curve">Buka</MudLink>
+</div>
+@if (_curveLoaded)
+{
+    <MudPaper Class="section-card pa-3" Elevation="0">
+        <table class="smart-refueling-implementation-table dash-curve-table" style="min-width:0">
+            <thead>
+                <tr>
+                    <th scope="col">Jobsite</th>
+                    <th scope="col">Plan (bulan ini)</th>
+                    <th scope="col">Actual</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var site in _sites)
+                {
+                    var plan = PlanNow(site);
+                    var actual = ActualNow(site);
+                    <tr>
+                        <th scope="row">@site</th>
+                        <td>@Bar(plan, Color.Default)</td>
+                        <td>@Bar(actual, actual >= plan ? Color.Success : Color.Error)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </MudPaper>
+}
+
+@* Pit Stop & FT Mapping *@
+<div class="dash-section-title">
+    <MudText Typo="Typo.h6">Pit Stop &amp; FT Mapping</MudText>
+    <MudLink Href="/pit-stop-ft-mapping">Buka</MudLink>
+</div>
+@if (_pitStopError is not null)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">@_pitStopError</MudAlert>
+}
+else if (_pitStopLoaded)
+{
+    <MudGrid Spacing="2" Class="smart-refueling-dashboard">
+        @Card("District Pit Stop", PitStopViewModel.DistrictCount.ToString(), $"{PitStopViewModel.TotalDst} DST", null)
+        @Card("Pit Stop RFID", $"{PitStopViewModel.RfidInstalled:0.#}%", "RFID terpasang", PitStopViewModel.RfidInstalled >= 100 ? "smart-refueling-dashboard-done" : "smart-refueling-dashboard-progress")
+        @Card("District FT", PitStopViewModel.FuelTruckDistrictCount.ToString(), $"{PitStopViewModel.FuelTruckTotalDst} DST", null)
+        @Card("FT RFID", $"{PitStopViewModel.FuelTruckRfidInstalled:0.#}%", "RFID terpasang", PitStopViewModel.FuelTruckRfidInstalled >= 100 ? "smart-refueling-dashboard-done" : "smart-refueling-dashboard-progress")
+    </MudGrid>
+}
+
+@* RFID Tag Install *@
+<div class="dash-section-title">
+    <MudText Typo="Typo.h6">RFID Tag Install</MudText>
+    <MudLink Href="/rfid-tag-install">Buka</MudLink>
+</div>
+@if (_rfidError is not null)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">@_rfidError</MudAlert>
+}
+else if (_rfidLoaded)
+{
+    <MudGrid Spacing="2" Class="smart-refueling-dashboard">
+        @Card("Total District", RfidViewModel.Districts.Count.ToString(), "District", null)
+        @Card("Total Unit", _rfidTotal.ToString("N0"), "Auto (System)", null)
+        @Card("Manual (Claim Site)", _rfidManual.ToString("N0"), Percent(_rfidManual, _rfidTotal) + " dari total unit", "smart-refueling-dashboard-done")
+        @Card("Auto CN 30 Hari", _rfidAuto.ToString("N0"), Percent(_rfidAuto, _rfidTotal) + " dari total unit", "smart-refueling-dashboard-progress")
+    </MudGrid>
+}
+
+@code {
+    private const int StartYear = 2026;
+    private const int MonthCount = 24;
+
+    private bool _isLoading = true;
+    private bool _roadmapLoaded, _equipmentLoaded, _curveLoaded, _pitStopLoaded, _rfidLoaded;
+    private string? _roadmapError, _pitStopError, _rfidError;
+    private int _doneCount, _progressCount, _overdueCount, _planCount, _unplannedCount;
+    private double? _avgAch;
+    private int _rfidTotal, _rfidManual, _rfidAuto;
+    private List<string> _sites = [];
+    private IReadOnlyList<EquipmentRequirementRow> _equipment = [];
+    private IReadOnlyDictionary<(string Site, string Key), CurveProgressValue> _progress =
+        new Dictionary<(string, string), CurveProgressValue>();
+
+    private static int CurrentMonth
+    {
+        get
+        {
+            var today = DateTime.Today;
+            return Math.Clamp((today.Year - StartYear) * 12 + today.Month - 1, 0, MonthCount - 1);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadRoadmapAsync();
+            await LoadSafeAsync(LoadPitStopAsync, "Pit Stop & FT Mapping", message => _pitStopError = message);
+            await LoadSafeAsync(LoadRfidAsync, "RFID Tag Install", message => _rfidError = message);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadSafeAsync(Func<Task> load, string name, Action<string> onError)
+    {
+        try
+        {
+            await load();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load dashboard section {Section}.", name);
+            onError($"Data {name} gagal dimuat.");
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadRoadmapAsync()
+    {
+        try
+        {
+            await ImplementationViewModel.LoadAsync();
+            _sites = ImplementationViewModel.Items
+                .Select(item => item.Site)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            _doneCount = ImplementationViewModel.DoneCount;
+            _progressCount = ImplementationViewModel.ProgressCount;
+            _overdueCount = ImplementationViewModel.OverdueCount;
+            _planCount = ImplementationViewModel.PlanCount;
+            _unplannedCount = ImplementationViewModel.UnplannedCount;
+            _roadmapLoaded = true;
+            _curveLoaded = true;
+            StateHasChanged();
+
+            _progress = await ImplementationViewModel.GetCurveProgressAsync();
+            StateHasChanged();
+
+            var achievements = await ImplementationViewModel.GetAchievementsAsync(_sites);
+            var values = achievements.Values.Where(value => value is not null).Select(value => value!.Value).ToList();
+            _avgAch = values.Count == 0 ? null : values.Average();
+            StateHasChanged();
+
+            _equipment = await ImplementationViewModel.GetEquipmentRequirementsAsync(_sites);
+            _equipmentLoaded = true;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load Auto CN dashboard roadmap data.");
+            _roadmapError = "Data Roadmap/Equipment gagal dimuat.";
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadPitStopAsync()
+    {
+        await PitStopViewModel.LoadAllAsync();
+        _pitStopLoaded = true;
+    }
+
+    private async Task LoadRfidAsync()
+    {
+        await RfidViewModel.LoadAsync();
+        foreach (var district in RfidViewModel.Districts)
+        {
+            foreach (var equipClass in RfidViewModel.EquipClassGroups)
+            {
+                foreach (var egi in equipClass.EgiColumns)
+                {
+                    _rfidTotal += district.Counts.GetValueOrDefault(new RfidPivotKey(equipClass.Code, egi));
+                    _rfidManual += RfidViewModel.GetManualCount(
+                        new RfidManualUnitKey(district.District, equipClass.Code, egi)).GetValueOrDefault();
+                    _rfidAuto += RfidViewModel.GetRfidInputCount(district.District, equipClass.Code, egi);
+                }
+            }
+        }
+
+        _rfidLoaded = true;
+    }
+
+    private static string Percent(int value, int total) =>
+        total == 0 ? "-" : $"{value * 100.0 / total:0.#}%";
+
+    private int PercentOf(string site, string key) =>
+        _progress.TryGetValue((site.ToUpperInvariant(), key), out var value) ? value.Percent : 0;
+
+    private double ActualNow(string site)
+    {
+        var phases = SmartRefuelingCurveCatalog.Phases;
+        return Enumerable.Range(0, phases.Count).Average(index =>
+            phases[index].LeafKeys(index).Average(key => (double)PercentOf(site, key)));
+    }
+
+    private double PlanNow(string site)
+    {
+        var month = CurrentMonth;
+        var rows = ImplementationViewModel.Items
+            .Where(item => string.Equals(item.Site, site, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        double plan = 0;
+        foreach (var row in rows)
+        {
+            var scheduled = row.Statuses.Count(IsScheduled);
+            for (var quarter = 0; quarter < row.Statuses.Count; quarter++)
+            {
+                if (IsScheduled(row.Statuses[quarter]))
+                {
+                    plan += Math.Clamp((month - quarter * 3 + 1) / 3.0, 0, 1) / scheduled * 100.0 / rows.Count;
+                }
+            }
+        }
+
+        return plan;
+    }
+
+    private static bool IsScheduled(string? status) =>
+        !string.IsNullOrWhiteSpace(status) && status != "Unplanned";
+
+    private RenderFragment Card(string title, string value, string caption, string? cssClass) => __builder =>
+    {
+        <MudItem xs="6" sm="4" lg="2">
+            <MudPaper Class="@($"smart-refueling-dashboard-card {cssClass}")" Elevation="0">
+                <MudText Typo="Typo.overline">@title</MudText>
+                <MudText Typo="Typo.h4">@value</MudText>
+                <MudText Typo="Typo.caption">@caption</MudText>
+            </MudPaper>
+        </MudItem>
+    };
+
+    private RenderFragment EquipCard(string title, int plan, int act, int kirim) => __builder =>
+    {
+        var state = plan <= 0 ? null : act < plan ? "smart-refueling-dashboard-overdue" : "smart-refueling-dashboard-done";
+        <MudItem xs="6" sm="4">
+            <MudPaper Class="@($"smart-refueling-dashboard-card {state}")" Elevation="0">
+                <MudText Typo="Typo.overline">@title</MudText>
+                <MudText Typo="Typo.h4">@act.ToString("N0") <span class="eq-dash-plan">/ @plan.ToString("N0")</span></MudText>
+                <MudText Typo="Typo.caption">
+                    Act (by System): @(plan > 0 ? $"{act * 100.0 / plan:0.#}%" : "-") dari Plan · Act (Kirim): @kirim.ToString("N0")
+                </MudText>
+            </MudPaper>
+        </MudItem>
+    };
+
+    private RenderFragment Bar(double value, Color color) => __builder =>
+    {
+        <div class="dash-bar">
+            <MudProgressLinear Value="@Math.Clamp(value, 0, 100)" Color="@color" Rounded="true" Size="Size.Medium" />
+            <span>@value.ToString("0.#", CultureInfo.InvariantCulture)%</span>
+        </div>
+    };
+}

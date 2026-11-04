@@ -3,6 +3,8 @@
 @using PanoramicAdmin.Models
 @using PanoramicAdmin.ViewModels
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILogger<SmartRefuelingRoadmap> Logger
 @inject SmartRefuelingImplementationViewModel ImplementationViewModel
 
 <PageTitle>Roadmap Project | Smart Refueling</PageTitle>
@@ -61,7 +63,14 @@
     </MudItem>
 </MudGrid>
 
-<MudTabs Elevation="0" Color="Color.Primary" Rounded="true" Border="true" Class="smart-refueling-tabs">
+<MudOverlay @bind-Visible="_isLoadingProgress" DarkBackground="true" Absolute="false" ZIndex="2000">
+    <div class="d-flex flex-column align-center gap-3">
+        <MudProgressCircular Color="Color.Surface" Indeterminate="true" />
+        <MudText Style="color:#fff;font-weight:700;">Loading Data...mohon ditunggu!</MudText>
+    </div>
+</MudOverlay>
+
+<MudTabs Elevation="0" Color="Color.Primary" Rounded="true" Border="true" Class="smart-refueling-tabs smart-refueling-roadmap-tabs">
     <MudTabPanel Text="Roadmap" Icon="@Icons.Material.Filled.Timeline">
         <MudPaper Class="section-card smart-refueling-roadmap-card" Elevation="0">
             <div class="smart-refueling-roadmap-heading">
@@ -159,6 +168,9 @@
             }
             else
             {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="px-4 pt-3 d-block">
+                    Klik pada Field Status untuk melihat Status Implementasi.
+                </MudText>
                 <div class="smart-refueling-implementation-table-wrap">
                     <table class="smart-refueling-implementation-table">
                         <thead>
@@ -180,11 +192,19 @@
                                     <td>@item.Activity</td>
                                     @for (var index = 0; index < item.Statuses.Count; index++)
                                     {
-                                        var status = item.Statuses[index];
+                                        var periodIndex = index;
+                                        var status = item.Statuses[periodIndex];
                                         <td>
                                             @if (status is not null)
                                             {
-                                                <span class="@GetStatusClass(status)">@status</span>
+                                                <button type="button"
+                                                        class="smart-refueling-status-button"
+                                                        @onclick="@(() => OpenProgressAsync(item, periodIndex, status))"
+                                                        disabled="@_isLoadingProgress"
+                                                        aria-label="@($"Lihat progress {status} {item.Site} {SmartRefuelingImplementationCatalog.Periods[periodIndex]}")">
+                                                    <span class="@GetStatusClass(status)">@status</span>
+                                                    <span class="smart-refueling-ach">@GetAchBar(item.Site)</span>
+                                                </button>
                                             }
                                             else
                                             {
@@ -223,6 +243,29 @@
                                 </tr>
                             }
                         </tbody>
+                        <tfoot>
+                            <tr class="smart-refueling-total-row">
+                                <th scope="row" colspan="2">
+                                    Total Ach
+                                    <span class="smart-refueling-total-overall">@RenderAchBar(GetOverallTotal())</span>
+                                </th>
+                                @for (var index = 0; index < SmartRefuelingImplementationCatalog.Periods.Count; index++)
+                                {
+                                    var periodIndex = index;
+                                    <td>
+                                        @if (GetPeriodTotal(periodIndex) is { } total)
+                                        {
+                                            <span class="smart-refueling-ach">@RenderAchBar(total)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="smart-refueling-status-empty">—</span>
+                                        }
+                                    </td>
+                                }
+                                <td></td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             }
@@ -266,9 +309,79 @@
     ];
 
     private int? _pendingDeleteId;
+    private bool _isLoadingProgress;
 
-    protected override async Task OnInitializedAsync() =>
+    private IReadOnlyDictionary<string, double?> _achievements =
+        new Dictionary<string, double?>(StringComparer.OrdinalIgnoreCase);
+    private bool _achievementsLoaded;
+
+    protected override async Task OnInitializedAsync()
+    {
         await ImplementationViewModel.LoadAsync();
+        _ = LoadAchievementsAsync();
+    }
+
+    private async Task LoadAchievementsAsync()
+    {
+        try
+        {
+            var sites = ImplementationViewModel.Items.Select(item => item.Site).ToList();
+            if (sites.Count > 0)
+            {
+                _achievements = await ImplementationViewModel.GetAchievementsAsync(sites);
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load Smart Refueling achievement values.");
+        }
+        finally
+        {
+            _achievementsLoaded = true;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private RenderFragment GetAchBar(string site) =>
+        RenderAchBar(_achievementsLoaded && _achievements.TryGetValue(site, out var found) ? found : null);
+
+    private double? GetPeriodTotal(int periodIndex)
+    {
+        var values = ImplementationViewModel.Items
+            .Where(item => item.Statuses[periodIndex] is not null
+                && _achievements.TryGetValue(item.Site, out var value) && value is not null)
+            .Select(item => _achievements[item.Site]!.Value)
+            .ToList();
+        return values.Count == 0 ? null : values.Average();
+    }
+
+    private double? GetOverallTotal()
+    {
+        var values = ImplementationViewModel.Items
+            .Where(item => _achievements.TryGetValue(item.Site, out var value) && value is not null)
+            .Select(item => _achievements[item.Site]!.Value)
+            .ToList();
+        return values.Count == 0 ? null : values.Average();
+    }
+
+    private RenderFragment RenderAchBar(double? value) => builder =>
+    {
+        var label = !_achievementsLoaded ? "…" : value is null ? "N/A" : $"{value.Value:0.##}%";
+        var width = (value ?? 0).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        var state = value is null ? "na" : value >= 100 ? "done" : value <= 0 ? "zero" : "partial";
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", "smart-refueling-ach-bar");
+        builder.AddAttribute(2, "title", $"Ach {label}");
+        builder.OpenElement(3, "span");
+        builder.AddAttribute(4, "class", $"smart-refueling-ach-fill ach-{state}");
+        builder.AddAttribute(5, "style", $"width:{width}%");
+        builder.CloseElement();
+        builder.OpenElement(6, "span");
+        builder.AddAttribute(7, "class", "smart-refueling-ach-label");
+        builder.AddContent(8, $"Ach {label}");
+        builder.CloseElement();
+        builder.CloseElement();
+    };
 
     private static string GetStatusClass(string status) => status switch
     {
@@ -279,6 +392,47 @@
         "Unplanned" => "smart-refueling-status smart-refueling-status-unplanned",
         _ => "smart-refueling-status"
     };
+
+    private async Task OpenProgressAsync(
+        SmartRefuelingImplementationRow item,
+        int periodIndex,
+        string status)
+    {
+        _isLoadingProgress = true;
+        try
+        {
+            var progress = await ImplementationViewModel.GetLiveProgressAsync(item.Site);
+            var parameters = new DialogParameters
+            {
+                ["Site"] = item.Site,
+                ["Activity"] = item.Activity,
+                ["Period"] = SmartRefuelingImplementationCatalog.Periods[periodIndex],
+                ["Status"] = status,
+                ["Progress"] = progress
+            };
+            var options = new DialogOptions
+            {
+                CloseOnEscapeKey = true,
+                FullWidth = true,
+                MaxWidth = MaxWidth.Medium
+            };
+            await DialogService.ShowAsync<SmartRefuelingProgressDialog>(
+                "Progress Implementasi", parameters, options);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception,
+                "Failed to load Smart Refueling implementation progress for {Site}.",
+                item.Site);
+            Snackbar.Add(
+                $"Progress implementasi untuk site {item.Site} gagal dimuat. Periksa koneksi data RFID.",
+                Severity.Error);
+        }
+        finally
+        {
+            _isLoadingProgress = false;
+        }
+    }
 
     private async Task OpenDialogAsync(SmartRefuelingImplementationRow? item)
     {
@@ -300,6 +454,7 @@
         if (result is { Canceled: false, Data: SmartRefuelingImplementationInput input })
         {
             await ImplementationViewModel.SaveAsync(input);
+            _ = LoadAchievementsAsync();
         }
     }
 

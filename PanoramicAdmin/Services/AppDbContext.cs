@@ -22,6 +22,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SopEvaluationDocument> SopEvaluationDocuments => Set<SopEvaluationDocument>();
     public DbSet<SopEvaluationChildDocument> SopEvaluationChildDocuments => Set<SopEvaluationChildDocument>();
     public DbSet<SmartRefuelingImplementation> SmartRefuelingImplementations => Set<SmartRefuelingImplementation>();
+    public DbSet<SmartRefuelingEquipmentActual> SmartRefuelingEquipmentActuals => Set<SmartRefuelingEquipmentActual>();
+    public DbSet<SmartRefuelingCurveProgress> SmartRefuelingCurveProgresses => Set<SmartRefuelingCurveProgress>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -272,6 +274,31 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(item => item.Status2027Q4).HasMaxLength(20);
             entity.HasIndex(item => new { item.Site, item.Activity })
                 .HasDatabaseName("IX_pano_smart_refueling_implementation_Site_Activity");
+        });
+
+        modelBuilder.Entity<SmartRefuelingEquipmentActual>(entity =>
+        {
+            entity.ToTable("pano_smart_refueling_equipment_actual", "dbo");
+            entity.Property(item => item.Site).HasMaxLength(150).IsRequired();
+            entity.Property(item => item.KetPitStop).HasMaxLength(500);
+            entity.Property(item => item.KetFuelTruck).HasMaxLength(500);
+            entity.Property(item => item.KetTagAntiMetal).HasMaxLength(500);
+            entity.Property(item => item.KetTagSticker).HasMaxLength(500);
+            entity.Property(item => item.KetTagSegel).HasMaxLength(500);
+            entity.HasIndex(item => item.Site)
+                .IsUnique()
+                .HasDatabaseName("UX_pano_smart_refueling_equipment_actual_Site");
+        });
+
+        modelBuilder.Entity<SmartRefuelingCurveProgress>(entity =>
+        {
+            entity.ToTable("pano_smart_refueling_curve_progress", "dbo");
+            entity.Property(item => item.Site).HasMaxLength(150).IsRequired();
+            entity.Property(item => item.ItemKey).HasMaxLength(20).IsRequired();
+            entity.Property(item => item.UpdatedOn).HasColumnType("date");
+            entity.HasIndex(item => new { item.Site, item.ItemKey })
+                .IsUnique()
+                .HasDatabaseName("UX_pano_smart_refueling_curve_progress_Site_ItemKey");
         });
 
         modelBuilder.Entity<SopEvaluationDocument>(entity =>
