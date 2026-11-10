@@ -85,6 +85,14 @@ script inserts placeholder names (`Strategic Action {id}`) so the new foreign
 key can be created. Existing Strategic Action rows are left unchanged. The
 legacy `pano_master_activity_plan` table, if present, is not dropped.
 
+## Scrum Monitoring database setup
+
+Run `Database/Scripts/Create_ScrumProject.sql` against `db_panoramic` before
+opening `/scrum-project`. The page stores sprints, tasks, and blockers in
+dedicated tables and provides forms to add, edit, and delete them. Create the
+first sprint from the page; sprint records with tasks or blockers cannot be
+deleted until those child records are removed.
+
 ## RFID Tag Install database setup
 
 The RFID Tag Install page reads equipment data from `tbl_r_equip` using the

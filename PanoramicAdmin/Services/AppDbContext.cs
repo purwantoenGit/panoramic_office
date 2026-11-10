@@ -24,6 +24,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SmartRefuelingImplementation> SmartRefuelingImplementations => Set<SmartRefuelingImplementation>();
     public DbSet<SmartRefuelingEquipmentActual> SmartRefuelingEquipmentActuals => Set<SmartRefuelingEquipmentActual>();
     public DbSet<SmartRefuelingCurveProgress> SmartRefuelingCurveProgresses => Set<SmartRefuelingCurveProgress>();
+    public DbSet<ScrumSprint> ScrumSprints => Set<ScrumSprint>();
+    public DbSet<ScrumTask> ScrumTasks => Set<ScrumTask>();
+    public DbSet<ScrumBlocker> ScrumBlockers => Set<ScrumBlocker>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -299,6 +302,49 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasIndex(item => new { item.Site, item.ItemKey })
                 .IsUnique()
                 .HasDatabaseName("UX_pano_smart_refueling_curve_progress_Site_ItemKey");
+        });
+
+        modelBuilder.Entity<ScrumSprint>(entity =>
+        {
+            entity.ToTable("pano_scrum_sprint", "dbo");
+            entity.Property(sprint => sprint.Name).HasMaxLength(100).IsRequired();
+            entity.Property(sprint => sprint.Focus).HasMaxLength(250).IsRequired();
+            entity.Property(sprint => sprint.StartDate).HasColumnType("date").IsRequired();
+            entity.Property(sprint => sprint.EndDate).HasColumnType("date").IsRequired();
+            entity.Property(sprint => sprint.Status).HasMaxLength(20).IsRequired();
+            entity.HasIndex(sprint => sprint.Status)
+                .HasDatabaseName("IX_pano_scrum_sprint_Status");
+        });
+
+        modelBuilder.Entity<ScrumTask>(entity =>
+        {
+            entity.ToTable("pano_scrum_task", "dbo");
+            entity.Property(task => task.Title).HasMaxLength(250).IsRequired();
+            entity.Property(task => task.Owner).HasMaxLength(150);
+            entity.Property(task => task.Priority).HasMaxLength(20).IsRequired();
+            entity.Property(task => task.Status).HasMaxLength(30).IsRequired();
+            entity.Property(task => task.DueDate).HasColumnType("date");
+            entity.HasOne(task => task.Sprint)
+                .WithMany(sprint => sprint.Tasks)
+                .HasForeignKey(task => task.SprintId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(task => new { task.SprintId, task.Status })
+                .HasDatabaseName("IX_pano_scrum_task_Sprint_Status");
+        });
+
+        modelBuilder.Entity<ScrumBlocker>(entity =>
+        {
+            entity.ToTable("pano_scrum_blocker", "dbo");
+            entity.Property(blocker => blocker.Title).HasMaxLength(250).IsRequired();
+            entity.Property(blocker => blocker.Detail).HasColumnType("nvarchar(max)").IsRequired();
+            entity.Property(blocker => blocker.Owner).HasMaxLength(150);
+            entity.Property(blocker => blocker.NextStep).HasColumnType("nvarchar(max)").IsRequired();
+            entity.HasOne(blocker => blocker.Sprint)
+                .WithMany(sprint => sprint.Blockers)
+                .HasForeignKey(blocker => blocker.SprintId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(blocker => new { blocker.SprintId, blocker.IsResolved })
+                .HasDatabaseName("IX_pano_scrum_blocker_Sprint_Resolved");
         });
 
         modelBuilder.Entity<SopEvaluationDocument>(entity =>

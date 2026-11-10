@@ -1,0 +1,94 @@
+@using PanoramicAdmin.Models
+@using PanoramicAdmin.ViewModels
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@DialogTitle</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12">
+                <MudTextField T="string" @bind-Value="_title" Label="Task"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" MaxLength="250" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" @bind-Value="_owner" Label="PIC"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="150" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudDatePicker @bind-Date="_dueDate" Label="Due date"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="string" @bind-Value="_priority" Label="Prioritas"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                    @foreach (var priority in ScrumProjectViewModel.Priorities)
+                    {
+                        <MudSelectItem T="string" Value="@priority">@priority</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="string" @bind-Value="_status" Label="Status"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                    @foreach (var status in ScrumProjectViewModel.TaskStatuses)
+                    {
+                        <MudSelectItem T="string" Value="@status">@status</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel">Batal</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Simpan</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public ScrumTaskRow? InitialValue { get; set; }
+    [Parameter] public int SprintId { get; set; }
+    [Parameter] public string DialogTitle { get; set; } = "Tambah Task";
+
+    private string _title = string.Empty;
+    private string _owner = string.Empty;
+    private string _priority = "Sedang";
+    private string _status = "Belum dimulai";
+    private DateTime? _dueDate;
+
+    protected override void OnInitialized()
+    {
+        if (InitialValue is not { } task)
+        {
+            return;
+        }
+
+        _title = task.Title;
+        _owner = task.Owner;
+        _priority = task.Priority;
+        _status = task.Status;
+        _dueDate = task.DueDate;
+    }
+
+    private void Save()
+    {
+        if (string.IsNullOrWhiteSpace(_title))
+        {
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new ScrumTaskInput(
+            InitialValue?.Id,
+            SprintId,
+            _title,
+            _owner,
+            _priority,
+            _status,
+            _dueDate)));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

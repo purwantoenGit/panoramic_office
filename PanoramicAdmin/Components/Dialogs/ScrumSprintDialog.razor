@@ -1,0 +1,89 @@
+@using PanoramicAdmin.Models
+@using PanoramicAdmin.ViewModels
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@DialogTitle</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12">
+                <MudTextField T="string" @bind-Value="_name" Label="Nama sprint"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" MaxLength="100" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string" @bind-Value="_focus" Label="Fokus sprint"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" MaxLength="250" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudDatePicker @bind-Date="_startDate" Label="Tanggal mulai"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudDatePicker @bind-Date="_endDate" Label="Tanggal selesai"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudSelect T="string" @bind-Value="_status" Label="Status"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                    @foreach (var status in ScrumProjectViewModel.SprintStatuses)
+                    {
+                        <MudSelectItem T="string" Value="@status">@status</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel">Batal</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Simpan</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public ScrumSprintRow? InitialValue { get; set; }
+    [Parameter] public string DialogTitle { get; set; } = "Tambah Sprint";
+
+    private string _name = string.Empty;
+    private string _focus = string.Empty;
+    private DateTime? _startDate = DateTime.Today;
+    private DateTime? _endDate = DateTime.Today.AddDays(13);
+    private string _status = "Direncanakan";
+
+    protected override void OnInitialized()
+    {
+        if (InitialValue is not { } sprint)
+        {
+            return;
+        }
+
+        _name = sprint.Name;
+        _focus = sprint.Focus;
+        _startDate = sprint.StartDate;
+        _endDate = sprint.EndDate;
+        _status = sprint.Status;
+    }
+
+    private void Save()
+    {
+        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_focus) ||
+            _startDate is not { } startDate || _endDate is not { } endDate ||
+            endDate.Date < startDate.Date)
+        {
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new ScrumSprintInput(
+            InitialValue?.Id,
+            _name,
+            _focus,
+            startDate,
+            endDate,
+            _status)));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

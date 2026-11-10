@@ -41,6 +41,7 @@ builder.Services.AddTransient<PitStopMappingService>();
 builder.Services.AddTransient<PitStopMappingViewModel>();
 builder.Services.AddTransient<SopEvaluationViewModel>();
 builder.Services.AddTransient<SmartRefuelingImplementationViewModel>();
+builder.Services.AddTransient<ScrumProjectViewModel>();
 
 var app = builder.Build();
 

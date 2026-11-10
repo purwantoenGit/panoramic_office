@@ -1,0 +1,88 @@
+@using PanoramicAdmin.Models
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@DialogTitle</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12">
+                <MudTextField T="string" @bind-Value="_title" Label="Judul blocker"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" MaxLength="250" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string" @bind-Value="_detail" Label="Detail"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                              Lines="3" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" @bind-Value="_owner" Label="PIC"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="150" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" @bind-Value="_nextStep" Label="Tindak lanjut"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                              Lines="2" />
+            </MudItem>
+            @if (InitialValue is not null)
+            {
+                <MudItem xs="12">
+                    <MudCheckBox T="bool" @bind-Value="_isResolved" Label="Blocker sudah diselesaikan" />
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel">Batal</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Simpan</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public ScrumBlockerRow? InitialValue { get; set; }
+    [Parameter] public int SprintId { get; set; }
+    [Parameter] public string DialogTitle { get; set; } = "Tambah Blocker";
+
+    private string _title = string.Empty;
+    private string _detail = string.Empty;
+    private string _owner = string.Empty;
+    private string _nextStep = string.Empty;
+    private bool _isResolved;
+
+    protected override void OnInitialized()
+    {
+        if (InitialValue is not { } blocker)
+        {
+            return;
+        }
+
+        _title = blocker.Title;
+        _detail = blocker.Detail;
+        _owner = blocker.Owner;
+        _nextStep = blocker.NextStep;
+        _isResolved = blocker.IsResolved;
+    }
+
+    private void Save()
+    {
+        if (string.IsNullOrWhiteSpace(_title) || string.IsNullOrWhiteSpace(_detail) ||
+            string.IsNullOrWhiteSpace(_nextStep))
+        {
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new ScrumBlockerInput(
+            InitialValue?.Id,
+            SprintId,
+            _title,
+            _detail,
+            _owner,
+            _nextStep,
+            _isResolved)));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

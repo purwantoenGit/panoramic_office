@@ -1,4 +1,10 @@
 @page "/scrum-project"
+@implements IDisposable
+@using PanoramicAdmin.Components.Dialogs
+@using PanoramicAdmin.Models
+@using PanoramicAdmin.ViewModels
+@inject IDialogService DialogService
+@inject ScrumProjectViewModel ViewModel
 
 <PageTitle>Scrum Monitoring | Panoramic Office</PageTitle>
 
@@ -10,194 +16,469 @@
             Pantau progres sprint, pekerjaan tim, dan tindak lanjut hambatan.
         </MudText>
     </div>
-    <div class="scrum-prototype-label">
-        <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" />
-        <MudText Typo="Typo.caption">Pratinjau · data contoh</MudText>
-    </div>
-</div>
-
-<MudPaper Class="scrum-sprint-overview mb-4" Elevation="0">
-    <div class="scrum-sprint-banner">
-        <div>
-            <div class="scrum-sprint-name">
-                <MudText Typo="Typo.overline">SPRINT 12</MudText>
-                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled"
-                         Icon="@Icons.Material.Filled.PlayArrow">
-                    Berjalan
-                </MudChip>
-            </div>
-            <MudText Typo="Typo.h5" Class="scrum-sprint-focus">
-                Kesiapan implementasi Auto CN
-            </MudText>
-            <div class="scrum-sprint-meta">
-                <span><MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" /> 02–13 November 2026</span>
-                <span><MudIcon Icon="@Icons.Material.Filled.Flag" Size="Size.Small" /> Fokus: implementasi &amp; operasional</span>
-            </div>
-        </div>
-        <div class="scrum-sprint-days">
-            <MudText Typo="Typo.h4">9</MudText>
-            <MudText Typo="Typo.caption">hari tersisa</MudText>
-        </div>
-    </div>
-
-    <div class="scrum-sprint-progress">
-        <div class="scrum-progress-label">
-            <MudText Typo="Typo.body2">Progres penyelesaian sprint</MudText>
-            <MudText Typo="Typo.body2"><strong>2 dari 10 task</strong><span> · 20%</span></MudText>
-        </div>
-        <MudProgressLinear Value="20" Color="Color.Primary" Rounded="true" Size="Size.Medium" />
-    </div>
-</MudPaper>
-
-<div class="scrum-metrics">
-        @foreach (var metric in _metrics)
+    <div class="d-flex align-center flex-wrap gap-2">
+        @if (ViewModel.Sprints.Count > 0)
         {
-            <MudPaper Class="scrum-metric" Elevation="0">
-                <div class="scrum-metric-icon @metric.IconClass">
-                    <MudIcon Icon="@metric.Icon" Size="Size.Small" />
-                </div>
-                <div>
-                    <MudText Typo="Typo.caption" Class="scrum-metric-label">@metric.Label</MudText>
-                    <div class="scrum-metric-value-row">
-                        <MudText Typo="Typo.h5" Class="scrum-metric-value">@metric.Value</MudText>
-                        <MudText Typo="Typo.caption" Class="scrum-metric-note">@metric.Note</MudText>
-                    </div>
-                </div>
-            </MudPaper>
-        }
-</div>
-
-<div class="scrum-board-heading">
-    <div>
-        <MudText Typo="Typo.h6" Class="section-title">Papan sprint</MudText>
-        <MudText Typo="Typo.body2" Class="section-subtitle">
-            Distribusi task berdasarkan status pengerjaan.
-        </MudText>
-    </div>
-    <MudText Typo="Typo.caption" Class="scrum-board-total">10 task</MudText>
-</div>
-
-<div class="scrum-board-scroll">
-    <div class="scrum-board">
-    @foreach (var column in _columns)
-    {
-        <MudPaper Class="@($"scrum-column {column.ColumnClass}")" Elevation="0">
-            <div class="scrum-column-heading">
-                <div class="scrum-column-title">
-                    <span class="scrum-status-dot"></span>
-                    <MudText Typo="Typo.subtitle2">@column.Title</MudText>
-                </div>
-                <span class="scrum-column-count">@column.Tasks.Length</span>
-            </div>
-            <div class="scrum-column-tasks">
-                @foreach (var task in column.Tasks)
+            <MudSelect T="int?" Value="@ViewModel.SelectedSprintId" ValueChanged="OnSprintChanged"
+                       Label="Pilih sprint" Variant="Variant.Outlined" Margin="Margin.Dense"
+                       Class="scrum-sprint-selector" Disabled="@ViewModel.IsLoading">
+                @foreach (var sprint in ViewModel.Sprints)
                 {
-                    <div class="scrum-task-card">
-                        <div class="scrum-task-meta">
-                            <MudText Typo="Typo.caption" Class="scrum-task-id">@task.Id</MudText>
-                            <span class="scrum-priority @task.PriorityClass">@task.Priority</span>
+                    <MudSelectItem T="int?" Value="@((int?)sprint.Id)">
+                        @sprint.Name · @sprint.Status
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        }
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => OpenSprintDialogAsync(null))"
+                   Disabled="@ViewModel.IsSaving">
+            Sprint
+        </MudButton>
+        @if (ViewModel.SelectedSprint is { } selectedSprint)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary"
+                           aria-label="Edit sprint" OnClick="@(() => OpenSprintDialogAsync(selectedSprint))"
+                           Disabled="@ViewModel.IsSaving" />
+            <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error"
+                           aria-label="Hapus sprint" OnClick="@(() => RequestDelete($"sprint-{selectedSprint.Id}"))"
+                           Disabled="@ViewModel.IsSaving" />
+        }
+    </div>
+</div>
+
+@if (ViewModel.IsLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">Memuat Scrum Monitoring...</MudText>
+}
+else if (ViewModel.DatabaseError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-4">
+        <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+            <span>@ViewModel.DatabaseError</span>
+            <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                       OnClick="@(() => ViewModel.LoadAsync(ViewModel.SelectedSprintId))"
+                       Disabled="@ViewModel.IsSaving">
+                Coba lagi
+            </MudButton>
+        </div>
+    </MudAlert>
+}
+else if (ViewModel.SelectedSprint is not { } sprint)
+{
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+        Belum ada sprint. Tambahkan sprint untuk mulai mengelola task dan blocker.
+    </MudAlert>
+}
+else
+{
+    <MudPaper Class="scrum-sprint-overview mb-4" Elevation="0">
+        <div class="scrum-sprint-banner">
+            <div>
+                <div class="scrum-sprint-name">
+                    <MudText Typo="Typo.overline">@sprint.Name</MudText>
+                    <MudChip T="string" Size="Size.Small" Color="@GetSprintStatusColor(sprint.Status)"
+                             Variant="Variant.Filled">
+                        @sprint.Status
+                    </MudChip>
+                </div>
+                <MudText Typo="Typo.h5" Class="scrum-sprint-focus">@sprint.Focus</MudText>
+                <div class="scrum-sprint-meta">
+                    <span>
+                        <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" />
+                        @sprint.StartDate.ToString("dd MMM yyyy") – @sprint.EndDate.ToString("dd MMM yyyy")
+                    </span>
+                    <span>
+                        <MudIcon Icon="@Icons.Material.Filled.Flag" Size="Size.Small" />
+                        Sprint @sprint.Status.ToLowerInvariant()
+                    </span>
+                </div>
+            </div>
+            <div class="scrum-sprint-days">
+                <MudText Typo="Typo.h4">@ViewModel.DaysRemaining</MudText>
+                <MudText Typo="Typo.caption">hari tersisa</MudText>
+            </div>
+        </div>
+
+        <div class="scrum-sprint-progress">
+            <div class="scrum-progress-label">
+                <MudText Typo="Typo.body2">Progres penyelesaian sprint</MudText>
+                <MudText Typo="Typo.body2">
+                    <strong>@ViewModel.CompletedTaskCount dari @ViewModel.Tasks.Count task</strong>
+                    <span> · @ViewModel.CompletionPercent.ToString("0")%</span>
+                </MudText>
+            </div>
+            <MudProgressLinear Value="@ViewModel.CompletionPercent" Color="Color.Primary"
+                               Rounded="true" Size="Size.Medium" />
+        </div>
+    </MudPaper>
+
+    <div class="scrum-metrics">
+        <MudPaper Class="scrum-metric" Elevation="0">
+            <div class="scrum-metric-icon scrum-icon-blue">
+                <MudIcon Icon="@Icons.Material.Filled.Checklist" Size="Size.Small" />
+            </div>
+            <div>
+                <MudText Typo="Typo.caption" Class="scrum-metric-label">Total task</MudText>
+                <div class="scrum-metric-value-row">
+                    <MudText Typo="Typo.h5" Class="scrum-metric-value">@ViewModel.Tasks.Count</MudText>
+                    <MudText Typo="Typo.caption" Class="scrum-metric-note">di sprint ini</MudText>
+                </div>
+            </div>
+        </MudPaper>
+        <MudPaper Class="scrum-metric" Elevation="0">
+            <div class="scrum-metric-icon scrum-icon-green">
+                <MudIcon Icon="@Icons.Material.Filled.TaskAlt" Size="Size.Small" />
+            </div>
+            <div>
+                <MudText Typo="Typo.caption" Class="scrum-metric-label">Selesai</MudText>
+                <div class="scrum-metric-value-row">
+                    <MudText Typo="Typo.h5" Class="scrum-metric-value">@ViewModel.CompletedTaskCount</MudText>
+                    <MudText Typo="Typo.caption" Class="scrum-metric-note">@ViewModel.CompletionPercent.ToString("0")% dari total</MudText>
+                </div>
+            </div>
+        </MudPaper>
+        <MudPaper Class="scrum-metric" Elevation="0">
+            <div class="scrum-metric-icon scrum-icon-violet">
+                <MudIcon Icon="@Icons.Material.Filled.Autorenew" Size="Size.Small" />
+            </div>
+            <div>
+                <MudText Typo="Typo.caption" Class="scrum-metric-label">Berjalan</MudText>
+                <div class="scrum-metric-value-row">
+                    <MudText Typo="Typo.h5" Class="scrum-metric-value">@ViewModel.InProgressTaskCount</MudText>
+                    <MudText Typo="Typo.caption" Class="scrum-metric-note">sedang dikerjakan</MudText>
+                </div>
+            </div>
+        </MudPaper>
+        <MudPaper Class="scrum-metric" Elevation="0">
+            <div class="scrum-metric-icon scrum-icon-red">
+                <MudIcon Icon="@Icons.Material.Filled.ReportProblem" Size="Size.Small" />
+            </div>
+            <div>
+                <MudText Typo="Typo.caption" Class="scrum-metric-label">Blocker</MudText>
+                <div class="scrum-metric-value-row">
+                    <MudText Typo="Typo.h5" Class="scrum-metric-value">@ViewModel.ActiveBlockerCount</MudText>
+                    <MudText Typo="Typo.caption" Class="scrum-metric-note">perlu perhatian</MudText>
+                </div>
+            </div>
+        </MudPaper>
+    </div>
+
+    <div class="scrum-board-heading">
+        <div>
+            <MudText Typo="Typo.h6" Class="section-title">Papan sprint</MudText>
+            <MudText Typo="Typo.body2" Class="section-subtitle">
+                Distribusi task berdasarkan status pengerjaan.
+            </MudText>
+        </div>
+        <div class="d-flex align-center gap-2">
+            <MudText Typo="Typo.caption" Class="scrum-board-total">@ViewModel.Tasks.Count task</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => OpenTaskDialogAsync(null))"
+                       Disabled="@ViewModel.IsSaving">
+                Tambah task
+            </MudButton>
+        </div>
+    </div>
+
+    <div class="scrum-board-scroll">
+        <div class="scrum-board">
+            @foreach (var status in ScrumProjectViewModel.TaskStatuses)
+            {
+                var columnTasks = ViewModel.Tasks.Where(task => task.Status == status).ToArray();
+                <MudPaper Class="@($"scrum-column {GetColumnClass(status)}")" Elevation="0">
+                    <div class="scrum-column-heading">
+                        <div class="scrum-column-title">
+                            <span class="scrum-status-dot"></span>
+                            <MudText Typo="Typo.subtitle2">@status</MudText>
                         </div>
-                        <MudText Typo="Typo.body2" Class="scrum-task-title">@task.Title</MudText>
-                        <div class="scrum-task-footer">
-                            <div class="scrum-task-owner">
-                                <MudAvatar Size="Size.Small" Color="Color.Primary" Class="scrum-owner-avatar">@task.Initials</MudAvatar>
-                                <MudText Typo="Typo.caption">@task.Owner</MudText>
+                        <span class="scrum-column-count">@columnTasks.Length</span>
+                    </div>
+                    <div class="scrum-column-tasks">
+                        @foreach (var task in columnTasks)
+                        {
+                            <div class="scrum-task-card">
+                                <div class="scrum-task-meta">
+                                    <MudText Typo="Typo.caption" Class="scrum-task-id">@task.Code</MudText>
+                                    <div class="d-flex align-center gap-1">
+                                        <span class="@($"scrum-priority {GetPriorityClass(task.Priority)}")">@task.Priority</span>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                                       aria-label="Edit task" OnClick="@(() => OpenTaskDialogAsync(task))"
+                                                       Disabled="@ViewModel.IsSaving" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error"
+                                                       Size="Size.Small" aria-label="Hapus task"
+                                                       OnClick="@(() => RequestDelete($"task-{task.Id}"))"
+                                                       Disabled="@ViewModel.IsSaving" />
+                                    </div>
+                                </div>
+                                <MudText Typo="Typo.body2" Class="scrum-task-title">@task.Title</MudText>
+                                <div class="scrum-task-footer">
+                                    <div class="scrum-task-owner">
+                                        <MudAvatar Size="Size.Small" Color="Color.Primary"
+                                                   Class="scrum-owner-avatar">@task.Initials</MudAvatar>
+                                        <MudText Typo="Typo.caption">
+                                            @(string.IsNullOrWhiteSpace(task.Owner) ? "Belum ditentukan" : task.Owner)
+                                        </MudText>
+                                    </div>
+                                    <span class="scrum-task-due">
+                                        <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" />
+                                        @(task.DueDate?.ToString("dd MMM") ?? "Tanpa due date")
+                                    </span>
+                                </div>
+                                @if (_pendingDeleteKey == $"task-{task.Id}")
+                                {
+                                    <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                                        Hapus task ini?
+                                        <MudButton Size="Size.Small" Color="Color.Error"
+                                                   OnClick="@(() => ConfirmDeleteAsync("task", task.Id))">
+                                            Hapus
+                                        </MudButton>
+                                        <MudButton Size="Size.Small" OnClick="CancelDelete">Batal</MudButton>
+                                    </MudAlert>
+                                }
                             </div>
-                            <span class="scrum-task-due">
-                                <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" />
-                                @task.Due
-                            </span>
+                        }
+                        @if (columnTasks.Length == 0)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="pa-2">
+                                Belum ada task.
+                            </MudText>
+                        }
+                    </div>
+                </MudPaper>
+            }
+        </div>
+    </div>
+
+    <MudPaper Class="scrum-blockers" Elevation="0">
+        <div class="scrum-blockers-heading">
+            <div>
+                <div class="scrum-blockers-title">
+                    <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Color="Color.Error" />
+                    <MudText Typo="Typo.h6" Class="section-title">Perlu tindak lanjut</MudText>
+                    <span class="scrum-blocker-count">@ViewModel.ActiveBlockerCount</span>
+                </div>
+                <MudText Typo="Typo.body2" Class="section-subtitle">
+                    Hambatan aktif yang berpotensi memengaruhi target sprint.
+                </MudText>
+            </div>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => OpenBlockerDialogAsync(null))"
+                       Disabled="@ViewModel.IsSaving">
+                Tambah blocker
+            </MudButton>
+        </div>
+        @if (ViewModel.Blockers.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Belum ada blocker untuk sprint ini.</MudText>
+        }
+        else
+        {
+            <div class="scrum-blocker-list">
+                @foreach (var blocker in ViewModel.Blockers)
+                {
+                    <div class="scrum-blocker-item">
+                        <div class="scrum-blocker-indicator">
+                            <MudIcon Icon="@(blocker.IsResolved
+                                                ? Icons.Material.Filled.CheckCircleOutline
+                                                : Icons.Material.Filled.ErrorOutline)"
+                                     Size="Size.Small" />
                         </div>
+                        <div class="scrum-blocker-copy">
+                            <div class="d-flex align-center flex-wrap gap-2">
+                                <MudText Typo="Typo.subtitle2" Class="scrum-blocker-name">@blocker.Title</MudText>
+                                @if (blocker.IsResolved)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Selesai</MudChip>
+                                }
+                            </div>
+                            <MudText Typo="Typo.body2" Class="scrum-blocker-detail">@blocker.Detail</MudText>
+                            <MudText Typo="Typo.caption" Class="scrum-blocker-next">
+                                Tindak lanjut: @blocker.NextStep
+                            </MudText>
+                        </div>
+                        <div class="scrum-blocker-owner">
+                            <div class="d-flex align-center justify-space-between gap-1">
+                                <div>
+                                    <MudText Typo="Typo.caption" Class="scrum-metric-label">PIC</MudText>
+                                    <MudText Typo="Typo.body2">
+                                        @(string.IsNullOrWhiteSpace(blocker.Owner) ? "Belum ditentukan" : blocker.Owner)
+                                    </MudText>
+                                </div>
+                                <div class="d-flex">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                                   aria-label="Edit blocker" OnClick="@(() => OpenBlockerDialogAsync(blocker))"
+                                                   Disabled="@ViewModel.IsSaving" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error"
+                                                   Size="Size.Small" aria-label="Hapus blocker"
+                                                   OnClick="@(() => RequestDelete($"blocker-{blocker.Id}"))"
+                                                   Disabled="@ViewModel.IsSaving" />
+                                </div>
+                            </div>
+                        </div>
+                        @if (_pendingDeleteKey == $"blocker-{blocker.Id}")
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                                Hapus blocker ini?
+                                <MudButton Size="Size.Small" Color="Color.Error"
+                                           OnClick="@(() => ConfirmDeleteAsync("blocker", blocker.Id))">
+                                    Hapus
+                                </MudButton>
+                                <MudButton Size="Size.Small" OnClick="CancelDelete">Batal</MudButton>
+                            </MudAlert>
+                        }
                     </div>
                 }
             </div>
-        </MudPaper>
-    }
-</div>
-</div>
-
-<MudPaper Class="scrum-blockers" Elevation="0">
-    <div class="scrum-blockers-heading">
-        <div>
-            <div class="scrum-blockers-title">
-                <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Color="Color.Error" />
-                <MudText Typo="Typo.h6" Class="section-title">Perlu tindak lanjut</MudText>
-                <span class="scrum-blocker-count">@_blockers.Length</span>
-            </div>
-            <MudText Typo="Typo.body2" Class="section-subtitle">
-                Hambatan aktif yang berpotensi memengaruhi target sprint.
-            </MudText>
-        </div>
-    </div>
-    <div class="scrum-blocker-list">
-        @foreach (var blocker in _blockers)
-        {
-            <div class="scrum-blocker-item">
-                <div class="scrum-blocker-indicator">
-                    <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small" />
-                </div>
-                <div class="scrum-blocker-copy">
-                    <MudText Typo="Typo.subtitle2" Class="scrum-blocker-name">@blocker.Title</MudText>
-                    <MudText Typo="Typo.body2" Class="scrum-blocker-detail">@blocker.Detail</MudText>
-                    <MudText Typo="Typo.caption" Class="scrum-blocker-next">
-                        Tindak lanjut: @blocker.NextStep
-                    </MudText>
-                </div>
-                <div class="scrum-blocker-owner">
-                    <MudText Typo="Typo.caption" Class="scrum-metric-label">PIC</MudText>
-                    <MudText Typo="Typo.body2">@blocker.Owner</MudText>
-                </div>
-            </div>
         }
-    </div>
-</MudPaper>
+    </MudPaper>
+
+    @if (_pendingDeleteKey == $"sprint-{sprint.Id}")
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-4">
+            Hapus sprint ini? Sprint hanya bisa dihapus jika tidak memiliki task atau blocker.
+            <MudButton Color="Color.Error" OnClick="@(() => ConfirmDeleteAsync("sprint", sprint.Id))">
+                Hapus sprint
+            </MudButton>
+            <MudButton OnClick="CancelDelete">Batal</MudButton>
+        </MudAlert>
+    }
+}
 
 @code {
-    private readonly ScrumMetric[] _metrics =
-    [
-        new("Total task", "10", "di sprint ini", Icons.Material.Filled.Checklist, "scrum-icon-blue"),
-        new("Selesai", "2", "20% dari total", Icons.Material.Filled.TaskAlt, "scrum-icon-green"),
-        new("Berjalan", "3", "sedang dikerjakan", Icons.Material.Filled.Autorenew, "scrum-icon-violet"),
-        new("Blocker", "2", "perlu perhatian", Icons.Material.Filled.ReportProblem, "scrum-icon-red")
-    ];
+    private string? _pendingDeleteKey;
 
-    private readonly ScrumColumn[] _columns =
-    [
-        new("Belum dimulai", "scrum-column-todo",
-        [
-            new("Finalisasi daftar unit prioritas", "ACN-021", "Rina", "RI", "Sedang", "priority-medium", "06 Nov"),
-            new("Siapkan materi sosialisasi site", "ACN-024", "Dimas", "DI", "Rendah", "priority-low", "09 Nov"),
-            new("Review SOP operasional", "ACN-027", "Budi", "BU", "Sedang", "priority-medium", "10 Nov")
-        ]),
-        new("Sedang dikerjakan", "scrum-column-progress",
-        [
-            new("Validasi mapping Pit Stop", "ACN-018", "Rina", "RI", "Tinggi", "priority-high", "05 Nov"),
-            new("Uji integrasi RFID", "ACN-019", "Dimas", "DI", "Tinggi", "priority-high", "06 Nov"),
-            new("Sinkronisasi data equipment", "ACN-022", "Budi", "BU", "Sedang", "priority-medium", "09 Nov")
-        ]),
-        new("Dalam review", "scrum-column-review",
-        [
-            new("Verifikasi hasil instalasi tag", "ACN-016", "Sari", "SA", "Sedang", "priority-medium", "05 Nov"),
-            new("Persetujuan alur fueling", "ACN-017", "Andi", "AN", "Tinggi", "priority-high", "06 Nov")
-        ]),
-        new("Selesai", "scrum-column-done",
-        [
-            new("Kick-off sprint Auto CN", "ACN-011", "Andi", "AN", "Rendah", "priority-low", "02 Nov"),
-            new("Kumpulkan kebutuhan site", "ACN-013", "Sari", "SA", "Sedang", "priority-medium", "03 Nov")
-        ])
-    ];
+    protected override async Task OnInitializedAsync()
+    {
+        ViewModel.StateChanged += OnViewModelStateChanged;
+        await ViewModel.LoadAsync();
+    }
 
-    private readonly ScrumBlocker[] _blockers =
-    [
-        new("Menunggu konfirmasi jadwal site", "Jadwal instalasi RFID untuk Site A belum dikonfirmasi.",
-            "Rina", "Konfirmasi jadwal dengan PIC site sebelum 06 Nov."),
-        new("Akses data equipment belum tersedia", "Tim belum dapat memulai pengujian integrasi.",
-            "Dimas", "Koordinasikan akses dengan tim operasional.")
-    ];
+    private Task OnSprintChanged(int? sprintId) =>
+        sprintId is { } id ? ViewModel.SelectSprintAsync(id) : Task.CompletedTask;
 
-    private sealed record ScrumMetric(string Label, string Value, string Note, string Icon, string IconClass);
-    private sealed record ScrumColumn(string Title, string ColumnClass, ScrumTask[] Tasks);
-    private sealed record ScrumTask(
-        string Title, string Id, string Owner, string Initials, string Priority, string PriorityClass, string Due);
-    private sealed record ScrumBlocker(string Title, string Detail, string Owner, string NextStep);
+    private async Task OpenSprintDialogAsync(ScrumSprintRow? sprint)
+    {
+        var parameters = new DialogParameters
+        {
+            ["InitialValue"] = sprint,
+            ["DialogTitle"] = sprint is null ? "Tambah Sprint" : "Edit Sprint"
+        };
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Small
+        };
+        var dialog = await DialogService.ShowAsync<ScrumSprintDialog>(
+            sprint is null ? "Tambah Sprint" : "Edit Sprint", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: ScrumSprintInput input })
+        {
+            await ViewModel.SaveSprintAsync(input);
+        }
+    }
+
+    private async Task OpenTaskDialogAsync(ScrumTaskRow? task)
+    {
+        if (ViewModel.SelectedSprintId is not { } sprintId)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            ["InitialValue"] = task,
+            ["SprintId"] = sprintId,
+            ["DialogTitle"] = task is null ? "Tambah Task" : "Edit Task"
+        };
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Small
+        };
+        var dialog = await DialogService.ShowAsync<ScrumTaskDialog>(
+            task is null ? "Tambah Task" : "Edit Task", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: ScrumTaskInput input })
+        {
+            await ViewModel.SaveTaskAsync(input);
+        }
+    }
+
+    private async Task OpenBlockerDialogAsync(ScrumBlockerRow? blocker)
+    {
+        if (ViewModel.SelectedSprintId is not { } sprintId)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            ["InitialValue"] = blocker,
+            ["SprintId"] = sprintId,
+            ["DialogTitle"] = blocker is null ? "Tambah Blocker" : "Edit Blocker"
+        };
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Small
+        };
+        var dialog = await DialogService.ShowAsync<ScrumBlockerDialog>(
+            blocker is null ? "Tambah Blocker" : "Edit Blocker", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: ScrumBlockerInput input })
+        {
+            await ViewModel.SaveBlockerAsync(input);
+        }
+    }
+
+    private void RequestDelete(string key) => _pendingDeleteKey = key;
+    private void CancelDelete() => _pendingDeleteKey = null;
+
+    private async Task ConfirmDeleteAsync(string type, int id)
+    {
+        _pendingDeleteKey = null;
+        switch (type)
+        {
+            case "sprint":
+                await ViewModel.DeleteSprintAsync(id);
+                break;
+            case "task":
+                await ViewModel.DeleteTaskAsync(id);
+                break;
+            case "blocker":
+                await ViewModel.DeleteBlockerAsync(id);
+                break;
+        }
+    }
+
+    private static Color GetSprintStatusColor(string status) => status switch
+    {
+        "Berjalan" => Color.Success,
+        "Selesai" => Color.Default,
+        _ => Color.Info
+    };
+
+    private static string GetColumnClass(string status) => status switch
+    {
+        "Sedang dikerjakan" => "scrum-column-progress",
+        "Dalam review" => "scrum-column-review",
+        "Selesai" => "scrum-column-done",
+        _ => "scrum-column-todo"
+    };
+
+    private static string GetPriorityClass(string priority) => priority switch
+    {
+        "Tinggi" => "priority-high",
+        "Rendah" => "priority-low",
+        _ => "priority-medium"
+    };
+
+    private void OnViewModelStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => ViewModel.StateChanged -= OnViewModelStateChanged;
 }
