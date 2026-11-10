@@ -63,3 +63,28 @@ BEGIN
     CREATE INDEX [IX_pano_scrum_blocker_Sprint_Resolved]
         ON [dbo].[pano_scrum_blocker] ([SprintId], [IsResolved]);
 END;
+
+IF OBJECT_ID(N'dbo.pano_scrum_product_backlog_item', N'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[pano_scrum_product_backlog_item]
+    (
+        [Id] int IDENTITY(1,1) NOT NULL,
+        [Module] nvarchar(100) NOT NULL,
+        [Summary] nvarchar(250) NOT NULL,
+        [AcceptanceCriteria] nvarchar(max) NOT NULL,
+        [Priority] nvarchar(20) NOT NULL,
+        [Status] nvarchar(30) NOT NULL,
+        [TargetSprintId] int NULL,
+        [DefinitionOfDone] nvarchar(max) NOT NULL,
+        CONSTRAINT [PK_pano_scrum_product_backlog_item] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_pano_scrum_product_backlog_item_TargetSprint]
+            FOREIGN KEY ([TargetSprintId]) REFERENCES [dbo].[pano_scrum_sprint] ([Id]),
+        CONSTRAINT [CK_pano_scrum_product_backlog_item_Priority]
+            CHECK ([Priority] IN (N'Rendah', N'Sedang', N'Tinggi')),
+        CONSTRAINT [CK_pano_scrum_product_backlog_item_Status]
+            CHECK ([Status] IN (N'Belum dimulai', N'Sedang dikerjakan', N'Dalam review', N'Selesai'))
+    );
+
+    CREATE INDEX [IX_pano_scrum_product_backlog_item_TargetSprint]
+        ON [dbo].[pano_scrum_product_backlog_item] ([TargetSprintId]);
+END;

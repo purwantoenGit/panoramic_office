@@ -10,6 +10,7 @@ public class ScrumSprint
     public required string Status { get; set; }
     public ICollection<ScrumTask> Tasks { get; set; } = [];
     public ICollection<ScrumBlocker> Blockers { get; set; } = [];
+    public ICollection<ScrumProductBacklogItem> ProductBacklogItems { get; set; } = [];
 }
 
 public class ScrumTask
@@ -34,6 +35,19 @@ public class ScrumBlocker
     public string? Owner { get; set; }
     public required string NextStep { get; set; }
     public bool IsResolved { get; set; }
+}
+
+public class ScrumProductBacklogItem
+{
+    public int Id { get; set; }
+    public string Module { get; set; } = string.Empty;
+    public string Summary { get; set; } = string.Empty;
+    public string AcceptanceCriteria { get; set; } = string.Empty;
+    public required string Priority { get; set; }
+    public required string Status { get; set; }
+    public int? TargetSprintId { get; set; }
+    public ScrumSprint? TargetSprint { get; set; }
+    public string DefinitionOfDone { get; set; } = string.Empty;
 }
 
 public sealed record ScrumSprintInput(
@@ -89,3 +103,25 @@ public sealed record ScrumBlockerRow(
     string Owner,
     string NextStep,
     bool IsResolved);
+
+public sealed record ScrumProductBacklogItemInput(
+    int? Id,
+    string Module,
+    string Summary,
+    string AcceptanceCriteria,
+    string Priority,
+    string Status,
+    int? TargetSprintId,
+    string DefinitionOfDone);
+
+public sealed record ScrumProductBacklogItemRow(
+    int Id,
+    string Code,
+    string Module,
+    string Summary,
+    string AcceptanceCriteria,
+    string Priority,
+    string Status,
+    int? TargetSprintId,
+    string TargetSprintName,
+    string DefinitionOfDone);

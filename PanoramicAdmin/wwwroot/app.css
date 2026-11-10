@@ -3667,6 +3667,65 @@ body, .mud-typography {
     margin-bottom: 3px;
 }
 
+.scrum-pbi-table .mud-table-container {
+    overflow-x: auto;
+}
+
+.scrum-pbi-table .mud-table-container table {
+    min-width: 1200px;
+    table-layout: fixed;
+}
+
+.scrum-pbi-table .mud-table-cell:nth-child(1) { width: 7%; }
+.scrum-pbi-table .mud-table-cell:nth-child(2) { width: 9%; }
+.scrum-pbi-table .mud-table-cell:nth-child(3) { width: 12%; }
+.scrum-pbi-table .mud-table-cell:nth-child(4) { width: 17%; }
+.scrum-pbi-table .mud-table-cell:nth-child(5) { width: 8%; }
+.scrum-pbi-table .mud-table-cell:nth-child(6) { width: 12%; }
+.scrum-pbi-table .mud-table-cell:nth-child(7) { width: 13%; }
+.scrum-pbi-table .mud-table-cell:nth-child(8) { width: 15%; }
+.scrum-pbi-table .mud-table-cell:nth-child(9) { width: 7%; }
+
+.scrum-pbi-table .mud-table-cell:nth-child(2),
+.scrum-pbi-table .mud-table-cell:nth-child(3) {
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+.scrum-pbi-sprint-panel {
+    padding: 18px;
+    border: 1px solid #e3e9f2;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.scrum-pbi-sprint-heading,
+.scrum-pbi-sprint-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.scrum-pbi-sprint-heading {
+    margin-bottom: 12px;
+}
+
+.scrum-pbi-sprint-list {
+    display: grid;
+    gap: 8px;
+}
+
+.scrum-pbi-sprint-item {
+    padding: 10px 12px;
+    border: 1px solid #e8edf4;
+    border-radius: 8px;
+}
+
+.scrum-pbi-sprint-summary {
+    overflow-wrap: anywhere;
+}
+
 .scrum-board-total {
     padding: 5px 10px;
     border: 1px solid #e3e9f2;

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MudBlazor;
 using PanoramicAdmin.Models;
 using PanoramicAdmin.Services;
+using System.Globalization;
 
 namespace PanoramicAdmin.ViewModels;
 
@@ -19,12 +20,26 @@ public sealed class ScrumProjectViewModel(
     public static IReadOnlyList<string> Priorities { get; } =
         ["Rendah", "Sedang", "Tinggi"];
 
+    public static string GetSprintLabel(ScrumSprintRow sprint)
+    {
+        var startDate = sprint.StartDate.Year == sprint.EndDate.Year
+            ? sprint.StartDate.ToString("d MMM", CultureInfo.InvariantCulture)
+            : sprint.StartDate.ToString("d MMM yyyy", CultureInfo.InvariantCulture);
+        var endDate = sprint.EndDate.ToString("d MMM yyyy", CultureInfo.InvariantCulture);
+        return $"{sprint.Name} ({startDate} - {endDate})";
+    }
+
     public event Action? StateChanged;
     public IReadOnlyList<ScrumSprintRow> Sprints { get; private set; } = [];
     public IReadOnlyList<ScrumTaskRow> Tasks { get; private set; } = [];
     public IReadOnlyList<ScrumBlockerRow> Blockers { get; private set; } = [];
+    public IReadOnlyList<ScrumProductBacklogItemRow> ProductBacklogItems { get; private set; } = [];
     public ScrumSprintRow? SelectedSprint =>
         Sprints.FirstOrDefault(sprint => sprint.Id == SelectedSprintId);
+    public IReadOnlyList<ScrumProductBacklogItemRow> SelectedSprintProductBacklogItems =>
+        SelectedSprintId is { } sprintId
+            ? ProductBacklogItems.Where(item => item.TargetSprintId == sprintId).ToArray()
+            : [];
     public int? SelectedSprintId { get; private set; }
     public bool IsLoading { get; private set; } = true;
     public bool IsSaving { get; private set; }
@@ -69,6 +84,21 @@ public sealed class ScrumProjectViewModel(
                         sprint.Status))
                     .ToListAsync());
             SelectedSprintId = SelectSprintId(preferredSprintId);
+
+            ProductBacklogItems = (await db.ScrumProductBacklogItems.AsNoTracking()
+                    .OrderBy(item => item.Id)
+                    .Select(item => new ScrumProductBacklogItemRow(
+                        item.Id,
+                        $"PBI-{item.Id:000}",
+                        item.Module,
+                        item.Summary,
+                        item.AcceptanceCriteria,
+                        item.Priority,
+                        item.Status,
+                        item.TargetSprintId,
+                        item.TargetSprint == null ? string.Empty : item.TargetSprint.Name,
+                        item.DefinitionOfDone))
+                    .ToListAsync());
 
             if (SelectedSprintId is not { } sprintId)
             {
@@ -189,9 +219,10 @@ public sealed class ScrumProjectViewModel(
             }
 
             if (await db.ScrumTasks.AnyAsync(task => task.SprintId == id) ||
-                await db.ScrumBlockers.AnyAsync(blocker => blocker.SprintId == id))
+                await db.ScrumBlockers.AnyAsync(blocker => blocker.SprintId == id) ||
+                await db.ScrumProductBacklogItems.AnyAsync(item => item.TargetSprintId == id))
             {
-                snackbar.Add("Sprint tidak bisa dihapus selama masih memiliki task atau blocker.", Severity.Warning);
+                snackbar.Add("Sprint tidak bisa dihapus selama masih direferensikan oleh task, blocker, atau Product Backlog Item.", Severity.Warning);
                 return;
             }
 
@@ -377,6 +408,101 @@ public sealed class ScrumProjectViewModel(
         catch (Exception exception)
         {
             HandleError(exception, "menghapus blocker", "Blocker gagal dihapus.");
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    public async Task SaveProductBacklogItemAsync(ScrumProductBacklogItemInput input)
+    {
+        var module = input.Module.Trim();
+        var summary = input.Summary.Trim();
+        var acceptanceCriteria = input.AcceptanceCriteria.Trim();
+        var definitionOfDone = input.DefinitionOfDone.Trim();
+        if (string.IsNullOrWhiteSpace(module) || module.Length > 100 ||
+            string.IsNullOrWhiteSpace(summary) || summary.Length > 250 ||
+            string.IsNullOrWhiteSpace(acceptanceCriteria) ||
+            string.IsNullOrWhiteSpace(definitionOfDone) ||
+            !Priorities.Contains(input.Priority, StringComparer.Ordinal) ||
+            !TaskStatuses.Contains(input.Status, StringComparer.Ordinal) ||
+            (input.TargetSprintId is { } targetSprintId &&
+             !Sprints.Any(sprint => sprint.Id == targetSprintId)))
+        {
+            snackbar.Add("Periksa module, summary, AC, prioritas, status, target sprint, dan DoD PBI.", Severity.Warning);
+            return;
+        }
+
+        IsSaving = true;
+        try
+        {
+            await using var db = await dbContextFactory.CreateDbContextAsync();
+            ScrumProductBacklogItem entity;
+            if (input.Id is { } id)
+            {
+                entity = await db.ScrumProductBacklogItems.SingleOrDefaultAsync(item => item.Id == id)
+                    ?? throw new InvalidOperationException("Product Backlog Item tidak ditemukan.");
+            }
+            else
+            {
+                entity = new ScrumProductBacklogItem
+                {
+                    Module = module,
+                    Summary = summary,
+                    AcceptanceCriteria = acceptanceCriteria,
+                    Priority = input.Priority,
+                    Status = input.Status,
+                    DefinitionOfDone = definitionOfDone
+                };
+                db.ScrumProductBacklogItems.Add(entity);
+            }
+
+            entity.Module = module;
+            entity.Summary = summary;
+            entity.AcceptanceCriteria = acceptanceCriteria;
+            entity.Priority = input.Priority;
+            entity.Status = input.Status;
+            entity.TargetSprintId = input.TargetSprintId;
+            entity.DefinitionOfDone = definitionOfDone;
+            await db.SaveChangesAsync();
+            snackbar.Add("Product Backlog Item berhasil disimpan.", Severity.Success);
+            await LoadAsync(SelectedSprintId);
+        }
+        catch (Exception exception)
+        {
+            HandleError(exception, "menyimpan Product Backlog Item",
+                "Product Backlog Item gagal disimpan.");
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    public async Task DeleteProductBacklogItemAsync(int id)
+    {
+        IsSaving = true;
+        try
+        {
+            await using var db = await dbContextFactory.CreateDbContextAsync();
+            var item = await db.ScrumProductBacklogItems.SingleOrDefaultAsync(pbi => pbi.Id == id);
+            if (item is null)
+            {
+                snackbar.Add("Product Backlog Item tidak ditemukan. Daftar telah diperbarui.", Severity.Warning);
+                await LoadAsync(SelectedSprintId);
+                return;
+            }
+
+            db.ScrumProductBacklogItems.Remove(item);
+            await db.SaveChangesAsync();
+            snackbar.Add("Product Backlog Item berhasil dihapus.", Severity.Success);
+            await LoadAsync(SelectedSprintId);
+        }
+        catch (Exception exception)
+        {
+            HandleError(exception, "menghapus Product Backlog Item",
+                "Product Backlog Item gagal dihapus.");
         }
         finally
         {

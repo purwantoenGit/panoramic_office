@@ -1,0 +1,123 @@
+@using PanoramicAdmin.Models
+@using PanoramicAdmin.ViewModels
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@DialogTitle</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12">
+                <MudTextField T="string" @bind-Value="_module" Label="Module"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" MaxLength="100" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string" @bind-Value="_summary" Label="Summary"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" MaxLength="250" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string" @bind-Value="_acceptanceCriteria" Label="Acceptance Criteria (AC)"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" Lines="3" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="string" @bind-Value="_priority" Label="Priority"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                    @foreach (var priority in ScrumProjectViewModel.Priorities)
+                    {
+                        <MudSelectItem T="string" Value="@priority">@priority</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="string" @bind-Value="_status" Label="Status"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                    @foreach (var status in ScrumProjectViewModel.TaskStatuses)
+                    {
+                        <MudSelectItem T="string" Value="@status">@status</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <MudSelect T="int?" @bind-Value="_targetSprintId" Label="Target Sprint"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">
+                    @foreach (var sprint in Sprints)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)sprint.Id)">
+                            @ScrumProjectViewModel.GetSprintLabel(sprint)
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+                @if (Sprints.Count == 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Warning">
+                        Belum ada sprint. Buat sprint terlebih dahulu di Sprint Monitoring.
+                    </MudText>
+                }
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string" @bind-Value="_definitionOfDone" Label="Definition of Done (DoD)"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" Lines="3" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel">Batal</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Simpan</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public ScrumProductBacklogItemRow? InitialValue { get; set; }
+    [Parameter] public IReadOnlyList<ScrumSprintRow> Sprints { get; set; } = [];
+    [Parameter] public string DialogTitle { get; set; } = "Tambah Product Backlog Item";
+
+    private string _module = string.Empty;
+    private string _summary = string.Empty;
+    private string _acceptanceCriteria = string.Empty;
+    private string _priority = "Sedang";
+    private string _status = "Belum dimulai";
+    private int? _targetSprintId;
+    private string _definitionOfDone = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        if (InitialValue is not { } item)
+        {
+            return;
+        }
+
+        _module = item.Module;
+        _summary = item.Summary;
+        _acceptanceCriteria = item.AcceptanceCriteria;
+        _priority = item.Priority;
+        _status = item.Status;
+        _targetSprintId = item.TargetSprintId;
+        _definitionOfDone = item.DefinitionOfDone;
+    }
+
+    private void Save()
+    {
+        if (string.IsNullOrWhiteSpace(_module) ||
+            string.IsNullOrWhiteSpace(_summary) ||
+            string.IsNullOrWhiteSpace(_acceptanceCriteria) ||
+            string.IsNullOrWhiteSpace(_definitionOfDone))
+        {
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new ScrumProductBacklogItemInput(
+            InitialValue?.Id,
+            _module,
+            _summary,
+            _acceptanceCriteria,
+            _priority,
+            _status,
+            _targetSprintId,
+            _definitionOfDone)));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

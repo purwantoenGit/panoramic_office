@@ -27,6 +27,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ScrumSprint> ScrumSprints => Set<ScrumSprint>();
     public DbSet<ScrumTask> ScrumTasks => Set<ScrumTask>();
     public DbSet<ScrumBlocker> ScrumBlockers => Set<ScrumBlocker>();
+    public DbSet<ScrumProductBacklogItem> ScrumProductBacklogItems => Set<ScrumProductBacklogItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -345,6 +346,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(blocker => new { blocker.SprintId, blocker.IsResolved })
                 .HasDatabaseName("IX_pano_scrum_blocker_Sprint_Resolved");
+        });
+
+        modelBuilder.Entity<ScrumProductBacklogItem>(entity =>
+        {
+            entity.ToTable("pano_scrum_product_backlog_item", "dbo");
+            entity.Property(item => item.Module).HasMaxLength(100).IsRequired();
+            entity.Property(item => item.Summary).HasMaxLength(250).IsRequired();
+            entity.Property(item => item.AcceptanceCriteria).HasColumnType("nvarchar(max)").IsRequired();
+            entity.Property(item => item.Priority).HasMaxLength(20).IsRequired();
+            entity.Property(item => item.Status).HasMaxLength(30).IsRequired();
+            entity.Property(item => item.DefinitionOfDone).HasColumnType("nvarchar(max)").IsRequired();
+            entity.HasOne(item => item.TargetSprint)
+                .WithMany(sprint => sprint.ProductBacklogItems)
+                .HasForeignKey(item => item.TargetSprintId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(item => item.TargetSprintId)
+                .HasDatabaseName("IX_pano_scrum_product_backlog_item_TargetSprint");
         });
 
         modelBuilder.Entity<SopEvaluationDocument>(entity =>

@@ -88,10 +88,11 @@ legacy `pano_master_activity_plan` table, if present, is not dropped.
 ## Scrum Monitoring database setup
 
 Run `Database/Scripts/Create_ScrumProject.sql` against `db_panoramic` before
-opening `/scrum-project`. The page stores sprints, tasks, and blockers in
-dedicated tables and provides forms to add, edit, and delete them. Create the
-first sprint from the page; sprint records with tasks or blockers cannot be
-deleted until those child records are removed.
+opening `/scrum-project`. The page stores sprints, tasks, blockers, and Product
+Backlog Items in dedicated tables and provides forms to add, edit, and delete
+them. The script can be rerun to create the Product Backlog Item table in an
+existing database. Sprint records referenced by tasks, blockers, or Product
+Backlog Items cannot be deleted until those references are removed.
 
 ## RFID Tag Install database setup
 
