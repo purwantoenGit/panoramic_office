@@ -8,16 +8,44 @@
     <DialogContent>
         <MudGrid Spacing="2">
             <MudItem xs="12">
+                <MudSelect T="string" @bind-Value="_category" Label="Kategori"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                    @foreach (var category in ScrumProjectViewModel.TaskCategories)
+                    {
+                        <MudSelectItem T="string" Value="@category">@category</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
                 <MudTextField T="string" @bind-Value="_title" Label="Task"
-                              Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" MaxLength="250" />
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                              MaxLength="250" Lines="3" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudTextField T="string" @bind-Value="_owner" Label="PIC"
-                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="150" />
+                <MudSelect T="string" @bind-Value="_owner" Label="PIC"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true"
+                           Disabled="@(!PicOptions.Any() && string.IsNullOrWhiteSpace(_owner))">
+                    @if (!string.IsNullOrWhiteSpace(_owner) &&
+                         !PicOptions.Contains(_owner, StringComparer.Ordinal))
+                    {
+                        <MudSelectItem T="string" Value="@_owner">PIC sebelumnya: @_owner</MudSelectItem>
+                    }
+                    @foreach (var pic in PicOptions)
+                    {
+                        <MudSelectItem T="string" Value="@pic">@pic</MudSelectItem>
+                    }
+                </MudSelect>
+                @if (PicOptions.Count == 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Warning">
+                        Belum ada Master PIC. Tambahkan PIC atau biarkan kosong.
+                    </MudText>
+                }
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudDatePicker @bind-Date="_dueDate" Label="Due date"
-                               Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" />
+                <MudNumericField T="decimal?" @bind-Value="_estimatedHour" Label="Estimated Hour"
+                                 Variant="Variant.Outlined" Margin="Margin.Dense" Min="0"
+                                 Step="@(0.5m)" Clearable="true" />
             </MudItem>
             <MudItem xs="12" sm="6">
                 <MudSelect T="string" @bind-Value="_priority" Label="Prioritas"
@@ -37,6 +65,10 @@
                     }
                 </MudSelect>
             </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string" @bind-Value="_notes" Label="Notes"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Lines="3" />
+            </MudItem>
         </MudGrid>
     </DialogContent>
     <DialogActions>
@@ -51,13 +83,16 @@
 
     [Parameter] public ScrumTaskRow? InitialValue { get; set; }
     [Parameter] public int SprintId { get; set; }
+    [Parameter] public IReadOnlyList<string> PicOptions { get; set; } = [];
     [Parameter] public string DialogTitle { get; set; } = "Tambah Task";
 
     private string _title = string.Empty;
     private string _owner = string.Empty;
+    private string _category = string.Empty;
     private string _priority = "Sedang";
     private string _status = "Belum dimulai";
-    private DateTime? _dueDate;
+    private decimal? _estimatedHour;
+    private string _notes = string.Empty;
 
     protected override void OnInitialized()
     {
@@ -68,14 +103,16 @@
 
         _title = task.Title;
         _owner = task.Owner;
+        _category = task.Category ?? string.Empty;
         _priority = task.Priority;
         _status = task.Status;
-        _dueDate = task.DueDate;
+        _estimatedHour = task.EstimatedHour;
+        _notes = task.Notes ?? string.Empty;
     }
 
     private void Save()
     {
-        if (string.IsNullOrWhiteSpace(_title))
+        if (string.IsNullOrWhiteSpace(_title) || string.IsNullOrWhiteSpace(_category))
         {
             return;
         }
@@ -85,9 +122,11 @@
             SprintId,
             _title,
             _owner,
+            _category,
             _priority,
             _status,
-            _dueDate)));
+            _estimatedHour,
+            _notes)));
     }
 
     private void Cancel() => MudDialog.Cancel();

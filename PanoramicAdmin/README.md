@@ -87,12 +87,23 @@ legacy `pano_master_activity_plan` table, if present, is not dropped.
 
 ## Scrum Monitoring database setup
 
-Run `Database/Scripts/Create_ScrumProject.sql` against `db_panoramic` before
-opening `/scrum-project`. The page stores sprints, tasks, blockers, and Product
-Backlog Items in dedicated tables and provides forms to add, edit, and delete
-them. The script can be rerun to create the Product Backlog Item table in an
-existing database. Sprint records referenced by tasks, blockers, or Product
-Backlog Items cannot be deleted until those references are removed.
+Run `Database/Scripts/Create_ProductBacklogItem.sql` and then
+`Database/Scripts/Create_ScrumProject.sql` against `db_panoramic` before
+opening `/scrum-project` or `/product-backlog-item`. Product Backlog Items are
+available in a Scrum Monitoring tab and retain the standalone route and
+dedicated table. Each sprint can select a PBI; the sprint
+stores that relationship, while a PBI's numeric Target Sprint remains a
+separate estimate and is not linked to a Scrum Sprint. Clicking a PBI ID opens
+its active sprint, or the most recently started sprint when none is active; the
+PBI table's Status is the completion percentage for that same sprint, not an
+editable PBI status. With no associated sprint, it shows `0% - Belum Ada Sprint`.
+Sprint dates are limited to 14 calendar days including the start date. Scrum tasks include a category,
+PIC selected from Master PIC, optional Estimated Hour, and Notes instead of
+using Due Date. Rerun
+`Database/Scripts/Create_ScrumProject.sql` on an existing database to add the
+new task columns. Existing task and sprint records are preserved; existing
+tasks have no category until edited, and the old DueDate column is retained
+without being used by the application.
 
 ## RFID Tag Install database setup
 

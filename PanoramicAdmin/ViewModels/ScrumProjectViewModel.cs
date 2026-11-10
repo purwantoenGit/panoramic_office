@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using MudBlazor;
 using PanoramicAdmin.Models;
 using PanoramicAdmin.Services;
-using System.Globalization;
 
 namespace PanoramicAdmin.ViewModels;
 
@@ -17,33 +16,45 @@ public sealed class ScrumProjectViewModel(
         ["Direncanakan", "Berjalan", "Selesai"];
     public static IReadOnlyList<string> TaskStatuses { get; } =
         ["Belum dimulai", "Sedang dikerjakan", "Dalam review", "Selesai"];
+    public static IReadOnlyList<string> TaskCategories { get; } =
+        ["Backend", "Change Management", "Dashboard", "Dokumentasi", "Frontend", "Hardware", "QA", "UR"];
     public static IReadOnlyList<string> Priorities { get; } =
         ["Rendah", "Sedang", "Tinggi"];
 
-    public static string GetSprintLabel(ScrumSprintRow sprint)
-    {
-        var startDate = sprint.StartDate.Year == sprint.EndDate.Year
-            ? sprint.StartDate.ToString("d MMM", CultureInfo.InvariantCulture)
-            : sprint.StartDate.ToString("d MMM yyyy", CultureInfo.InvariantCulture);
-        var endDate = sprint.EndDate.ToString("d MMM yyyy", CultureInfo.InvariantCulture);
-        return $"{sprint.Name} ({startDate} - {endDate})";
-    }
-
     public event Action? StateChanged;
     public IReadOnlyList<ScrumSprintRow> Sprints { get; private set; } = [];
+    public IReadOnlyList<ScrumProductBacklogItemOption> ProductBacklogItems { get; private set; } = [];
+    public IReadOnlyList<string> PicOptions { get; private set; } = [];
     public IReadOnlyList<ScrumTaskRow> Tasks { get; private set; } = [];
+    public ScrumPicFilterOption SelectedPicFilter { get; private set; } = new("Semua PIC", null);
+    public IReadOnlyList<ScrumPicFilterOption> PicFilterOptions =>
+        new[]
+        {
+            new ScrumPicFilterOption("Semua PIC", null),
+            new ScrumPicFilterOption("Tanpa PIC", string.Empty)
+        }
+        .Concat(PicOptions.Concat(Tasks.Select(task => task.Owner))
+            .Where(pic => !string.IsNullOrWhiteSpace(pic))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(pic => pic, StringComparer.OrdinalIgnoreCase)
+            .Select(pic => new ScrumPicFilterOption(pic, pic)))
+        .ToArray();
+    public IReadOnlyList<ScrumTaskRow> FilteredTasks =>
+        SelectedPicFilter.Owner switch
+        {
+            null => Tasks,
+            "" => Tasks.Where(task => string.IsNullOrWhiteSpace(task.Owner)).ToArray(),
+            var pic => Tasks.Where(task =>
+                string.Equals(task.Owner, pic, StringComparison.OrdinalIgnoreCase)).ToArray()
+        };
     public IReadOnlyList<ScrumBlockerRow> Blockers { get; private set; } = [];
-    public IReadOnlyList<ScrumProductBacklogItemRow> ProductBacklogItems { get; private set; } = [];
     public ScrumSprintRow? SelectedSprint =>
         Sprints.FirstOrDefault(sprint => sprint.Id == SelectedSprintId);
-    public IReadOnlyList<ScrumProductBacklogItemRow> SelectedSprintProductBacklogItems =>
-        SelectedSprintId is { } sprintId
-            ? ProductBacklogItems.Where(item => item.TargetSprintId == sprintId).ToArray()
-            : [];
     public int? SelectedSprintId { get; private set; }
     public bool IsLoading { get; private set; } = true;
     public bool IsSaving { get; private set; }
     public string? DatabaseError { get; private set; }
+    public string? SprintDeleteMessage { get; private set; }
     public int DaysRemaining =>
         SelectedSprint is { } sprint
             ? Math.Max(0, (sprint.EndDate.Date - DateTime.Today).Days)
@@ -57,7 +68,7 @@ public sealed class ScrumProjectViewModel(
     public double CompletionPercent =>
         Tasks.Count == 0 ? 0 : (double)CompletedTaskCount / Tasks.Count * 100;
 
-    public async Task LoadAsync(int? preferredSprintId = null)
+    public async Task LoadAsync(int? preferredSprintId = null, int? productBacklogItemId = null)
     {
         IsLoading = true;
         DatabaseError = null;
@@ -72,38 +83,47 @@ public sealed class ScrumProjectViewModel(
             }
 
             await using var db = await dbContextFactory.CreateDbContextAsync();
+            PicOptions = await db.MasterPics.AsNoTracking()
+                .OrderBy(pic => pic.Nama)
+                .ThenBy(pic => pic.Id)
+                .Select(pic => pic.Nama)
+                .ToListAsync();
+            ProductBacklogItems = await db.ScrumProductBacklogItems.AsNoTracking()
+                .OrderBy(item => item.Id)
+                .Select(item => new ScrumProductBacklogItemOption(
+                    item.Id,
+                    $"PBI-SMARE-{item.Id:000}",
+                    item.Summary,
+                    item.TargetSprint))
+                .ToListAsync();
             Sprints = (await db.ScrumSprints.AsNoTracking()
                     .OrderByDescending(sprint => sprint.Status == "Berjalan")
                     .ThenByDescending(sprint => sprint.StartDate)
+                    .ThenByDescending(sprint => sprint.Id)
                     .Select(sprint => new ScrumSprintRow(
                         sprint.Id,
-                        sprint.Name,
+                        sprint.ProductBacklogItem == null
+                            ? sprint.Name
+                            : $"PBI-SMARE-{sprint.ProductBacklogItem.Id:000}",
+                        sprint.ProductBacklogItemId,
+                        sprint.ProductBacklogItem == null
+                            ? null
+                            : $"PBI-SMARE-{sprint.ProductBacklogItem.Id:000}",
+                        sprint.ProductBacklogItem == null
+                            ? null
+                            : sprint.ProductBacklogItem.Summary,
                         sprint.Focus,
                         sprint.StartDate,
                         sprint.EndDate,
                         sprint.Status))
                     .ToListAsync());
-            SelectedSprintId = SelectSprintId(preferredSprintId);
-
-            ProductBacklogItems = (await db.ScrumProductBacklogItems.AsNoTracking()
-                    .OrderBy(item => item.Id)
-                    .Select(item => new ScrumProductBacklogItemRow(
-                        item.Id,
-                        $"PBI-{item.Id:000}",
-                        item.Module,
-                        item.Summary,
-                        item.AcceptanceCriteria,
-                        item.Priority,
-                        item.Status,
-                        item.TargetSprintId,
-                        item.TargetSprint == null ? string.Empty : item.TargetSprint.Name,
-                        item.DefinitionOfDone))
-                    .ToListAsync());
+            SelectedSprintId = SelectSprintId(preferredSprintId, productBacklogItemId);
 
             if (SelectedSprintId is not { } sprintId)
             {
                 Tasks = [];
                 Blockers = [];
+                NormalizePicFilter();
                 return;
             }
 
@@ -112,14 +132,16 @@ public sealed class ScrumProjectViewModel(
                     .OrderBy(task => task.Id)
                     .Select(task => new ScrumTaskRow(
                         task.Id,
-                        $"ACN-{task.Id:000}",
+                        $"TSK-SMARE-{task.Id:000}",
                         task.SprintId,
                         task.Title,
                         task.Owner ?? string.Empty,
                         GetInitials(task.Owner),
+                        task.Category,
                         task.Priority,
                         task.Status,
-                        task.DueDate))
+                        task.EstimatedHour,
+                        task.Notes))
                     .ToListAsync());
             Blockers = (await db.ScrumBlockers.AsNoTracking()
                     .Where(blocker => blocker.SprintId == sprintId)
@@ -134,6 +156,7 @@ public sealed class ScrumProjectViewModel(
                         blocker.NextStep,
                         blocker.IsResolved))
                     .ToListAsync());
+            NormalizePicFilter();
         }
         catch (Exception exception)
         {
@@ -149,16 +172,30 @@ public sealed class ScrumProjectViewModel(
 
     public Task SelectSprintAsync(int sprintId) => LoadAsync(sprintId);
 
+    public void FilterTasksByPic(ScrumPicFilterOption? pic)
+    {
+        if (pic is not null && !PicFilterOptions.Contains(pic))
+        {
+            snackbar.Add("Filter PIC tidak valid. Pilih PIC yang tersedia.", Severity.Warning);
+            return;
+        }
+
+        SelectedPicFilter = pic ?? PicFilterOptions[0];
+        NotifyStateChanged();
+    }
+
     public async Task SaveSprintAsync(ScrumSprintInput input)
     {
-        var name = input.Name.Trim();
         var focus = input.Focus.Trim();
-        if (string.IsNullOrWhiteSpace(name) || name.Length > 100 ||
+        if (input.ProductBacklogItemId is not { } productBacklogItemId ||
+            !ProductBacklogItems.Any(item => item.Id == productBacklogItemId) ||
             string.IsNullOrWhiteSpace(focus) || focus.Length > 250 ||
             input.EndDate.Date < input.StartDate.Date ||
+            input.EndDate.Date > input.StartDate.Date.AddDays(13) ||
             !SprintStatuses.Contains(input.Status, StringComparer.Ordinal))
         {
-            snackbar.Add("Periksa nama, fokus, rentang tanggal, dan status sprint.", Severity.Warning);
+            snackbar.Add("Periksa Product Backlog Item, fokus, rentang tanggal 14 hari, dan status sprint.",
+                Severity.Warning);
             return;
         }
 
@@ -166,6 +203,10 @@ public sealed class ScrumProjectViewModel(
         try
         {
             await using var db = await dbContextFactory.CreateDbContextAsync();
+            var productBacklogItem = await db.ScrumProductBacklogItems
+                .SingleOrDefaultAsync(item => item.Id == productBacklogItemId)
+                ?? throw new InvalidOperationException("Product Backlog Item tidak ditemukan.");
+            var name = $"PBI-SMARE-{productBacklogItem.Id:000}";
             ScrumSprint entity;
             if (input.Id is { } id)
             {
@@ -177,6 +218,7 @@ public sealed class ScrumProjectViewModel(
                 entity = new ScrumSprint
                 {
                     Name = name,
+                    ProductBacklogItemId = productBacklogItem.Id,
                     Focus = focus,
                     StartDate = input.StartDate.Date,
                     EndDate = input.EndDate.Date,
@@ -186,6 +228,7 @@ public sealed class ScrumProjectViewModel(
             }
 
             entity.Name = name;
+            entity.ProductBacklogItemId = productBacklogItem.Id;
             entity.Focus = focus;
             entity.StartDate = input.StartDate.Date;
             entity.EndDate = input.EndDate.Date;
@@ -207,22 +250,26 @@ public sealed class ScrumProjectViewModel(
     public async Task DeleteSprintAsync(int id)
     {
         IsSaving = true;
+        SprintDeleteMessage = null;
         try
         {
             await using var db = await dbContextFactory.CreateDbContextAsync();
             var sprint = await db.ScrumSprints.SingleOrDefaultAsync(item => item.Id == id);
             if (sprint is null)
             {
-                snackbar.Add("Sprint tidak ditemukan. Daftar telah diperbarui.", Severity.Warning);
-                await LoadAsync();
+                SprintDeleteMessage = "Sprint tidak ditemukan. Daftar perlu dimuat ulang.";
+                snackbar.Add(SprintDeleteMessage, Severity.Warning);
                 return;
             }
 
-            if (await db.ScrumTasks.AnyAsync(task => task.SprintId == id) ||
-                await db.ScrumBlockers.AnyAsync(blocker => blocker.SprintId == id) ||
-                await db.ScrumProductBacklogItems.AnyAsync(item => item.TargetSprintId == id))
+            var taskCount = await db.ScrumTasks.CountAsync(task => task.SprintId == id);
+            var blockerCount = await db.ScrumBlockers.CountAsync(blocker => blocker.SprintId == id);
+            if (taskCount > 0 || blockerCount > 0)
             {
-                snackbar.Add("Sprint tidak bisa dihapus selama masih direferensikan oleh task, blocker, atau Product Backlog Item.", Severity.Warning);
+                SprintDeleteMessage =
+                    $"Sprint tidak bisa dihapus karena masih memiliki {taskCount} task dan {blockerCount} blocker. " +
+                    "Hapus task dan blocker tersebut terlebih dahulu.";
+                snackbar.Add(SprintDeleteMessage, Severity.Warning);
                 return;
             }
 
@@ -238,6 +285,7 @@ public sealed class ScrumProjectViewModel(
         finally
         {
             IsSaving = false;
+            NotifyStateChanged();
         }
     }
 
@@ -245,13 +293,18 @@ public sealed class ScrumProjectViewModel(
     {
         var title = input.Title.Trim();
         var owner = Clean(input.Owner);
+        var category = Clean(input.Category);
+        var notes = Clean(input.Notes);
         if (string.IsNullOrWhiteSpace(title) || title.Length > 250 ||
             owner?.Length > 150 ||
+            category is null || !TaskCategories.Contains(category, StringComparer.Ordinal) ||
+            input.EstimatedHour is < 0 or > 999999.99m ||
             !TaskStatuses.Contains(input.Status, StringComparer.Ordinal) ||
             !Priorities.Contains(input.Priority, StringComparer.Ordinal) ||
             !Sprints.Any(sprint => sprint.Id == input.SprintId))
         {
-            snackbar.Add("Periksa judul, PIC, prioritas, status, dan sprint task.", Severity.Warning);
+            snackbar.Add("Periksa judul, PIC, kategori, estimasi jam, prioritas, status, dan sprint task.",
+                Severity.Warning);
             return;
         }
 
@@ -271,18 +324,30 @@ public sealed class ScrumProjectViewModel(
                 {
                     SprintId = input.SprintId,
                     Title = title,
+                    Category = category,
                     Priority = input.Priority,
                     Status = input.Status
                 };
                 db.ScrumTasks.Add(entity);
             }
 
+            if (owner is not null &&
+                !await db.MasterPics.AnyAsync(pic => pic.Nama == owner) &&
+                !StringComparer.Ordinal.Equals(entity.Owner, owner))
+            {
+                snackbar.Add("PIC tidak lagi tersedia di Master PIC. Pilih PIC yang masih aktif.", Severity.Warning);
+                await LoadAsync(input.SprintId);
+                return;
+            }
+
             entity.SprintId = input.SprintId;
             entity.Title = title;
             entity.Owner = owner;
+            entity.Category = category;
             entity.Priority = input.Priority;
             entity.Status = input.Status;
-            entity.DueDate = input.DueDate?.Date;
+            entity.EstimatedHour = input.EstimatedHour;
+            entity.Notes = notes;
             await db.SaveChangesAsync();
             snackbar.Add("Task berhasil disimpan.", Severity.Success);
             await LoadAsync(input.SprintId);
@@ -415,102 +480,7 @@ public sealed class ScrumProjectViewModel(
         }
     }
 
-    public async Task SaveProductBacklogItemAsync(ScrumProductBacklogItemInput input)
-    {
-        var module = input.Module.Trim();
-        var summary = input.Summary.Trim();
-        var acceptanceCriteria = input.AcceptanceCriteria.Trim();
-        var definitionOfDone = input.DefinitionOfDone.Trim();
-        if (string.IsNullOrWhiteSpace(module) || module.Length > 100 ||
-            string.IsNullOrWhiteSpace(summary) || summary.Length > 250 ||
-            string.IsNullOrWhiteSpace(acceptanceCriteria) ||
-            string.IsNullOrWhiteSpace(definitionOfDone) ||
-            !Priorities.Contains(input.Priority, StringComparer.Ordinal) ||
-            !TaskStatuses.Contains(input.Status, StringComparer.Ordinal) ||
-            (input.TargetSprintId is { } targetSprintId &&
-             !Sprints.Any(sprint => sprint.Id == targetSprintId)))
-        {
-            snackbar.Add("Periksa module, summary, AC, prioritas, status, target sprint, dan DoD PBI.", Severity.Warning);
-            return;
-        }
-
-        IsSaving = true;
-        try
-        {
-            await using var db = await dbContextFactory.CreateDbContextAsync();
-            ScrumProductBacklogItem entity;
-            if (input.Id is { } id)
-            {
-                entity = await db.ScrumProductBacklogItems.SingleOrDefaultAsync(item => item.Id == id)
-                    ?? throw new InvalidOperationException("Product Backlog Item tidak ditemukan.");
-            }
-            else
-            {
-                entity = new ScrumProductBacklogItem
-                {
-                    Module = module,
-                    Summary = summary,
-                    AcceptanceCriteria = acceptanceCriteria,
-                    Priority = input.Priority,
-                    Status = input.Status,
-                    DefinitionOfDone = definitionOfDone
-                };
-                db.ScrumProductBacklogItems.Add(entity);
-            }
-
-            entity.Module = module;
-            entity.Summary = summary;
-            entity.AcceptanceCriteria = acceptanceCriteria;
-            entity.Priority = input.Priority;
-            entity.Status = input.Status;
-            entity.TargetSprintId = input.TargetSprintId;
-            entity.DefinitionOfDone = definitionOfDone;
-            await db.SaveChangesAsync();
-            snackbar.Add("Product Backlog Item berhasil disimpan.", Severity.Success);
-            await LoadAsync(SelectedSprintId);
-        }
-        catch (Exception exception)
-        {
-            HandleError(exception, "menyimpan Product Backlog Item",
-                "Product Backlog Item gagal disimpan.");
-        }
-        finally
-        {
-            IsSaving = false;
-        }
-    }
-
-    public async Task DeleteProductBacklogItemAsync(int id)
-    {
-        IsSaving = true;
-        try
-        {
-            await using var db = await dbContextFactory.CreateDbContextAsync();
-            var item = await db.ScrumProductBacklogItems.SingleOrDefaultAsync(pbi => pbi.Id == id);
-            if (item is null)
-            {
-                snackbar.Add("Product Backlog Item tidak ditemukan. Daftar telah diperbarui.", Severity.Warning);
-                await LoadAsync(SelectedSprintId);
-                return;
-            }
-
-            db.ScrumProductBacklogItems.Remove(item);
-            await db.SaveChangesAsync();
-            snackbar.Add("Product Backlog Item berhasil dihapus.", Severity.Success);
-            await LoadAsync(SelectedSprintId);
-        }
-        catch (Exception exception)
-        {
-            HandleError(exception, "menghapus Product Backlog Item",
-                "Product Backlog Item gagal dihapus.");
-        }
-        finally
-        {
-            IsSaving = false;
-        }
-    }
-
-    private int? SelectSprintId(int? preferredSprintId)
+    private int? SelectSprintId(int? preferredSprintId, int? productBacklogItemId)
     {
         if (preferredSprintId is { } requestedId &&
             Sprints.Any(sprint => sprint.Id == requestedId))
@@ -518,8 +488,32 @@ public sealed class ScrumProjectViewModel(
             return requestedId;
         }
 
+        if (productBacklogItemId is { } requestedProductBacklogItemId)
+        {
+            return Sprints
+                .Where(sprint => sprint.ProductBacklogItemId == requestedProductBacklogItemId)
+                .OrderByDescending(sprint => sprint.Status == "Berjalan")
+                .ThenByDescending(sprint => sprint.StartDate)
+                .ThenByDescending(sprint => sprint.Id)
+                .Select(sprint => (int?)sprint.Id)
+                .FirstOrDefault();
+        }
+
         return Sprints.FirstOrDefault(sprint => sprint.Status == "Berjalan")?.Id
             ?? Sprints.FirstOrDefault()?.Id;
+    }
+
+    private void NormalizePicFilter()
+    {
+        if (SelectedPicFilter.Owner is not { Length: > 0 } selectedPic)
+        {
+            return;
+        }
+
+        SelectedPicFilter = PicFilterOptions.FirstOrDefault(option =>
+            option.Owner is { Length: > 0 } owner &&
+            string.Equals(owner, selectedPic, StringComparison.OrdinalIgnoreCase))
+            ?? PicFilterOptions[0];
     }
 
     private static string? Clean(string? value) =>

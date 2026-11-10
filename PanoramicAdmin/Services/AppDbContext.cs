@@ -313,18 +313,34 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(sprint => sprint.StartDate).HasColumnType("date").IsRequired();
             entity.Property(sprint => sprint.EndDate).HasColumnType("date").IsRequired();
             entity.Property(sprint => sprint.Status).HasMaxLength(20).IsRequired();
+            entity.HasOne(sprint => sprint.ProductBacklogItem)
+                .WithMany(item => item.Sprints)
+                .HasForeignKey(sprint => sprint.ProductBacklogItemId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(sprint => sprint.Status)
                 .HasDatabaseName("IX_pano_scrum_sprint_Status");
+            entity.HasIndex(sprint => sprint.ProductBacklogItemId)
+                .HasDatabaseName("IX_pano_scrum_sprint_ProductBacklogItem");
         });
 
         modelBuilder.Entity<ScrumTask>(entity =>
         {
-            entity.ToTable("pano_scrum_task", "dbo");
+            entity.ToTable("pano_scrum_task", "dbo", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_pano_scrum_task_Category",
+                    "[Category] IS NULL OR [Category] IN (N'Backend', N'Change Management', N'Dashboard', N'Dokumentasi', N'Frontend', N'Hardware', N'QA', N'UR')");
+                table.HasCheckConstraint(
+                    "CK_pano_scrum_task_EstimatedHour",
+                    "[EstimatedHour] IS NULL OR [EstimatedHour] >= 0");
+            });
             entity.Property(task => task.Title).HasMaxLength(250).IsRequired();
             entity.Property(task => task.Owner).HasMaxLength(150);
+            entity.Property(task => task.Category).HasMaxLength(30);
             entity.Property(task => task.Priority).HasMaxLength(20).IsRequired();
             entity.Property(task => task.Status).HasMaxLength(30).IsRequired();
-            entity.Property(task => task.DueDate).HasColumnType("date");
+            entity.Property(task => task.EstimatedHour).HasPrecision(8, 2);
+            entity.Property(task => task.Notes).HasColumnType("nvarchar(max)");
             entity.HasOne(task => task.Sprint)
                 .WithMany(sprint => sprint.Tasks)
                 .HasForeignKey(task => task.SprintId)
@@ -350,19 +366,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<ScrumProductBacklogItem>(entity =>
         {
-            entity.ToTable("pano_scrum_product_backlog_item", "dbo");
+            entity.ToTable("pano_scrum_product_backlog_item", "dbo", table =>
+                table.HasCheckConstraint(
+                    "CK_pano_scrum_product_backlog_item_TargetSprint",
+                    "[TargetSprint] IS NULL OR [TargetSprint] >= 1"));
             entity.Property(item => item.Module).HasMaxLength(100).IsRequired();
             entity.Property(item => item.Summary).HasMaxLength(250).IsRequired();
             entity.Property(item => item.AcceptanceCriteria).HasColumnType("nvarchar(max)").IsRequired();
             entity.Property(item => item.Priority).HasMaxLength(20).IsRequired();
             entity.Property(item => item.Status).HasMaxLength(30).IsRequired();
             entity.Property(item => item.DefinitionOfDone).HasColumnType("nvarchar(max)").IsRequired();
-            entity.HasOne(item => item.TargetSprint)
-                .WithMany(sprint => sprint.ProductBacklogItems)
-                .HasForeignKey(item => item.TargetSprintId)
-                .OnDelete(DeleteBehavior.Restrict);
-            entity.HasIndex(item => item.TargetSprintId)
-                .HasDatabaseName("IX_pano_scrum_product_backlog_item_TargetSprint");
         });
 
         modelBuilder.Entity<SopEvaluationDocument>(entity =>

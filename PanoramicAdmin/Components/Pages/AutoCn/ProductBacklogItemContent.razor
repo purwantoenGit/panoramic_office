@@ -1,0 +1,201 @@
+@implements IDisposable
+@using PanoramicAdmin.Components.Dialogs
+@using PanoramicAdmin.Models
+@using PanoramicAdmin.ViewModels
+@inject IDialogService DialogService
+@inject ScrumProductBacklogViewModel ViewModel
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.overline" Class="scrum-eyebrow">DIGITAL INITIATIVE / AUTO CN</MudText>
+        <MudText Typo="Typo.h4" Class="page-title">Product Backlog Item</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Kelola backlog produk, acceptance criteria, prioritas, status, dan definition of done secara terpisah dari sprint.
+        </MudText>
+    </div>
+</div>
+
+<MudPaper Class="section-card" Elevation="0">
+    <div class="scrum-board-heading">
+        <div>
+            <MudText Typo="Typo.h6" Class="section-title">Daftar Product Backlog Item (PBI)</MudText>
+            <MudText Typo="Typo.body2" Class="section-subtitle">
+                @ViewModel.Items.Count item
+            </MudText>
+        </div>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="@(() => OpenDialogAsync(null))"
+                   Disabled="@ViewModel.IsSaving">
+            Tambah PBI
+        </MudButton>
+    </div>
+
+    @if (ViewModel.IsLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            Memuat Product Backlog Items...
+        </MudText>
+    }
+    else if (ViewModel.DatabaseError is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-4">
+            <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                <span>@ViewModel.DatabaseError</span>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                           OnClick="ViewModel.LoadAsync" Disabled="@ViewModel.IsSaving">
+                    Coba lagi
+                </MudButton>
+            </div>
+        </MudAlert>
+    }
+    else if (ViewModel.Items.Count == 0)
+    {
+        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+            Belum ada Product Backlog Item.
+        </MudText>
+    }
+    else
+    {
+        <MudTable T="ScrumProductBacklogItemRow" Items="@ViewModel.Items"
+                  Class="scrum-pbi-table" Dense="true" Hover="true"
+                  Breakpoint="Breakpoint.None">
+            <HeaderContent>
+                <MudTh>PBI ID</MudTh>
+                <MudTh>Module</MudTh>
+                <MudTh>Summary</MudTh>
+                <MudTh>Acceptance Criteria (AC)</MudTh>
+                <MudTh>Priority</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Target Sprint</MudTh>
+                <MudTh>Definition of Done (DoD)</MudTh>
+                <MudTh>Aksi</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="PBI ID">
+                    @if (NavigateToSprint.HasDelegate)
+                    {
+                        <MudLink Href="@($"/scrum-project?productBacklogItemId={context.Id}")"
+                                 OnClick="@(() => NavigateToSprint.InvokeAsync(context.Id))">
+                            @context.Code
+                        </MudLink>
+                    }
+                    else
+                    {
+                        <MudLink Href="@($"/scrum-project?productBacklogItemId={context.Id}")">
+                            @context.Code
+                        </MudLink>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Module">@context.Module</MudTd>
+                <MudTd DataLabel="Summary">@context.Summary</MudTd>
+                <MudTd DataLabel="Acceptance Criteria (AC)">@context.AcceptanceCriteria</MudTd>
+                <MudTd DataLabel="Priority">
+                    <span class="@($"scrum-priority {GetPriorityClass(context.Priority)}")">
+                        @context.Priority
+                    </span>
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    <div class="pbi-sprint-achievement">
+                        <MudProgressLinear Value="@(context.SprintCompletionPercent ?? 0)"
+                                           Color="Color.Success" Rounded="true" Size="Size.Small" />
+                        @if (context.SprintCompletionPercent is { } completionPercent)
+                        {
+                            <MudText Typo="Typo.caption">@completionPercent.ToString("0.#")% Ach</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption">0% - Belum Ada Sprint</MudText>
+                        }
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Target Sprint">
+                    @(context.TargetSprint is { } sprintNumber ? $"Sprint {sprintNumber}" : "—")
+                </MudTd>
+                <MudTd DataLabel="Definition of Done (DoD)">@context.DefinitionOfDone</MudTd>
+                <MudTd DataLabel="Aksi">
+                    <div class="d-flex align-center">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                       aria-label="Edit Product Backlog Item"
+                                       OnClick="@(() => OpenDialogAsync(context))"
+                                       Disabled="@ViewModel.IsSaving" />
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error"
+                                       Size="Size.Small" aria-label="Hapus Product Backlog Item"
+                                       OnClick="@(() => RequestDelete(context.Id))"
+                                       Disabled="@ViewModel.IsSaving" />
+                    </div>
+                    @if (_pendingDeleteId == context.Id)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                            Hapus PBI ini?
+                            <MudButton Size="Size.Small" Color="Color.Error"
+                                       OnClick="@(() => DeleteAsync(context.Id))">
+                                Hapus
+                            </MudButton>
+                            <MudButton Size="Size.Small" OnClick="CancelDelete">Batal</MudButton>
+                        </MudAlert>
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+@code {
+    private int? _pendingDeleteId;
+
+    [Parameter] public EventCallback<int> NavigateToSprint { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ViewModel.StateChanged += OnViewModelStateChanged;
+        await ViewModel.LoadAsync();
+    }
+
+    private async Task OpenDialogAsync(ScrumProductBacklogItemRow? item)
+    {
+        var parameters = new DialogParameters
+        {
+            ["InitialValue"] = item,
+            ["DialogTitle"] = item is null
+                ? "Tambah Product Backlog Item"
+                : "Edit Product Backlog Item"
+        };
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Medium
+        };
+        var dialog = await DialogService.ShowAsync<ScrumProductBacklogItemDialog>(
+            item is null ? "Tambah Product Backlog Item" : "Edit Product Backlog Item",
+            parameters,
+            options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: ScrumProductBacklogItemInput input })
+        {
+            await ViewModel.SaveAsync(input);
+        }
+    }
+
+    private void RequestDelete(int id) => _pendingDeleteId = id;
+    private void CancelDelete() => _pendingDeleteId = null;
+
+    private async Task DeleteAsync(int id)
+    {
+        _pendingDeleteId = null;
+        await ViewModel.DeleteAsync(id);
+    }
+
+    private static string GetPriorityClass(string priority) => priority switch
+    {
+        "Tinggi" => "priority-high",
+        "Rendah" => "priority-low",
+        _ => "priority-medium"
+    };
+
+    private void OnViewModelStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => ViewModel.StateChanged -= OnViewModelStateChanged;
+}

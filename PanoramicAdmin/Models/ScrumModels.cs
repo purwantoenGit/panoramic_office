@@ -4,13 +4,14 @@ public class ScrumSprint
 {
     public int Id { get; set; }
     public required string Name { get; set; }
+    public int? ProductBacklogItemId { get; set; }
+    public ScrumProductBacklogItem? ProductBacklogItem { get; set; }
     public required string Focus { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public required string Status { get; set; }
     public ICollection<ScrumTask> Tasks { get; set; } = [];
     public ICollection<ScrumBlocker> Blockers { get; set; } = [];
-    public ICollection<ScrumProductBacklogItem> ProductBacklogItems { get; set; } = [];
 }
 
 public class ScrumTask
@@ -20,9 +21,11 @@ public class ScrumTask
     public ScrumSprint? Sprint { get; set; }
     public required string Title { get; set; }
     public string? Owner { get; set; }
+    public string? Category { get; set; }
     public required string Priority { get; set; }
     public required string Status { get; set; }
-    public DateTime? DueDate { get; set; }
+    public decimal? EstimatedHour { get; set; }
+    public string? Notes { get; set; }
 }
 
 public class ScrumBlocker
@@ -45,14 +48,14 @@ public class ScrumProductBacklogItem
     public string AcceptanceCriteria { get; set; } = string.Empty;
     public required string Priority { get; set; }
     public required string Status { get; set; }
-    public int? TargetSprintId { get; set; }
-    public ScrumSprint? TargetSprint { get; set; }
+    public int? TargetSprint { get; set; }
     public string DefinitionOfDone { get; set; } = string.Empty;
+    public ICollection<ScrumSprint> Sprints { get; set; } = [];
 }
 
 public sealed record ScrumSprintInput(
     int? Id,
-    string Name,
+    int? ProductBacklogItemId,
     string Focus,
     DateTime StartDate,
     DateTime EndDate,
@@ -61,6 +64,9 @@ public sealed record ScrumSprintInput(
 public sealed record ScrumSprintRow(
     int Id,
     string Name,
+    int? ProductBacklogItemId,
+    string? ProductBacklogItemCode,
+    string? ProductBacklogItemSummary,
     string Focus,
     DateTime StartDate,
     DateTime EndDate,
@@ -71,9 +77,11 @@ public sealed record ScrumTaskInput(
     int SprintId,
     string Title,
     string? Owner,
+    string? Category,
     string Priority,
     string Status,
-    DateTime? DueDate);
+    decimal? EstimatedHour,
+    string? Notes);
 
 public sealed record ScrumTaskRow(
     int Id,
@@ -82,9 +90,11 @@ public sealed record ScrumTaskRow(
     string Title,
     string Owner,
     string Initials,
+    string? Category,
     string Priority,
     string Status,
-    DateTime? DueDate);
+    decimal? EstimatedHour,
+    string? Notes);
 
 public sealed record ScrumBlockerInput(
     int? Id,
@@ -110,8 +120,7 @@ public sealed record ScrumProductBacklogItemInput(
     string Summary,
     string AcceptanceCriteria,
     string Priority,
-    string Status,
-    int? TargetSprintId,
+    int? TargetSprint,
     string DefinitionOfDone);
 
 public sealed record ScrumProductBacklogItemRow(
@@ -121,7 +130,20 @@ public sealed record ScrumProductBacklogItemRow(
     string Summary,
     string AcceptanceCriteria,
     string Priority,
-    string Status,
-    int? TargetSprintId,
-    string TargetSprintName,
-    string DefinitionOfDone);
+    int? TargetSprint,
+    string DefinitionOfDone,
+    double? SprintCompletionPercent);
+
+public sealed record ScrumProductBacklogItemOption(
+    int Id,
+    string Code,
+    string Summary,
+    int? TargetSprint);
+
+public sealed record ScrumPicFilterOption(string Label, string? Owner);
+
+public static class ScrumProductBacklogCatalog
+{
+    public static IReadOnlyList<string> Priorities { get; } =
+        ["Rendah", "Sedang", "Tinggi"];
+}

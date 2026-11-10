@@ -8,20 +8,36 @@
     <DialogContent>
         <MudGrid Spacing="2">
             <MudItem xs="12">
-                <MudTextField T="string" @bind-Value="_name" Label="Nama sprint"
-                              Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" MaxLength="100" />
+                <MudSelect T="int?" @bind-Value="_productBacklogItemId"
+                           Label="Product Backlog Item" Variant="Variant.Outlined"
+                           Margin="Margin.Dense" Required="true" Disabled="@(!ProductBacklogItems.Any())">
+                    @foreach (var item in ProductBacklogItems)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)item.Id)">
+                            @item.Code · @item.Summary
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+                @if (ProductBacklogItems.Count == 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Warning">
+                        Tambahkan Product Backlog Item terlebih dahulu.
+                    </MudText>
+                }
             </MudItem>
             <MudItem xs="12">
                 <MudTextField T="string" @bind-Value="_focus" Label="Fokus sprint"
                               Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" MaxLength="250" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudDatePicker @bind-Date="_startDate" Label="Tanggal mulai"
+                <MudDatePicker Date="@_startDate" DateChanged="OnStartDateChanged" Label="Tanggal mulai"
                                Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudDatePicker @bind-Date="_endDate" Label="Tanggal selesai"
-                               Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                <MudDatePicker Date="@_endDate" DateChanged="OnEndDateChanged" Label="Tanggal selesai"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                               MinDate="@_startDate" MaxDate="@MaxEndDate" Disabled="@(_startDate is null)"
+                               HelperText="Maksimal 14 hari termasuk tanggal mulai." />
             </MudItem>
             <MudItem xs="12">
                 <MudSelect T="string" @bind-Value="_status" Label="Status"
@@ -32,6 +48,12 @@
                     }
                 </MudSelect>
             </MudItem>
+            @if (_validationMessage is not null)
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Warning" Dense="true">@_validationMessage</MudAlert>
+                </MudItem>
+            }
         </MudGrid>
     </DialogContent>
     <DialogActions>
@@ -45,22 +67,27 @@
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
     [Parameter] public ScrumSprintRow? InitialValue { get; set; }
+    [Parameter] public IReadOnlyList<ScrumProductBacklogItemOption> ProductBacklogItems { get; set; } = [];
+    [Parameter] public int? DefaultProductBacklogItemId { get; set; }
     [Parameter] public string DialogTitle { get; set; } = "Tambah Sprint";
 
-    private string _name = string.Empty;
+    private int? _productBacklogItemId;
     private string _focus = string.Empty;
     private DateTime? _startDate = DateTime.Today;
     private DateTime? _endDate = DateTime.Today.AddDays(13);
     private string _status = "Direncanakan";
+    private string? _validationMessage;
+    private DateTime? MaxEndDate => _startDate?.Date.AddDays(13);
 
     protected override void OnInitialized()
     {
         if (InitialValue is not { } sprint)
         {
+            _productBacklogItemId = DefaultProductBacklogItemId;
             return;
         }
 
-        _name = sprint.Name;
+        _productBacklogItemId = sprint.ProductBacklogItemId;
         _focus = sprint.Focus;
         _startDate = sprint.StartDate;
         _endDate = sprint.EndDate;
@@ -69,21 +96,43 @@
 
     private void Save()
     {
-        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_focus) ||
-            _startDate is not { } startDate || _endDate is not { } endDate ||
-            endDate.Date < startDate.Date)
+        if (_productBacklogItemId is not { } productBacklogItemId ||
+            !ProductBacklogItems.Any(item => item.Id == productBacklogItemId) ||
+            string.IsNullOrWhiteSpace(_focus) ||
+            _startDate is not { } startDate || _endDate is not { } endDate)
         {
+            _validationMessage = "Pilih Product Backlog Item dan isi fokus serta tanggal sprint.";
+            return;
+        }
+
+        if (endDate.Date < startDate.Date || endDate.Date > startDate.Date.AddDays(13))
+        {
+            _validationMessage = "Tanggal selesai harus berada dalam rentang 14 hari dari tanggal mulai.";
             return;
         }
 
         MudDialog.Close(DialogResult.Ok(new ScrumSprintInput(
             InitialValue?.Id,
-            _name,
+            productBacklogItemId,
             _focus,
             startDate,
             endDate,
             _status)));
     }
+
+    private void OnStartDateChanged(DateTime? value)
+    {
+        _startDate = value?.Date;
+        if (_startDate is { } startDate &&
+            (_endDate is not { } endDate ||
+             endDate.Date < startDate.Date ||
+             endDate.Date > startDate.Date.AddDays(13)))
+        {
+            _endDate = startDate.AddDays(13);
+        }
+    }
+
+    private void OnEndDateChanged(DateTime? value) => _endDate = value?.Date;
 
     private void Cancel() => MudDialog.Cancel();
 }

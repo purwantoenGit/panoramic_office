@@ -8,6 +8,10 @@
 
 <PageTitle>Scrum Monitoring | Panoramic Office</PageTitle>
 
+<MudTabs Elevation="0" Color="Color.Primary" Rounded="true" Border="true"
+         Class="smart-refueling-tabs scrum-monitoring-tabs"
+         @bind-ActivePanelIndex="_activePanelIndex">
+<MudTabPanel Text="Sprint Monitoring">
 <div class="page-heading scrum-page-heading">
     <div class="scrum-page-title">
         <MudText Typo="Typo.overline" Class="scrum-eyebrow">DIGITAL INITIATIVE / AUTO CN</MudText>
@@ -16,43 +20,69 @@
             Pantau progres sprint, pekerjaan tim, dan tindak lanjut hambatan.
         </MudText>
     </div>
-    @if (_activeTabIndex == 0)
-    {
-        <div class="d-flex align-center flex-wrap gap-2">
-            @if (ViewModel.Sprints.Count > 0)
-            {
-                <MudSelect T="int?" Value="@ViewModel.SelectedSprintId" ValueChanged="OnSprintChanged"
-                           Label="Pilih sprint" Variant="Variant.Outlined" Margin="Margin.Dense"
-                           Class="scrum-sprint-selector" Disabled="@ViewModel.IsLoading">
-                    @foreach (var sprint in ViewModel.Sprints)
-                    {
-                        <MudSelectItem T="int?" Value="@((int?)sprint.Id)">
-                            @sprint.Name · @sprint.Status
-                        </MudSelectItem>
-                    }
-                </MudSelect>
-            }
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => OpenSprintDialogAsync(null))"
-                       Disabled="@ViewModel.IsSaving">
-                Sprint
-            </MudButton>
-            @if (ViewModel.SelectedSprint is { } selectedSprint)
-            {
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary"
-                               aria-label="Edit sprint" OnClick="@(() => OpenSprintDialogAsync(selectedSprint))"
-                               Disabled="@ViewModel.IsSaving" />
-                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error"
-                               aria-label="Hapus sprint" OnClick="@(() => RequestDelete($"sprint-{selectedSprint.Id}"))"
-                               Disabled="@ViewModel.IsSaving" />
-            }
-        </div>
-    }
+    <div class="d-flex align-center flex-wrap gap-2 scrum-page-actions">
+        @if (ViewModel.Sprints.Count > 0)
+        {
+            <MudSelect T="int?" Value="@ViewModel.SelectedSprintId" ValueChanged="OnSprintChanged"
+                       Label="Pilih sprint" Variant="Variant.Outlined" Margin="Margin.Dense"
+                       Class="scrum-sprint-selector" Disabled="@ViewModel.IsLoading">
+                @foreach (var sprint in ViewModel.Sprints)
+                {
+                    <MudSelectItem T="int?" Value="@((int?)sprint.Id)">
+                        @(sprint.ProductBacklogItemCode ?? sprint.Name) · @sprint.Status
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        }
+        @if (ViewModel.SelectedSprint is not null)
+        {
+            <MudAutocomplete T="ScrumPicFilterOption" Value="@ViewModel.SelectedPicFilter"
+                             ValueChanged="ViewModel.FilterTasksByPic"
+                             SearchFunc="SearchPicFilterOptionsAsync"
+                             ToStringFunc="PicFilterOptionToString"
+                             Label="Filter PIC" Placeholder="Ketik nama PIC..."
+                             Variant="Variant.Outlined" Margin="Margin.Dense"
+                             MinCharacters="0" MaxItems="20" Clearable="true" Immediate="true"
+                             ResetValueOnEmptyText="true" Class="scrum-pic-filter"
+                             Disabled="@ViewModel.IsLoading" />
+        }
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => OpenSprintDialogAsync(null))"
+                   Disabled="@ViewModel.IsSaving">
+            Sprint
+        </MudButton>
+        @if (ViewModel.SelectedSprint is { } selectedSprint)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary"
+                           aria-label="Edit sprint" OnClick="@(() => OpenSprintDialogAsync(selectedSprint))"
+                           Disabled="@ViewModel.IsSaving" />
+            <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error"
+                           aria-label="Hapus sprint" OnClick="@(() => RequestDelete($"sprint-{selectedSprint.Id}"))"
+                           Disabled="@ViewModel.IsSaving" />
+        }
+    </div>
 </div>
 
-<MudTabs @bind-ActivePanelIndex="_activeTabIndex" Elevation="0" Color="Color.Primary"
-         Rounded="true" Border="true" Class="smart-refueling-tabs">
-<MudTabPanel Text="Sprint Monitoring">
+@if (ViewModel.SprintDeleteMessage is { } sprintDeleteMessage)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4">
+        @sprintDeleteMessage
+    </MudAlert>
+}
+
+@if (ViewModel.SelectedSprint is { } sprintToDelete &&
+     _pendingDeleteKey == $"sprint-{sprintToDelete.Id}")
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4">
+        Hapus sprint ini? Penghapusan hanya bisa dilakukan jika sprint tidak memiliki task atau blocker.
+        <MudButton Color="Color.Error" OnClick="@(() => ConfirmDeleteAsync("sprint", sprintToDelete.Id))"
+                   Disabled="@ViewModel.IsSaving">
+            Hapus sprint
+        </MudButton>
+        <MudButton OnClick="CancelDelete" Disabled="@ViewModel.IsSaving">Batal</MudButton>
+    </MudAlert>
+}
+
 @if (ViewModel.IsLoading)
 {
     <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
@@ -64,7 +94,7 @@ else if (ViewModel.DatabaseError is not null)
         <div class="d-flex align-center justify-space-between flex-wrap gap-2">
             <span>@ViewModel.DatabaseError</span>
             <MudButton Variant="Variant.Outlined" Color="Color.Error"
-                       OnClick="@(() => ViewModel.LoadAsync(ViewModel.SelectedSprintId))"
+                       OnClick="@(() => ViewModel.LoadAsync(ViewModel.SelectedSprintId, ProductBacklogItemId))"
                        Disabled="@ViewModel.IsSaving">
                 Coba lagi
             </MudButton>
@@ -74,7 +104,21 @@ else if (ViewModel.DatabaseError is not null)
 else if (ViewModel.SelectedSprint is not { } sprint)
 {
     <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
-        Belum ada sprint. Tambahkan sprint untuk mulai mengelola task dan blocker.
+        @if (ProductBacklogItemId is { } productBacklogItemId)
+        {
+            if (ViewModel.ProductBacklogItems.Any(item => item.Id == productBacklogItemId))
+            {
+                <span>PBI-SMARE-@productBacklogItemId.ToString("000") belum memiliki sprint. Gunakan tombol Sprint untuk membuatnya.</span>
+            }
+            else
+            {
+                <span>Product Backlog Item tidak ditemukan. Periksa kembali daftar PBI.</span>
+            }
+        }
+        else
+        {
+            <span>Belum ada sprint. Tambahkan sprint untuk mulai mengelola task dan blocker.</span>
+        }
     </MudAlert>
 }
 else
@@ -89,6 +133,10 @@ else
                         @sprint.Status
                     </MudChip>
                 </div>
+                @if (sprint.ProductBacklogItemSummary is { } productBacklogItemSummary)
+                {
+                    <MudText Typo="Typo.subtitle1">@productBacklogItemSummary</MudText>
+                }
                 <MudText Typo="Typo.h5" Class="scrum-sprint-focus">@sprint.Focus</MudText>
                 <div class="scrum-sprint-meta">
                     <span>
@@ -171,53 +219,6 @@ else
         </MudPaper>
     </div>
 
-    <MudPaper Class="scrum-pbi-sprint-panel mb-4" Elevation="0">
-        <div class="scrum-pbi-sprint-heading">
-            <div>
-                <MudText Typo="Typo.h6" Class="section-title">Product Backlog Item sprint ini</MudText>
-                <MudText Typo="Typo.body2" Class="section-subtitle">
-                    PBI yang memiliki Target Sprint @sprint.Name.
-                </MudText>
-            </div>
-            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
-                @ViewModel.SelectedSprintProductBacklogItems.Count PBI
-            </MudChip>
-        </div>
-        @if (ViewModel.SelectedSprintProductBacklogItems.Count == 0)
-        {
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Belum ada PBI yang ditargetkan ke sprint ini. Pilih sprint tersebut pada field Target Sprint di tab Product Backlog Item.
-            </MudText>
-        }
-        else
-        {
-            <div class="scrum-pbi-sprint-list">
-                @foreach (var item in ViewModel.SelectedSprintProductBacklogItems)
-                {
-                    <div class="scrum-pbi-sprint-item">
-                        <div>
-                            <MudText Typo="Typo.caption" Class="scrum-task-id">
-                                @item.Code · @item.Module
-                            </MudText>
-                            <MudText Typo="Typo.body2" Class="scrum-pbi-sprint-summary">
-                                @item.Summary
-                            </MudText>
-                        </div>
-                        <div class="d-flex align-center flex-wrap gap-2">
-                            <span class="@($"scrum-priority {GetPriorityClass(item.Priority)}")">
-                                @item.Priority
-                            </span>
-                            <MudChip T="string" Size="Size.Small"
-                                     Color="@(item.Status == "Selesai" ? Color.Success : Color.Default)">
-                                @item.Status
-                            </MudChip>
-                        </div>
-                    </div>
-                }
-            </div>
-        }
-    </MudPaper>
-
     <div class="scrum-board-heading">
         <div>
             <MudText Typo="Typo.h6" Class="section-title">Papan sprint</MudText>
@@ -226,7 +227,7 @@ else
             </MudText>
         </div>
         <div class="d-flex align-center gap-2">
-            <MudText Typo="Typo.caption" Class="scrum-board-total">@ViewModel.Tasks.Count task</MudText>
+            <MudText Typo="Typo.caption" Class="scrum-board-total">@ViewModel.FilteredTasks.Count task</MudText>
             <MudButton Variant="Variant.Filled" Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => OpenTaskDialogAsync(null))"
                        Disabled="@ViewModel.IsSaving">
@@ -239,7 +240,7 @@ else
         <div class="scrum-board">
             @foreach (var status in ScrumProjectViewModel.TaskStatuses)
             {
-                var columnTasks = ViewModel.Tasks.Where(task => task.Status == status).ToArray();
+                var columnTasks = ViewModel.FilteredTasks.Where(task => task.Status == status).ToArray();
                 <MudPaper Class="@($"scrum-column {GetColumnClass(status)}")" Elevation="0">
                     <div class="scrum-column-heading">
                         <div class="scrum-column-title">
@@ -251,9 +252,14 @@ else
                     <div class="scrum-column-tasks">
                         @foreach (var task in columnTasks)
                         {
-                            <div class="scrum-task-card">
+                            <div class="@($"scrum-task-card {GetTaskCardClass(task.Status)}")">
                                 <div class="scrum-task-meta">
-                                    <MudText Typo="Typo.caption" Class="scrum-task-id">@task.Code</MudText>
+                                    <div class="d-flex align-center gap-2">
+                                        <MudText Typo="Typo.caption" Class="scrum-task-id">@task.Code</MudText>
+                                        <span class="scrum-task-category">
+                                            @(task.Category ?? "Belum dikategorikan")
+                                        </span>
+                                    </div>
                                     <div class="d-flex align-center gap-1">
                                         <span class="@($"scrum-priority {GetPriorityClass(task.Priority)}")">@task.Priority</span>
                                         <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
@@ -266,6 +272,10 @@ else
                                     </div>
                                 </div>
                                 <MudText Typo="Typo.body2" Class="scrum-task-title">@task.Title</MudText>
+                                @if (!string.IsNullOrWhiteSpace(task.Notes))
+                                {
+                                    <MudText Typo="Typo.caption" Class="scrum-task-notes">@task.Notes</MudText>
+                                }
                                 <div class="scrum-task-footer">
                                     <div class="scrum-task-owner">
                                         <MudAvatar Size="Size.Small" Color="Color.Primary"
@@ -274,9 +284,11 @@ else
                                             @(string.IsNullOrWhiteSpace(task.Owner) ? "Belum ditentukan" : task.Owner)
                                         </MudText>
                                     </div>
-                                    <span class="scrum-task-due">
+                                    <span class="scrum-task-estimate">
                                         <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" />
-                                        @(task.DueDate?.ToString("dd MMM") ?? "Tanpa due date")
+                                        @(task.EstimatedHour is { } estimatedHour
+                                            ? $"{estimatedHour:0.##} jam"
+                                            : "Belum diestimasi")
                                     </span>
                                 </div>
                                 @if (_pendingDeleteKey == $"task-{task.Id}")
@@ -387,145 +399,77 @@ else
         }
     </MudPaper>
 
-    @if (_pendingDeleteKey == $"sprint-{sprint.Id}")
-    {
-        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-4">
-            Hapus sprint ini? Sprint hanya bisa dihapus jika tidak memiliki task, blocker, atau PBI terkait.
-            <MudButton Color="Color.Error" OnClick="@(() => ConfirmDeleteAsync("sprint", sprint.Id))">
-                Hapus sprint
-            </MudButton>
-            <MudButton OnClick="CancelDelete">Batal</MudButton>
-        </MudAlert>
-    }
 }
-</MudTabPanel>
-<MudTabPanel Text="Product Backlog Item">
-    @if (ViewModel.IsLoading)
-    {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
-        <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
-            Memuat Product Backlog Items...
-        </MudText>
-    }
-    else if (ViewModel.DatabaseError is not null)
-    {
-        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-4">
-            <div class="d-flex align-center justify-space-between flex-wrap gap-2">
-                <span>@ViewModel.DatabaseError</span>
-                <MudButton Variant="Variant.Outlined" Color="Color.Error"
-                           OnClick="@(() => ViewModel.LoadAsync(ViewModel.SelectedSprintId))"
-                           Disabled="@ViewModel.IsSaving">
-                    Coba lagi
-                </MudButton>
-            </div>
-        </MudAlert>
-    }
-    else
-    {
-        <div class="scrum-board-heading">
-            <div>
-                <MudText Typo="Typo.h6" Class="section-title">Product Backlog Items (PBI)</MudText>
-                <MudText Typo="Typo.body2" Class="section-subtitle">
-                    Kelola backlog produk, kriteria penerimaan, dan target sprint.
-                </MudText>
-            </div>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="@(() => OpenProductBacklogItemDialogAsync(null))"
-                       Disabled="@ViewModel.IsSaving">
-                Tambah PBI
-            </MudButton>
-        </div>
+    </MudTabPanel>
+    <MudTabPanel Text="Product Backlog Item">
+        <ProductBacklogItemContent NavigateToSprint="NavigateToSprintAsync" />
+    </MudTabPanel>
+    </MudTabs>
 
-        @if (ViewModel.ProductBacklogItems.Count == 0)
-        {
-            <MudPaper Class="scrum-blockers" Elevation="0">
-                <MudText Typo="Typo.body2" Color="Color.Secondary">
-                    Belum ada Product Backlog Item.
-                </MudText>
-            </MudPaper>
-        }
-        else
-        {
-            <MudTable T="ScrumProductBacklogItemRow" Items="@ViewModel.ProductBacklogItems"
-                      Class="scrum-pbi-table"
-                      Dense="true" Hover="true" Breakpoint="Breakpoint.None">
-                <HeaderContent>
-                    <MudTh>PBI ID</MudTh>
-                    <MudTh>Module</MudTh>
-                    <MudTh>Summary</MudTh>
-                    <MudTh>Acceptance Criteria (AC)</MudTh>
-                    <MudTh>Priority</MudTh>
-                    <MudTh>Status</MudTh>
-                    <MudTh>Target Sprint</MudTh>
-                    <MudTh>Definition of Done (DoD)</MudTh>
-                    <MudTh>Aksi</MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    <MudTd DataLabel="PBI ID">@context.Code</MudTd>
-                    <MudTd DataLabel="Module">@context.Module</MudTd>
-                    <MudTd DataLabel="Summary">@context.Summary</MudTd>
-                    <MudTd DataLabel="Acceptance Criteria (AC)">@context.AcceptanceCriteria</MudTd>
-                    <MudTd DataLabel="Priority">
-                        <span class="@($"scrum-priority {GetPriorityClass(context.Priority)}")">
-                            @context.Priority
-                        </span>
-                    </MudTd>
-                    <MudTd DataLabel="Status">@context.Status</MudTd>
-                    <MudTd DataLabel="Target Sprint">
-                        @(ViewModel.Sprints.FirstOrDefault(sprint => sprint.Id == context.TargetSprintId) is { } targetSprint
-                            ? ScrumProjectViewModel.GetSprintLabel(targetSprint)
-                            : "Belum ditentukan")
-                    </MudTd>
-                    <MudTd DataLabel="Definition of Done (DoD)">@context.DefinitionOfDone</MudTd>
-                    <MudTd DataLabel="Aksi">
-                        <div class="d-flex align-center">
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                                           aria-label="Edit Product Backlog Item"
-                                           OnClick="@(() => OpenProductBacklogItemDialogAsync(context))"
-                                           Disabled="@ViewModel.IsSaving" />
-                            <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error"
-                                           Size="Size.Small" aria-label="Hapus Product Backlog Item"
-                                           OnClick="@(() => RequestDelete($"pbi-{context.Id}"))"
-                                           Disabled="@ViewModel.IsSaving" />
-                        </div>
-                        @if (_pendingDeleteKey == $"pbi-{context.Id}")
-                        {
-                            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
-                                Hapus PBI ini?
-                                <MudButton Size="Size.Small" Color="Color.Error"
-                                           OnClick="@(() => ConfirmDeleteAsync("pbi", context.Id))">
-                                    Hapus
-                                </MudButton>
-                                <MudButton Size="Size.Small" OnClick="CancelDelete">Batal</MudButton>
-                            </MudAlert>
-                        }
-                    </MudTd>
-                </RowTemplate>
-            </MudTable>
-        }
-    }
-</MudTabPanel>
-</MudTabs>
-
-@code {
+    @code {
     private string? _pendingDeleteKey;
-    private int _activeTabIndex;
+    private int? _loadedProductBacklogItemId;
+    private bool _hasLoadedProductBacklogItem;
+    private int _activePanelIndex;
 
-    protected override async Task OnInitializedAsync()
+    [SupplyParameterFromQuery(Name = "productBacklogItemId")]
+    public int? ProductBacklogItemId { get; set; }
+
+    protected override void OnInitialized()
     {
         ViewModel.StateChanged += OnViewModelStateChanged;
-        await ViewModel.LoadAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_hasLoadedProductBacklogItem && _loadedProductBacklogItemId == ProductBacklogItemId)
+        {
+            return;
+        }
+
+        _activePanelIndex = 0;
+        _hasLoadedProductBacklogItem = true;
+        _loadedProductBacklogItemId = ProductBacklogItemId;
+        await ViewModel.LoadAsync(productBacklogItemId: ProductBacklogItemId);
+    }
+
+    private async Task NavigateToSprintAsync(int productBacklogItemId)
+    {
+        _activePanelIndex = 0;
+        if (ProductBacklogItemId == productBacklogItemId)
+        {
+            await ViewModel.LoadAsync(productBacklogItemId: productBacklogItemId);
+        }
     }
 
     private Task OnSprintChanged(int? sprintId) =>
         sprintId is { } id ? ViewModel.SelectSprintAsync(id) : Task.CompletedTask;
+
+    private Task<IEnumerable<ScrumPicFilterOption>> SearchPicFilterOptionsAsync(
+        string value,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        IEnumerable<ScrumPicFilterOption> options = ViewModel.PicFilterOptions;
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            options = options.Where(option =>
+                option.Label.Contains(value, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return Task.FromResult(options);
+    }
+
+    private static string PicFilterOptionToString(ScrumPicFilterOption? option) =>
+        option?.Label ?? string.Empty;
 
     private async Task OpenSprintDialogAsync(ScrumSprintRow? sprint)
     {
         var parameters = new DialogParameters
         {
             ["InitialValue"] = sprint,
+            ["ProductBacklogItems"] = ViewModel.ProductBacklogItems,
+            ["DefaultProductBacklogItemId"] = sprint is null ? ProductBacklogItemId : null,
             ["DialogTitle"] = sprint is null ? "Tambah Sprint" : "Edit Sprint"
         };
         var options = new DialogOptions
@@ -554,6 +498,7 @@ else
         {
             ["InitialValue"] = task,
             ["SprintId"] = sprintId,
+            ["PicOptions"] = ViewModel.PicOptions,
             ["DialogTitle"] = task is null ? "Tambah Task" : "Edit Task"
         };
         var options = new DialogOptions
@@ -599,33 +544,6 @@ else
         }
     }
 
-    private async Task OpenProductBacklogItemDialogAsync(ScrumProductBacklogItemRow? item)
-    {
-        var parameters = new DialogParameters
-        {
-            ["InitialValue"] = item,
-            ["Sprints"] = ViewModel.Sprints,
-            ["DialogTitle"] = item is null
-                ? "Tambah Product Backlog Item"
-                : "Edit Product Backlog Item"
-        };
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            FullWidth = true,
-            MaxWidth = MaxWidth.Medium
-        };
-        var dialog = await DialogService.ShowAsync<ScrumProductBacklogItemDialog>(
-            item is null ? "Tambah Product Backlog Item" : "Edit Product Backlog Item",
-            parameters,
-            options);
-        var result = await dialog.Result;
-        if (result is { Canceled: false, Data: ScrumProductBacklogItemInput input })
-        {
-            await ViewModel.SaveProductBacklogItemAsync(input);
-        }
-    }
-
     private void RequestDelete(string key) => _pendingDeleteKey = key;
     private void CancelDelete() => _pendingDeleteKey = null;
 
@@ -643,9 +561,6 @@ else
             case "blocker":
                 await ViewModel.DeleteBlockerAsync(id);
                 break;
-            case "pbi":
-                await ViewModel.DeleteProductBacklogItemAsync(id);
-                break;
         }
     }
 
@@ -662,6 +577,15 @@ else
         "Dalam review" => "scrum-column-review",
         "Selesai" => "scrum-column-done",
         _ => "scrum-column-todo"
+    };
+
+    private static string GetTaskCardClass(string status) => status switch
+    {
+        "Belum dimulai" => "scrum-task-todo",
+        "Sedang dikerjakan" => "scrum-task-progress",
+        "Dalam review" => "scrum-task-review",
+        "Selesai" => "scrum-task-done",
+        _ => string.Empty
     };
 
     private static string GetPriorityClass(string priority) => priority switch
