@@ -69,6 +69,43 @@
                 <MudTextField T="string" @bind-Value="_notes" Label="Notes"
                               Variant="Variant.Outlined" Margin="Margin.Dense" Lines="3" />
             </MudItem>
+            <MudItem xs="12">
+                <MudCheckBox T="bool" @bind-Value="_includeBlocker" Label="Tambahkan blocker" />
+            </MudItem>
+            @if (_includeBlocker)
+            {
+                <MudItem xs="12">
+                    <MudTextField T="string" @bind-Value="_blockerTitle" Label="Judul blocker"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                                  MaxLength="250" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField T="string" @bind-Value="_blockerDetail" Label="Detail blocker"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                                  Lines="3" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="string" @bind-Value="_blockerOwner" Label="PIC blocker"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true"
+                               Disabled="@(!PicOptions.Any())">
+                        @foreach (var pic in PicOptions)
+                        {
+                            <MudSelectItem T="string" Value="@pic">@pic</MudSelectItem>
+                        }
+                    </MudSelect>
+                    @if (PicOptions.Count == 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Warning">
+                            Belum ada Master PIC. Tambahkan PIC atau biarkan kosong.
+                        </MudText>
+                    }
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" @bind-Value="_blockerNextStep" Label="Tindak lanjut blocker"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                                  Lines="2" />
+                </MudItem>
+            }
         </MudGrid>
     </DialogContent>
     <DialogActions>
@@ -93,6 +130,11 @@
     private string _status = "Belum dimulai";
     private decimal? _estimatedHour;
     private string _notes = string.Empty;
+    private bool _includeBlocker;
+    private string _blockerTitle = string.Empty;
+    private string _blockerDetail = string.Empty;
+    private string _blockerOwner = string.Empty;
+    private string _blockerNextStep = string.Empty;
 
     protected override void OnInitialized()
     {
@@ -112,7 +154,11 @@
 
     private void Save()
     {
-        if (string.IsNullOrWhiteSpace(_title) || string.IsNullOrWhiteSpace(_category))
+        if (string.IsNullOrWhiteSpace(_title) || string.IsNullOrWhiteSpace(_category) ||
+            (_includeBlocker &&
+             (string.IsNullOrWhiteSpace(_blockerTitle) ||
+              string.IsNullOrWhiteSpace(_blockerDetail) ||
+              string.IsNullOrWhiteSpace(_blockerNextStep))))
         {
             return;
         }
@@ -126,7 +172,17 @@
             _priority,
             _status,
             _estimatedHour,
-            _notes)));
+            _notes,
+            _includeBlocker
+                ? new ScrumBlockerInput(
+                    null,
+                    SprintId,
+                    _blockerTitle,
+                    _blockerDetail,
+                    _blockerOwner,
+                    _blockerNextStep,
+                    false)
+                : null)));
     }
 
     private void Cancel() => MudDialog.Cancel();

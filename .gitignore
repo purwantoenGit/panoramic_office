@@ -8,3 +8,5 @@
 *.suo
 *.log
 TestResults/
+PanoramicAdmin/wwwroot/uploads/
+PanoramicAdmin/App_Data/PbiImages/

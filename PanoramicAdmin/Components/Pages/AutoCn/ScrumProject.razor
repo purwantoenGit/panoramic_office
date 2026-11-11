@@ -1,12 +1,14 @@
 @page "/scrum-project"
+@page "/omp-scrum-project"
 @implements IDisposable
 @using PanoramicAdmin.Components.Dialogs
 @using PanoramicAdmin.Models
 @using PanoramicAdmin.ViewModels
 @inject IDialogService DialogService
 @inject ScrumProjectViewModel ViewModel
+@inject NavigationManager Navigation
 
-<PageTitle>Scrum Monitoring | Panoramic Office</PageTitle>
+<PageTitle>@InitiativeLabel Scrum Monitoring | Panoramic Office</PageTitle>
 
 <MudTabs Elevation="0" Color="Color.Primary" Rounded="true" Border="true"
          Class="smart-refueling-tabs scrum-monitoring-tabs"
@@ -14,7 +16,7 @@
 <MudTabPanel Text="Sprint Monitoring">
 <div class="page-heading scrum-page-heading">
     <div class="scrum-page-title">
-        <MudText Typo="Typo.overline" Class="scrum-eyebrow">DIGITAL INITIATIVE / AUTO CN</MudText>
+        <MudText Typo="Typo.overline" Class="scrum-eyebrow">DIGITAL INITIATIVE / @InitiativeLabel</MudText>
         <MudText Typo="Typo.h4" Class="page-title">Scrum Monitoring</MudText>
         <MudText Typo="Typo.body2" Class="page-subtitle">
             Pantau progres sprint, pekerjaan tim, dan tindak lanjut hambatan.
@@ -94,7 +96,7 @@ else if (ViewModel.DatabaseError is not null)
         <div class="d-flex align-center justify-space-between flex-wrap gap-2">
             <span>@ViewModel.DatabaseError</span>
             <MudButton Variant="Variant.Outlined" Color="Color.Error"
-                       OnClick="@(() => ViewModel.LoadAsync(ViewModel.SelectedSprintId, ProductBacklogItemId))"
+                       OnClick="@(() => ViewModel.LoadAsync(ViewModel.SelectedSprintId, ProductBacklogItemId, Initiative))"
                        Disabled="@ViewModel.IsSaving">
                 Coba lagi
             </MudButton>
@@ -108,7 +110,7 @@ else if (ViewModel.SelectedSprint is not { } sprint)
         {
             if (ViewModel.ProductBacklogItems.Any(item => item.Id == productBacklogItemId))
             {
-                <span>PBI-SMARE-@productBacklogItemId.ToString("000") belum memiliki sprint. Gunakan tombol Sprint untuk membuatnya.</span>
+                <span>@ViewModel.ProductBacklogItems.First(item => item.Id == productBacklogItemId).Code belum memiliki sprint. Gunakan tombol Sprint untuk membuatnya.</span>
             }
             else
             {
@@ -402,18 +404,28 @@ else
 }
     </MudTabPanel>
     <MudTabPanel Text="Product Backlog Item">
-        <ProductBacklogItemContent NavigateToSprint="NavigateToSprintAsync" />
+        <ProductBacklogItemContent Initiative="@Initiative"
+                                    NavigateToSprint="NavigateToSprintAsync" />
     </MudTabPanel>
     </MudTabs>
 
     @code {
     private string? _pendingDeleteKey;
     private int? _loadedProductBacklogItemId;
+    private string? _loadedInitiative;
     private bool _hasLoadedProductBacklogItem;
     private int _activePanelIndex;
 
     [SupplyParameterFromQuery(Name = "productBacklogItemId")]
     public int? ProductBacklogItemId { get; set; }
+
+    private string Initiative =>
+        Navigation.ToBaseRelativePath(Navigation.Uri)
+            .StartsWith("omp-scrum-project", StringComparison.OrdinalIgnoreCase)
+            ? ScrumInitiative.Omp
+            : ScrumInitiative.SmartRefueling;
+    private string InitiativeLabel =>
+        Initiative == ScrumInitiative.Omp ? "OMP" : "SMART REFUELING";
 
     protected override void OnInitialized()
     {
@@ -422,7 +434,9 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        if (_hasLoadedProductBacklogItem && _loadedProductBacklogItemId == ProductBacklogItemId)
+        if (_hasLoadedProductBacklogItem &&
+            _loadedProductBacklogItemId == ProductBacklogItemId &&
+            _loadedInitiative == Initiative)
         {
             return;
         }
@@ -430,7 +444,8 @@ else
         _activePanelIndex = 0;
         _hasLoadedProductBacklogItem = true;
         _loadedProductBacklogItemId = ProductBacklogItemId;
-        await ViewModel.LoadAsync(productBacklogItemId: ProductBacklogItemId);
+        _loadedInitiative = Initiative;
+        await ViewModel.LoadAsync(productBacklogItemId: ProductBacklogItemId, initiative: Initiative);
     }
 
     private async Task NavigateToSprintAsync(int productBacklogItemId)
@@ -438,7 +453,7 @@ else
         _activePanelIndex = 0;
         if (ProductBacklogItemId == productBacklogItemId)
         {
-            await ViewModel.LoadAsync(productBacklogItemId: productBacklogItemId);
+            await ViewModel.LoadAsync(productBacklogItemId: productBacklogItemId, initiative: Initiative);
         }
     }
 
@@ -527,6 +542,7 @@ else
         {
             ["InitialValue"] = blocker,
             ["SprintId"] = sprintId,
+            ["PicOptions"] = ViewModel.PicOptions,
             ["DialogTitle"] = blocker is null ? "Tambah Blocker" : "Edit Blocker"
         };
         var options = new DialogOptions

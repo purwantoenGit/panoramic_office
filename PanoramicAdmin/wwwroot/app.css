@@ -3475,6 +3475,10 @@ body, .mud-typography {
     margin-bottom: 22px;
 }
 
+.scrum-monitoring-tabs .mud-tabs-panels {
+    padding: 20px;
+}
+
 .scrum-page-actions {
     min-width: 0;
     max-width: 100%;
@@ -3717,27 +3721,177 @@ body, .mud-typography {
     overflow-x: auto;
 }
 
+.scrum-pbi-table .mud-table-row,
+.pbi-mobile-card {
+    cursor: pointer;
+}
+
+.pbi-row-hint {
+    display: block;
+    margin-top: 4px;
+    color: #64748b;
+}
+
 .scrum-pbi-table .mud-table-container table {
-    min-width: 1200px;
     table-layout: fixed;
 }
 
-.scrum-pbi-table .mud-table-cell:nth-child(1) { width: 8%; }
-.scrum-pbi-table .mud-table-cell:nth-child(2) { width: 20%; }
-.scrum-pbi-table .mud-table-cell:nth-child(3) { width: 20%; }
-.scrum-pbi-table .mud-table-cell:nth-child(4) { width: 20%; }
-.scrum-pbi-table .mud-table-cell:nth-child(5) { width: 9%; }
-.scrum-pbi-table .mud-table-cell:nth-child(6) { width: 12%; }
-.scrum-pbi-table .mud-table-cell:nth-child(7) { width: 8%; }
-.scrum-pbi-table .mud-table-cell:nth-child(8) { width: 17%; }
-.scrum-pbi-table .mud-table-cell:nth-child(9) { width: 9%; }
-
-.scrum-pbi-table .mud-table-cell:nth-child(2),
-.scrum-pbi-table .mud-table-cell:nth-child(3),
-.scrum-pbi-table .mud-table-cell:nth-child(4),
-.scrum-pbi-table .mud-table-cell:nth-child(7) {
+.scrum-pbi-table .mud-table-cell {
+    padding: 14px 12px;
     overflow-wrap: anywhere;
     white-space: normal;
+}
+
+.scrum-pbi-table .mud-table-cell:nth-child(1) { width: 13%; }
+.scrum-pbi-table .mud-table-cell:nth-child(2) { width: 42%; }
+.scrum-pbi-table .mud-table-cell:nth-child(3) { width: 11%; }
+.scrum-pbi-table .mud-table-cell:nth-child(4) { width: 16%; }
+.scrum-pbi-table .mud-table-cell:nth-child(5) { width: 10%; }
+.scrum-pbi-table .mud-table-cell:nth-child(6) { width: 8%; }
+
+.pbi-item-summary {
+    display: grid;
+    gap: 5px;
+}
+
+.pbi-module {
+    color: #64748b;
+    font-weight: 700 !important;
+}
+
+.pbi-summary {
+    color: #263445;
+    line-height: 1.45 !important;
+}
+
+.pbi-image-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.pbi-image-thumbnail {
+    position: relative;
+    width: 76px;
+    height: 64px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 9px;
+    background: #fff;
+}
+
+.pbi-image-thumbnail a,
+.pbi-image-thumbnail img {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.pbi-image-thumbnail img {
+    object-fit: cover;
+}
+
+.pbi-image-thumbnail .mud-icon-button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 0 0 0 7px;
+    background: rgb(255 255 255 / 90%);
+}
+
+.pbi-image-upload-title {
+    margin-bottom: 6px;
+    color: #334155;
+    font-weight: 700 !important;
+}
+
+.pbi-image-input {
+    display: block;
+    max-width: 100%;
+    margin-bottom: 5px;
+    color: #526174;
+    font-size: 0.82rem;
+}
+
+.pbi-selected-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 12px;
+    margin-top: 8px;
+}
+
+.pbi-details {
+    margin-top: 3px;
+    color: #526174;
+    font-size: 0.78rem;
+}
+
+.pbi-details summary {
+    width: fit-content;
+    color: #4169d8;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.pbi-detail-content {
+    display: grid;
+    gap: 12px;
+    margin-top: 10px;
+    padding: 12px;
+    border: 1px solid #e7ebf1;
+    border-radius: 9px;
+    background: #f8fafc;
+    overflow-wrap: anywhere;
+}
+
+.pbi-detail-label {
+    display: block;
+    margin-bottom: 4px;
+    color: #64748b;
+    font-weight: 700 !important;
+}
+
+.pbi-mobile-list {
+    display: none;
+}
+
+.pbi-mobile-card {
+    display: grid;
+    gap: 10px;
+    padding: 16px !important;
+    border: 1px solid #e7ebf1;
+    border-radius: 14px !important;
+    background: #fff;
+}
+
+.pbi-mobile-card-heading,
+.pbi-mobile-meta,
+.pbi-mobile-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.pbi-mobile-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    color: #64748b;
+    font-size: 0.8rem;
+}
+
+.pbi-mobile-meta .pbi-sprint-achievement {
+    width: 100%;
+    margin-top: 0;
+}
+
+.pbi-mobile-actions {
+    justify-content: flex-end;
+    padding-top: 6px;
+    border-top: 1px solid #eef2f7;
 }
 
 .pbi-sprint-achievement {
@@ -3759,8 +3913,85 @@ body, .mud-typography {
     white-space: nowrap;
 }
 
+@media (max-width: 768px) {
+    .scrum-pbi-table {
+        display: none;
+    }
+
+    .pbi-mobile-list {
+        display: grid;
+        gap: 12px;
+    }
+}
+
 .pbi-multiline-field textarea {
     min-height: 72px;
+}
+
+.pbi-dashboard {
+    display: grid;
+    gap: 18px;
+    margin-bottom: 24px;
+    padding: 22px !important;
+    border: 1px solid #e7ebf1;
+    border-radius: 16px !important;
+    background: #f8fafc;
+}
+
+.pbi-dashboard-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.pbi-dashboard-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.pbi-dashboard-card {
+    display: grid;
+    align-content: start;
+    gap: 4px;
+    min-width: 0;
+    padding: 16px !important;
+    border: 1px solid #e7ebf1;
+    border-radius: 12px !important;
+    background: #fff;
+}
+
+.pbi-dashboard-label,
+.pbi-dashboard-note {
+    color: #718096;
+}
+
+.pbi-dashboard-value {
+    color: #1e293b;
+    font-weight: 800 !important;
+}
+
+.pbi-dashboard-high .pbi-dashboard-value {
+    color: #b42318;
+}
+
+.pbi-priority-overview {
+    display: grid;
+    gap: 10px;
+    max-width: 620px;
+}
+
+.pbi-priority-title {
+    color: #334155;
+    font-weight: 700 !important;
+}
+
+.pbi-priority-row {
+    display: grid;
+    grid-template-columns: 90px minmax(0, 1fr) 28px;
+    align-items: center;
+    gap: 12px;
+    color: #526174;
 }
 
 .scrum-board-total {
@@ -4075,12 +4306,42 @@ body, .mud-typography {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .pbi-dashboard-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .scrum-board {
         min-width: 980px;
     }
 }
 
 @media (max-width: 600px) {
+    .pbi-dashboard {
+        gap: 14px;
+        padding: 16px !important;
+    }
+
+    .pbi-dashboard-metrics {
+        gap: 9px;
+    }
+
+    .pbi-dashboard-card {
+        padding: 12px !important;
+    }
+
+    .pbi-dashboard-value {
+        font-size: 1.5rem !important;
+    }
+
+    .pbi-priority-row {
+        grid-template-columns: 74px minmax(0, 1fr) 22px;
+        gap: 8px;
+    }
+
+    .scrum-monitoring-tabs .mud-tabs-panels {
+        padding: 14px;
+    }
+
     .scrum-page-heading {
         align-items: flex-start;
         flex-direction: column;

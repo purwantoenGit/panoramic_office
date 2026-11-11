@@ -11,12 +11,16 @@ BEGIN
     (
         [Id] int IDENTITY(1,1) NOT NULL,
         [Name] nvarchar(100) NOT NULL,
+        [Initiative] nvarchar(20) NOT NULL
+            CONSTRAINT [DF_pano_scrum_sprint_Initiative] DEFAULT (N'SMARE'),
         [ProductBacklogItemId] int NULL,
         [Focus] nvarchar(250) NOT NULL,
         [StartDate] date NOT NULL,
         [EndDate] date NOT NULL,
         [Status] nvarchar(20) NOT NULL,
         CONSTRAINT [PK_pano_scrum_sprint] PRIMARY KEY ([Id]),
+        CONSTRAINT [CK_pano_scrum_sprint_Initiative]
+            CHECK ([Initiative] IN (N'SMARE', N'OMP')),
         CONSTRAINT [FK_pano_scrum_sprint_ProductBacklogItem]
             FOREIGN KEY ([ProductBacklogItemId])
             REFERENCES [dbo].[pano_scrum_product_backlog_item] ([Id]),
@@ -27,6 +31,20 @@ BEGIN
 
     CREATE INDEX [IX_pano_scrum_sprint_Status]
         ON [dbo].[pano_scrum_sprint] ([Status]);
+END;
+
+IF COL_LENGTH(N'dbo.pano_scrum_sprint', N'Initiative') IS NULL
+BEGIN
+    ALTER TABLE [dbo].[pano_scrum_sprint]
+        ADD [Initiative] nvarchar(20) NOT NULL
+            CONSTRAINT [DF_pano_scrum_sprint_Initiative] DEFAULT (N'SMARE');
+END;
+
+IF OBJECT_ID(N'dbo.CK_pano_scrum_sprint_Initiative', N'C') IS NULL
+BEGIN
+    EXEC(N'ALTER TABLE [dbo].[pano_scrum_sprint]
+        ADD CONSTRAINT [CK_pano_scrum_sprint_Initiative]
+            CHECK ([Initiative] IN (N''SMARE'', N''OMP''));');
 END;
 
 IF COL_LENGTH(N'dbo.pano_scrum_sprint', N'ProductBacklogItemId') IS NULL

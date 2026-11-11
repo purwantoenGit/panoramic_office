@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.FileProviders;
 using MudBlazor.Services;
 using PanoramicAdmin.Components;
 using PanoramicAdmin.Services;
@@ -43,6 +44,7 @@ builder.Services.AddTransient<SopEvaluationViewModel>();
 builder.Services.AddTransient<SmartRefuelingImplementationViewModel>();
 builder.Services.AddTransient<ScrumProjectViewModel>();
 builder.Services.AddTransient<ScrumProductBacklogViewModel>();
+builder.Services.AddSingleton<ScrumProductBacklogImageStorage>();
 
 var app = builder.Build();
 
@@ -57,6 +59,14 @@ app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages:
 app.UseHttpsRedirection();
 
 app.UseAntiforgery();
+var pbiImageStorage = app.Services.GetRequiredService<ScrumProductBacklogImageStorage>();
+Directory.CreateDirectory(pbiImageStorage.RootPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(pbiImageStorage.RootPath),
+    RequestPath = "/uploads/pbi"
+});
+app.UseStaticFiles();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

@@ -89,7 +89,10 @@ legacy `pano_master_activity_plan` table, if present, is not dropped.
 
 Run `Database/Scripts/Create_ProductBacklogItem.sql` and then
 `Database/Scripts/Create_ScrumProject.sql` against `db_panoramic` before
-opening `/scrum-project` or `/product-backlog-item`. Product Backlog Items are
+opening `/scrum-project`, `/omp-scrum-project`, or `/product-backlog-item`.
+Both Scrum Monitoring menus use the same tables, scoped by initiative; existing
+records are migrated to Smart Refueling and OMP has its own PBI numbering and
+backlog. Product Backlog Items are
 available in a Scrum Monitoring tab and retain the standalone route and
 dedicated table. Each sprint can select a PBI; the sprint
 stores that relationship, while a PBI's numeric Target Sprint remains a
@@ -103,7 +106,20 @@ using Due Date. Rerun
 `Database/Scripts/Create_ScrumProject.sql` on an existing database to add the
 new task columns. Existing task and sprint records are preserved; existing
 tasks have no category until edited, and the old DueDate column is retained
-without being used by the application.
+without being used by the application. Rerun
+`Database/Scripts/Create_ProductBacklogItem.sql` on an existing database to
+add initiative scope and numbering and create the PBI image metadata table.
+Rerun `Database/Scripts/Create_ScrumProject.sql` to add initiative scope to
+existing sprints. PBI images support JPG, PNG, and WebP,
+with a 5 MB per-image limit and 10 images per item. New image files are stored
+under `App_Data/PbiImages` outside the web root and served at `/uploads/pbi`.
+Existing images in `wwwroot/uploads/pbi` remain accessible and do not need to
+be moved. Preserve and back up both directories when deploying or moving the
+application because SQL Server stores only image metadata and file names.
+Files in both directories are excluded from the project watch list and publish
+output, although creating files can still trigger a watch project refresh.
+Restart `dotnet watch` after updating the project file. The deployed
+application's storage must be retained separately during publishing.
 
 ## RFID Tag Install database setup
 

@@ -16,8 +16,25 @@
                               Lines="3" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudTextField T="string" @bind-Value="_owner" Label="PIC"
-                              Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="150" />
+                <MudSelect T="string" @bind-Value="_owner" Label="PIC"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true"
+                           Disabled="@(!PicOptions.Any() && string.IsNullOrWhiteSpace(_owner))">
+                    @if (!string.IsNullOrWhiteSpace(_owner) &&
+                         !PicOptions.Contains(_owner, StringComparer.Ordinal))
+                    {
+                        <MudSelectItem T="string" Value="@_owner">PIC sebelumnya: @_owner</MudSelectItem>
+                    }
+                    @foreach (var pic in PicOptions)
+                    {
+                        <MudSelectItem T="string" Value="@pic">@pic</MudSelectItem>
+                    }
+                </MudSelect>
+                @if (PicOptions.Count == 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Warning">
+                        Belum ada Master PIC. Tambahkan PIC atau biarkan kosong.
+                    </MudText>
+                }
             </MudItem>
             <MudItem xs="12" sm="6">
                 <MudTextField T="string" @bind-Value="_nextStep" Label="Tindak lanjut"
@@ -44,6 +61,7 @@
 
     [Parameter] public ScrumBlockerRow? InitialValue { get; set; }
     [Parameter] public int SprintId { get; set; }
+    [Parameter] public IReadOnlyList<string> PicOptions { get; set; } = [];
     [Parameter] public string DialogTitle { get; set; } = "Tambah Blocker";
 
     private string _title = string.Empty;

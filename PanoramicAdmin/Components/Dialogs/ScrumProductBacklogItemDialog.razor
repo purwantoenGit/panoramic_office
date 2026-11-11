@@ -1,4 +1,7 @@
 @using PanoramicAdmin.Models
+@using Microsoft.AspNetCore.Components.Forms
+@using PanoramicAdmin.Services
+@inject ILogger<ScrumProductBacklogItemDialog> Logger
 <MudDialog>
     <TitleContent>
         <MudText Typo="Typo.h6">@DialogTitle</MudText>
@@ -38,11 +41,34 @@
                 <MudTextField T="string" @bind-Value="_definitionOfDone" Label="Definition of Done (DoD)"
                               Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" Lines="3" />
             </MudItem>
+            <MudItem xs="12">
+                <MudText Typo="Typo.subtitle2" Class="pbi-image-upload-title">Gambar pelengkap</MudText>
+                <InputFile OnChange="OnImagesSelected" multiple
+                           accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                           class="pbi-image-input" disabled="@_isReadingImages" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Pilih maksimal 10 gambar JPG, PNG, atau WebP. Ukuran maksimal 5 MB per gambar.
+                </MudText>
+                @if (_imageSelectionError is not null)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Error">@_imageSelectionError</MudText>
+                }
+                @if (_selectedImages.Count > 0)
+                {
+                    <MudText Typo="Typo.caption" Class="pbi-selected-images">
+                        @foreach (var image in _selectedImages)
+                        {
+                            <span>@image.Name</span>
+                        }
+                    </MudText>
+                }
+            </MudItem>
         </MudGrid>
     </DialogContent>
     <DialogActions>
-        <MudButton Variant="Variant.Text" OnClick="Cancel">Batal</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Simpan</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="Cancel" Disabled="@_isReadingImages">Batal</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync"
+                   Disabled="@_isReadingImages">Simpan</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -59,6 +85,9 @@
     private string _priority = "Sedang";
     private int? _targetSprint;
     private string _definitionOfDone = string.Empty;
+    private IReadOnlyList<IBrowserFile> _selectedImages = [];
+    private string? _imageSelectionError;
+    private bool _isReadingImages;
 
     protected override void OnInitialized()
     {
@@ -75,24 +104,58 @@
         _definitionOfDone = item.DefinitionOfDone;
     }
 
-    private void Save()
+    private async Task SaveAsync()
     {
         if (string.IsNullOrWhiteSpace(_module) ||
             string.IsNullOrWhiteSpace(_summary) ||
             string.IsNullOrWhiteSpace(_acceptanceCriteria) ||
-            string.IsNullOrWhiteSpace(_definitionOfDone))
+            string.IsNullOrWhiteSpace(_definitionOfDone) ||
+            _imageSelectionError is not null)
         {
             return;
         }
 
-        MudDialog.Close(DialogResult.Ok(new ScrumProductBacklogItemInput(
-            InitialValue?.Id,
-            _module,
-            _summary,
-            _acceptanceCriteria,
-            _priority,
-            _targetSprint,
-            _definitionOfDone)));
+        _isReadingImages = true;
+        try
+        {
+            var images = await ScrumProductBacklogImageValidator.ReadAsync(_selectedImages);
+            MudDialog.Close(DialogResult.Ok(new ScrumProductBacklogItemInput(
+                InitialValue?.Id,
+                _module,
+                _summary,
+                _acceptanceCriteria,
+                _priority,
+                _targetSprint,
+                _definitionOfDone,
+                images)));
+        }
+        catch (InvalidDataException exception)
+        {
+            _imageSelectionError = exception.Message;
+        }
+        catch (Exception exception) when (exception is IOException or InvalidOperationException or JSException)
+        {
+            Logger.LogWarning(exception, "Failed to read selected Product Backlog Item images.");
+            _imageSelectionError = "Gambar tidak dapat dibaca. Pilih ulang gambar dan coba lagi.";
+        }
+        finally
+        {
+            _isReadingImages = false;
+        }
+    }
+
+    private void OnImagesSelected(InputFileChangeEventArgs args)
+    {
+        try
+        {
+            _selectedImages = args.GetMultipleFiles(10);
+            _imageSelectionError = null;
+        }
+        catch (InvalidOperationException)
+        {
+            _selectedImages = [];
+            _imageSelectionError = "Pilih maksimal 10 gambar dalam sekali upload.";
+        }
     }
 
     private void Cancel() => MudDialog.Cancel();

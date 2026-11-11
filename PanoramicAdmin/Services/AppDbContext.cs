@@ -28,6 +28,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ScrumTask> ScrumTasks => Set<ScrumTask>();
     public DbSet<ScrumBlocker> ScrumBlockers => Set<ScrumBlocker>();
     public DbSet<ScrumProductBacklogItem> ScrumProductBacklogItems => Set<ScrumProductBacklogItem>();
+    public DbSet<ScrumProductBacklogItemImage> ScrumProductBacklogItemImages =>
+        Set<ScrumProductBacklogItemImage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -307,8 +309,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<ScrumSprint>(entity =>
         {
-            entity.ToTable("pano_scrum_sprint", "dbo");
+            entity.ToTable("pano_scrum_sprint", "dbo", table =>
+                table.HasCheckConstraint(
+                    "CK_pano_scrum_sprint_Initiative",
+                    "[Initiative] IN (N'SMARE', N'OMP')"));
             entity.Property(sprint => sprint.Name).HasMaxLength(100).IsRequired();
+            entity.Property(sprint => sprint.Initiative)
+                .HasMaxLength(20)
+                .HasDefaultValue(ScrumInitiative.SmartRefueling)
+                .IsRequired();
             entity.Property(sprint => sprint.Focus).HasMaxLength(250).IsRequired();
             entity.Property(sprint => sprint.StartDate).HasColumnType("date").IsRequired();
             entity.Property(sprint => sprint.EndDate).HasColumnType("date").IsRequired();
@@ -367,15 +376,40 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<ScrumProductBacklogItem>(entity =>
         {
             entity.ToTable("pano_scrum_product_backlog_item", "dbo", table =>
+            {
                 table.HasCheckConstraint(
                     "CK_pano_scrum_product_backlog_item_TargetSprint",
-                    "[TargetSprint] IS NULL OR [TargetSprint] >= 1"));
+                    "[TargetSprint] IS NULL OR [TargetSprint] >= 1");
+                table.HasCheckConstraint(
+                    "CK_pano_scrum_product_backlog_item_Initiative",
+                    "[Initiative] IN (N'SMARE', N'OMP')");
+            });
             entity.Property(item => item.Module).HasMaxLength(100).IsRequired();
+            entity.Property(item => item.Initiative)
+                .HasMaxLength(20)
+                .HasDefaultValue(ScrumInitiative.SmartRefueling)
+                .IsRequired();
+            entity.HasIndex(item => new { item.Initiative, item.InitiativeNumber })
+                .IsUnique()
+                .HasDatabaseName("UX_pano_scrum_product_backlog_item_Initiative_Number");
             entity.Property(item => item.Summary).HasMaxLength(250).IsRequired();
             entity.Property(item => item.AcceptanceCriteria).HasColumnType("nvarchar(max)").IsRequired();
             entity.Property(item => item.Priority).HasMaxLength(20).IsRequired();
             entity.Property(item => item.Status).HasMaxLength(30).IsRequired();
             entity.Property(item => item.DefinitionOfDone).HasColumnType("nvarchar(max)").IsRequired();
+            entity.HasMany(item => item.Images)
+                .WithOne(image => image.ProductBacklogItem)
+                .HasForeignKey(image => image.ProductBacklogItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ScrumProductBacklogItemImage>(entity =>
+        {
+            entity.ToTable("pano_scrum_product_backlog_item_image", "dbo");
+            entity.Property(image => image.FileName).HasMaxLength(100).IsRequired();
+            entity.Property(image => image.ContentType).HasMaxLength(50).IsRequired();
+            entity.HasIndex(image => image.ProductBacklogItemId)
+                .HasDatabaseName("IX_pano_scrum_product_backlog_item_image_PBI");
         });
 
         modelBuilder.Entity<SopEvaluationDocument>(entity =>

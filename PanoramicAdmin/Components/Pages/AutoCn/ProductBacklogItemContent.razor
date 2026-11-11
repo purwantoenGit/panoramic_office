@@ -4,10 +4,13 @@
 @using PanoramicAdmin.ViewModels
 @inject IDialogService DialogService
 @inject ScrumProductBacklogViewModel ViewModel
+@inject NavigationManager Navigation
 
 <div class="page-heading">
     <div>
-        <MudText Typo="Typo.overline" Class="scrum-eyebrow">DIGITAL INITIATIVE / AUTO CN</MudText>
+        <MudText Typo="Typo.overline" Class="scrum-eyebrow">
+            DIGITAL INITIATIVE / @(Initiative == ScrumInitiative.Omp ? "OMP" : "SMART REFUELING")
+        </MudText>
         <MudText Typo="Typo.h4" Class="page-title">Product Backlog Item</MudText>
         <MudText Typo="Typo.body2" Class="page-subtitle">
             Kelola backlog produk, acceptance criteria, prioritas, status, dan definition of done secara terpisah dari sprint.
@@ -15,12 +18,75 @@
     </div>
 </div>
 
+@if (!ViewModel.IsLoading && ViewModel.DatabaseError is null)
+{
+    <MudPaper Class="pbi-dashboard" Elevation="0">
+        <div class="pbi-dashboard-heading">
+            <div>
+                <MudText Typo="Typo.h6" Class="section-title">Dashboard backlog</MudText>
+                <MudText Typo="Typo.body2" Class="section-subtitle">
+                    Ringkasan prioritas dan kesiapan PBI untuk sprint.
+                </MudText>
+            </div>
+        </div>
+        <div class="pbi-dashboard-metrics">
+            <MudPaper Class="pbi-dashboard-card" Elevation="0">
+                <MudText Typo="Typo.caption" Class="pbi-dashboard-label">Total PBI</MudText>
+                <MudText Typo="Typo.h4" Class="pbi-dashboard-value">@ViewModel.Items.Count</MudText>
+                <MudText Typo="Typo.caption" Class="pbi-dashboard-note">item dalam backlog</MudText>
+            </MudPaper>
+            <MudPaper Class="pbi-dashboard-card" Elevation="0">
+                <MudText Typo="Typo.caption" Class="pbi-dashboard-label">Memiliki target sprint</MudText>
+                <MudText Typo="Typo.h4" Class="pbi-dashboard-value">@ViewModel.TargetedItemCount</MudText>
+                <MudText Typo="Typo.caption" Class="pbi-dashboard-note">
+                    dari @ViewModel.Items.Count PBI
+                </MudText>
+            </MudPaper>
+            <MudPaper Class="pbi-dashboard-card pbi-dashboard-high" Elevation="0">
+                <MudText Typo="Typo.caption" Class="pbi-dashboard-label">Prioritas tinggi</MudText>
+                <MudText Typo="Typo.h4" Class="pbi-dashboard-value">@ViewModel.HighPriorityItemCount</MudText>
+                <MudText Typo="Typo.caption" Class="pbi-dashboard-note">perlu perhatian utama</MudText>
+            </MudPaper>
+            <MudPaper Class="pbi-dashboard-card" Elevation="0">
+                <MudText Typo="Typo.caption" Class="pbi-dashboard-label">Rata-rata progres sprint</MudText>
+                <MudText Typo="Typo.h4" Class="pbi-dashboard-value">
+                    @(ViewModel.ItemsWithSprintCount == 0
+                        ? "—"
+                        : $"{ViewModel.AverageSprintCompletionPercent:0}%")
+                </MudText>
+                <MudText Typo="Typo.caption" Class="pbi-dashboard-note">
+                    dari @ViewModel.ItemsWithSprintCount PBI yang memiliki sprint
+                </MudText>
+            </MudPaper>
+        </div>
+        <div class="pbi-priority-overview">
+            <MudText Typo="Typo.subtitle2" Class="pbi-priority-title">Distribusi prioritas</MudText>
+            @foreach (var priority in ScrumProductBacklogCatalog.Priorities.Reverse())
+            {
+                var priorityCount = ViewModel.Items.Count(item => item.Priority == priority);
+                var priorityPercent = ViewModel.Items.Count == 0
+                    ? 0
+                    : (double)priorityCount / ViewModel.Items.Count * 100;
+                <div class="pbi-priority-row">
+                    <MudText Typo="Typo.body2">@priority</MudText>
+                    <MudProgressLinear Value="@priorityPercent" Color="@GetPriorityColor(priority)"
+                                       Rounded="true" Size="Size.Small" />
+                    <MudText Typo="Typo.caption">@priorityCount</MudText>
+                </div>
+            }
+        </div>
+    </MudPaper>
+}
+
 <MudPaper Class="section-card" Elevation="0">
     <div class="scrum-board-heading">
         <div>
             <MudText Typo="Typo.h6" Class="section-title">Daftar Product Backlog Item (PBI)</MudText>
             <MudText Typo="Typo.body2" Class="section-subtitle">
                 @ViewModel.Items.Count item
+            </MudText>
+            <MudText Typo="Typo.caption" Class="pbi-row-hint">
+                Klik row untuk menuju Scrum Activity.
             </MudText>
         </div>
         <MudButton Variant="Variant.Filled" Color="Color.Primary"
@@ -44,7 +110,7 @@
             <div class="d-flex align-center justify-space-between flex-wrap gap-2">
                 <span>@ViewModel.DatabaseError</span>
                 <MudButton Variant="Variant.Outlined" Color="Color.Error"
-                           OnClick="ViewModel.LoadAsync" Disabled="@ViewModel.IsSaving">
+                           OnClick="@(() => ViewModel.LoadAsync(Initiative))" Disabled="@ViewModel.IsSaving">
                     Coba lagi
                 </MudButton>
             </div>
@@ -59,62 +125,91 @@
     else
     {
         <MudTable T="ScrumProductBacklogItemRow" Items="@ViewModel.Items"
-                  Class="scrum-pbi-table" Dense="true" Hover="true"
-                  Breakpoint="Breakpoint.None">
+                  Class="scrum-pbi-table" Hover="true"
+                  Breakpoint="Breakpoint.None" OnRowClick="OnPbiRowClickAsync">
             <HeaderContent>
                 <MudTh>PBI ID</MudTh>
-                <MudTh>Module</MudTh>
-                <MudTh>Summary</MudTh>
-                <MudTh>Acceptance Criteria (AC)</MudTh>
-                <MudTh>Priority</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh>Target Sprint</MudTh>
-                <MudTh>Definition of Done (DoD)</MudTh>
+                <MudTh>Ringkasan PBI</MudTh>
+                <MudTh>Prioritas</MudTh>
+                <MudTh>Progres sprint</MudTh>
+                <MudTh>Target sprint</MudTh>
                 <MudTh>Aksi</MudTh>
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="PBI ID">
-                    @if (NavigateToSprint.HasDelegate)
-                    {
-                        <MudLink Href="@($"/scrum-project?productBacklogItemId={context.Id}")"
-                                 OnClick="@(() => NavigateToSprint.InvokeAsync(context.Id))">
-                            @context.Code
-                        </MudLink>
-                    }
-                    else
-                    {
-                        <MudLink Href="@($"/scrum-project?productBacklogItemId={context.Id}")">
-                            @context.Code
-                        </MudLink>
-                    }
+                    <span @onclick:stopPropagation="true">
+                        @if (NavigateToSprint.HasDelegate)
+                        {
+                            <MudLink Href="@GetScrumPath(context.Id)"
+                                     OnClick="@(() => NavigateToSprint.InvokeAsync(context.Id))">
+                                @context.Code
+                            </MudLink>
+                        }
+                        else
+                        {
+                            <MudLink Href="@GetScrumPath(context.Id)">
+                                @context.Code
+                            </MudLink>
+                        }
+                    </span>
                 </MudTd>
-                <MudTd DataLabel="Module">@context.Module</MudTd>
-                <MudTd DataLabel="Summary">@context.Summary</MudTd>
-                <MudTd DataLabel="Acceptance Criteria (AC)">@context.AcceptanceCriteria</MudTd>
-                <MudTd DataLabel="Priority">
+                <MudTd DataLabel="Ringkasan PBI">
+                    <div class="pbi-item-summary">
+                        <MudText Typo="Typo.subtitle2" Class="pbi-module">@context.Module</MudText>
+                        <MudText Typo="Typo.body2" Class="pbi-summary">@context.Summary</MudText>
+                        @if (context.Images.Count > 0)
+                        {
+                            <div class="pbi-image-gallery" @onclick:stopPropagation="true">
+                                @foreach (var image in context.Images)
+                                {
+                                    <div class="pbi-image-thumbnail">
+                                        <a href="@image.Url" target="_blank" rel="noopener noreferrer">
+                                            <img src="@image.Url" alt="@($"Gambar {context.Code}")" />
+                                        </a>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                                       Color="Color.Error" aria-label="Hapus gambar PBI"
+                                                       OnClick="@(() => DeleteImageAsync(image.Id))"
+                                                       Disabled="@ViewModel.IsSaving" />
+                                    </div>
+                                }
+                            </div>
+                        }
+                        <details class="pbi-details" @onclick:stopPropagation="true">
+                            <summary>Lihat AC dan DoD</summary>
+                            <div class="pbi-detail-content">
+                                <div>
+                                    <MudText Typo="Typo.caption" Class="pbi-detail-label">Acceptance Criteria</MudText>
+                                    <MudText Typo="Typo.body2">@context.AcceptanceCriteria</MudText>
+                                </div>
+                                <div>
+                                    <MudText Typo="Typo.caption" Class="pbi-detail-label">Definition of Done</MudText>
+                                    <MudText Typo="Typo.body2">@context.DefinitionOfDone</MudText>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Prioritas">
                     <span class="@($"scrum-priority {GetPriorityClass(context.Priority)}")">
                         @context.Priority
                     </span>
                 </MudTd>
-                <MudTd DataLabel="Status">
+                <MudTd DataLabel="Progres sprint">
                     <div class="pbi-sprint-achievement">
                         <MudProgressLinear Value="@(context.SprintCompletionPercent ?? 0)"
                                            Color="Color.Success" Rounded="true" Size="Size.Small" />
-                        @if (context.SprintCompletionPercent is { } completionPercent)
-                        {
-                            <MudText Typo="Typo.caption">@completionPercent.ToString("0.#")% Ach</MudText>
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.caption">0% - Belum Ada Sprint</MudText>
-                        }
+                        <MudText Typo="Typo.caption">
+                            @(context.SprintCompletionPercent is { } completionPercent
+                                ? $"{completionPercent:0.#}%"
+                                : "Belum ada sprint")
+                        </MudText>
                     </div>
                 </MudTd>
-                <MudTd DataLabel="Target Sprint">
+                <MudTd DataLabel="Target sprint">
                     @(context.TargetSprint is { } sprintNumber ? $"Sprint {sprintNumber}" : "—")
                 </MudTd>
-                <MudTd DataLabel="Definition of Done (DoD)">@context.DefinitionOfDone</MudTd>
                 <MudTd DataLabel="Aksi">
+                    <div @onclick:stopPropagation="true">
                     <div class="d-flex align-center">
                         <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
                                        aria-label="Edit Product Backlog Item"
@@ -136,9 +231,106 @@
                             <MudButton Size="Size.Small" OnClick="CancelDelete">Batal</MudButton>
                         </MudAlert>
                     }
+                    </div>
                 </MudTd>
             </RowTemplate>
         </MudTable>
+
+        <div class="pbi-mobile-list">
+            @foreach (var item in ViewModel.Items)
+            {
+                <MudPaper Class="pbi-mobile-card" Elevation="0"
+                          @onclick="@(() => OpenSprintAsync(item.Id))">
+                    <div class="pbi-mobile-card-heading">
+                        <span @onclick:stopPropagation="true">
+                        @if (NavigateToSprint.HasDelegate)
+                        {
+                            <MudLink Href="@GetScrumPath(item.Id)"
+                                     OnClick="@(() => NavigateToSprint.InvokeAsync(item.Id))">
+                                @item.Code
+                            </MudLink>
+                        }
+                        else
+                        {
+                            <MudLink Href="@GetScrumPath(item.Id)">
+                                @item.Code
+                            </MudLink>
+                        }
+                        </span>
+                        <span class="@($"scrum-priority {GetPriorityClass(item.Priority)}")">
+                            @item.Priority
+                        </span>
+                    </div>
+                    <MudText Typo="Typo.subtitle2" Class="pbi-module">@item.Module</MudText>
+                    <MudText Typo="Typo.body2" Class="pbi-summary">@item.Summary</MudText>
+                    @if (item.Images.Count > 0)
+                    {
+                        <div class="pbi-image-gallery" @onclick:stopPropagation="true">
+                            @foreach (var image in item.Images)
+                            {
+                                <div class="pbi-image-thumbnail">
+                                    <a href="@image.Url" target="_blank" rel="noopener noreferrer">
+                                        <img src="@image.Url" alt="@($"Gambar {item.Code}")" />
+                                    </a>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                                   Color="Color.Error" aria-label="Hapus gambar PBI"
+                                                   OnClick="@(() => DeleteImageAsync(image.Id))"
+                                                   Disabled="@ViewModel.IsSaving" />
+                                </div>
+                            }
+                        </div>
+                    }
+                    <div class="pbi-mobile-meta">
+                        <span>@(item.TargetSprint is { } sprintNumber ? $"Sprint {sprintNumber}" : "Belum ada target")</span>
+                        <div class="pbi-sprint-achievement">
+                            <MudProgressLinear Value="@(item.SprintCompletionPercent ?? 0)"
+                                               Color="Color.Success" Rounded="true" Size="Size.Small" />
+                            <MudText Typo="Typo.caption">
+                                @(item.SprintCompletionPercent is { } completionPercent
+                                    ? $"{completionPercent:0.#}%"
+                                    : "Belum ada sprint")
+                            </MudText>
+                        </div>
+                    </div>
+                    <details class="pbi-details" @onclick:stopPropagation="true">
+                        <summary>Lihat AC dan DoD</summary>
+                        <div class="pbi-detail-content">
+                            <div>
+                                <MudText Typo="Typo.caption" Class="pbi-detail-label">Acceptance Criteria</MudText>
+                                <MudText Typo="Typo.body2">@item.AcceptanceCriteria</MudText>
+                            </div>
+                            <div>
+                                <MudText Typo="Typo.caption" Class="pbi-detail-label">Definition of Done</MudText>
+                                <MudText Typo="Typo.body2">@item.DefinitionOfDone</MudText>
+                            </div>
+                        </div>
+                    </details>
+                    <div @onclick:stopPropagation="true">
+                    <div class="pbi-mobile-actions">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                       aria-label="Edit Product Backlog Item"
+                                       OnClick="@(() => OpenDialogAsync(item))"
+                                       Disabled="@ViewModel.IsSaving" />
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error"
+                                       Size="Size.Small" aria-label="Hapus Product Backlog Item"
+                                       OnClick="@(() => RequestDelete(item.Id))"
+                                       Disabled="@ViewModel.IsSaving" />
+                    </div>
+                    @if (_pendingDeleteId == item.Id)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                            Hapus PBI ini?
+                            <MudButton Size="Size.Small" Color="Color.Error"
+                                       OnClick="@(() => DeleteAsync(item.Id))">
+                                Hapus
+                            </MudButton>
+                            <MudButton Size="Size.Small" OnClick="CancelDelete">Batal</MudButton>
+                        </MudAlert>
+                    }
+                    </div>
+                </MudPaper>
+            }
+        </div>
     }
 </MudPaper>
 
@@ -146,12 +338,32 @@
     private int? _pendingDeleteId;
 
     [Parameter] public EventCallback<int> NavigateToSprint { get; set; }
+    [Parameter] public string Initiative { get; set; } = ScrumInitiative.SmartRefueling;
 
-    protected override async Task OnInitializedAsync()
+    private string ScrumPath => Initiative == ScrumInitiative.Omp ? "/omp-scrum-project" : "/scrum-project";
+
+    private string GetScrumPath(int productBacklogItemId) =>
+        $"{ScrumPath}?productBacklogItemId={productBacklogItemId}";
+
+    private Task OnPbiRowClickAsync(TableRowClickEventArgs<ScrumProductBacklogItemRow> args) =>
+        args.Item is { } item ? OpenSprintAsync(item.Id) : Task.CompletedTask;
+
+    private async Task OpenSprintAsync(int productBacklogItemId)
+    {
+        if (NavigateToSprint.HasDelegate)
+        {
+            await NavigateToSprint.InvokeAsync(productBacklogItemId);
+        }
+
+        Navigation.NavigateTo(GetScrumPath(productBacklogItemId));
+    }
+
+    protected override void OnInitialized()
     {
         ViewModel.StateChanged += OnViewModelStateChanged;
-        await ViewModel.LoadAsync();
     }
+
+    protected override Task OnParametersSetAsync() => ViewModel.LoadAsync(Initiative);
 
     private async Task OpenDialogAsync(ScrumProductBacklogItemRow? item)
     {
@@ -175,7 +387,7 @@
         var result = await dialog.Result;
         if (result is { Canceled: false, Data: ScrumProductBacklogItemInput input })
         {
-            await ViewModel.SaveAsync(input);
+            await ViewModel.SaveAsync(input, Initiative);
         }
     }
 
@@ -185,14 +397,23 @@
     private async Task DeleteAsync(int id)
     {
         _pendingDeleteId = null;
-        await ViewModel.DeleteAsync(id);
+        await ViewModel.DeleteAsync(id, Initiative);
     }
+
+    private Task DeleteImageAsync(int imageId) => ViewModel.DeleteImageAsync(imageId, Initiative);
 
     private static string GetPriorityClass(string priority) => priority switch
     {
         "Tinggi" => "priority-high",
         "Rendah" => "priority-low",
         _ => "priority-medium"
+    };
+
+    private static Color GetPriorityColor(string priority) => priority switch
+    {
+        "Tinggi" => Color.Error,
+        "Rendah" => Color.Success,
+        _ => Color.Warning
     };
 
     private void OnViewModelStateChanged() => _ = InvokeAsync(StateHasChanged);
