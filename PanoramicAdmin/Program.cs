@@ -23,6 +23,18 @@ builder.Services.AddDbContextFactory<AppDbContext>(options =>
     options.UseSqlServer(
         connectionStringBuilder.ConnectionString,
         sqlServerOptions => sqlServerOptions.EnableRetryOnFailure()));
+builder.Services.AddOptions<OllamaOptions>()
+    .Bind(builder.Configuration.GetSection("Ollama"))
+    .Validate(options =>
+            Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out var uri) &&
+            (string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)),
+        "Ollama:BaseUrl must be an absolute HTTP or HTTPS URL.")
+    .Validate(options => !string.IsNullOrWhiteSpace(options.Model),
+        "Ollama:Model must not be empty.")
+    .ValidateOnStart();
+builder.Services.AddHttpClient<ScrumAssistantService>(client =>
+    client.Timeout = TimeSpan.FromMinutes(2));
 builder.Services.AddSingleton<IUserService, InMemoryUserService>();
 builder.Services.AddTransient<UserListViewModel>();
 builder.Services.AddTransient<MasterProjectViewModel>();

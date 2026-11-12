@@ -1,0 +1,140 @@
+@page "/scrum-assistant"
+@using Microsoft.Data.SqlClient
+@using PanoramicAdmin.Services
+@inject ScrumAssistantService AssistantService
+@inject ILogger<ScrumAssistant> Logger
+
+<PageTitle>Asisten AI Scrum | Panoramic Office</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.overline" Class="scrum-eyebrow">ASISTEN LOKAL / OLLAMA</MudText>
+        <MudText Typo="Typo.h4" Class="page-title">Tanya Data PBI &amp; Scrum</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Tanyakan backlog, sprint, task, atau blocker dari inisiatif Smart Refueling dan OMP.
+        </MudText>
+    </div>
+</div>
+
+<MudPaper Class="section-card pa-4" Elevation="0">
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
+        AI membaca data melalui aplikasi dan mengirim konteksnya ke engine Ollama yang dikonfigurasi.
+        AI tidak menjalankan SQL atau menyimpan perubahan ke database. Periksa kembali jawaban sebelum digunakan.
+    </MudAlert>
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-4">
+            @_error
+        </MudAlert>
+    }
+
+    @if (_messages.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+            Contoh: “Berapa blocker yang belum selesai?” atau “Apa status PBI prioritas tinggi?”
+        </MudText>
+    }
+    else
+    {
+        <div class="d-flex justify-end mb-3">
+            <MudButton Variant="Variant.Text" Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.DeleteOutline"
+                       OnClick="ClearConversation" Disabled="@_isSending">
+                Hapus percakapan
+            </MudButton>
+        </div>
+        <div class="d-flex flex-column gap-3 mb-4">
+            @foreach (var message in _messages)
+            {
+                <MudPaper Class="pa-3" Elevation="0"
+                          Style="@(message.Role == "user"
+                              ? "align-self:flex-end; max-width:90%; background:#eef2ff;"
+                              : "align-self:flex-start; max-width:100%; background:#f6f8fb;")">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @(message.Role == "user" ? "Anda" : "Asisten AI")
+                    </MudText>
+                    <MudText Typo="Typo.body2" Style="white-space:pre-wrap;">@message.Content</MudText>
+                </MudPaper>
+            }
+        </div>
+    }
+
+    @if (_isSending)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-3" />
+    }
+
+    <MudTextField T="string" Label="Pertanyaan" Placeholder="Tulis pertanyaan tentang PBI atau Scrum..."
+                  @bind-Value="_question" Lines="3" MaxLength="1000" Counter="1000"
+                  Disabled="@_isSending" Variant="Variant.Outlined" />
+    <div class="d-flex justify-end mt-3">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Send" OnClick="SendAsync"
+                   Disabled="@(_isSending || string.IsNullOrWhiteSpace(_question))">
+            @(_isSending ? "Memproses..." : "Tanya AI")
+        </MudButton>
+    </div>
+</MudPaper>
+
+@code {
+    private readonly List<ScrumAssistantMessage> _messages = [];
+    private string _question = string.Empty;
+    private string? _error;
+    private bool _isSending;
+
+    private async Task SendAsync()
+    {
+        var question = _question.Trim();
+        if (string.IsNullOrWhiteSpace(question) || question.Length > 1000 || _isSending)
+        {
+            return;
+        }
+
+        var history = _messages.ToArray();
+        _messages.Add(new ScrumAssistantMessage("user", question));
+        _question = string.Empty;
+        _error = null;
+        _isSending = true;
+
+        try
+        {
+            var answer = await AssistantService.AnswerAsync(question, history);
+            _messages.Add(new ScrumAssistantMessage("assistant", answer));
+            if (_messages.Count > 20)
+            {
+                _messages.RemoveRange(0, _messages.Count - 20);
+            }
+        }
+        catch (SqlException exception)
+        {
+            Logger.LogError(exception, "SQL Server failed while preparing Scrum assistant context.");
+            _error = "Data Scrum gagal dibaca dari database. Periksa koneksi database, lalu coba lagi.";
+        }
+        catch (HttpRequestException exception)
+        {
+            Logger.LogError(exception, "The configured local Ollama service could not be reached.");
+            _error = "Engine Ollama tidak dapat dihubungi. Pastikan Ollama berjalan dan alamat API di konfigurasi benar.";
+        }
+        catch (TaskCanceledException exception)
+        {
+            Logger.LogWarning(exception, "The Scrum assistant request timed out.");
+            _error = "Permintaan ke AI melewati batas waktu. Coba lagi atau gunakan model yang lebih ringan.";
+        }
+        catch (InvalidOperationException exception)
+        {
+            Logger.LogError(exception, "The Scrum assistant could not produce a response.");
+            _error = exception.Message;
+        }
+        finally
+        {
+            _isSending = false;
+        }
+    }
+
+    private void ClearConversation()
+    {
+        _messages.Clear();
+        _error = null;
+    }
+}

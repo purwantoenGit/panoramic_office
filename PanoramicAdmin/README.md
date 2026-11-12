@@ -121,6 +121,28 @@ output, although creating files can still trigger a watch project refresh.
 Restart `dotnet watch` after updating the project file. The deployed
 application's storage must be retained separately during publishing.
 
+## Local Scrum AI assistant
+
+The `/scrum-assistant` page uses a local Ollama API to answer read-only questions
+about Product Backlog Items, sprints, tasks, and blockers for Smart Refueling
+and OMP. The application does not send this context to a cloud AI service and
+the assistant cannot change database records.
+
+Install and start Ollama on the application host, then download the default
+model:
+
+```powershell
+ollama pull qwen3:14b
+```
+
+Configure `Ollama:BaseUrl` and `Ollama:Model` in `appsettings.json` or an
+environment-specific configuration source. The defaults are
+`http://localhost:11434/` and `qwen3:14b`. If Ollama runs on another machine,
+set `BaseUrl` to an address reachable from the application server. Detail
+records are retrieved with a relevance search from at most the 500 newest
+records of each type; summary counts use all records. Answers are generated
+locally and should be checked against the application data before use.
+
 ## RFID Tag Install database setup
 
 The RFID Tag Install page reads equipment data from `tbl_r_equip` using the
