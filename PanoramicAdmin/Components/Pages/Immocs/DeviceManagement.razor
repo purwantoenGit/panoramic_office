@@ -1,0 +1,42 @@
+@page "/immocs/device-management"
+
+<PageTitle>Device Management | IMMOCS</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <MudText Typo="Typo.h4" Class="page-title">Device Management</MudText>
+        <MudText Typo="Typo.body2" Class="page-subtitle">
+            Daftar perangkat IMMOCS.
+        </MudText>
+    </div>
+</div>
+
+<MudPaper Class="section-card" Elevation="0">
+    <MudTable Items="@Devices" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+        <HeaderContent>
+            <MudTh>No</MudTh>
+            <MudTh>District</MudTh>
+            <MudTh>EGI</MudTh>
+            <MudTh>Equip No</MudTh>
+            <MudTh>EoD</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="No">@context.No</MudTd>
+            <MudTd DataLabel="District">@context.District</MudTd>
+            <MudTd DataLabel="EGI">@context.Egi</MudTd>
+            <MudTd DataLabel="Equip No">@context.EquipNo</MudTd>
+            <MudTd DataLabel="EoD">@context.Eod</MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+                Belum ada data perangkat.
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private static readonly IReadOnlyList<DeviceRow> Devices = Array.Empty<DeviceRow>();
+
+    private sealed record DeviceRow(string No, string District, string Egi, string EquipNo, string Eod);
+}
