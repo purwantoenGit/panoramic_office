@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.FileProviders;
 using MudBlazor.Services;
+using System.Security.Cryptography;
+using System.Text;
 using PanoramicAdmin.Components;
 using PanoramicAdmin.Services;
 using PanoramicAdmin.ViewModels;
@@ -81,6 +83,66 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseStaticFiles();
 
 app.MapStaticAssets();
+app.MapGet("/api/whatsapp/ft-summary/{district}", async Task<IResult> (
+    string district,
+    int? days,
+    HttpRequest request,
+    IConfiguration configuration,
+    PitStopMappingService mappingService,
+    ILogger<Program> logger,
+    CancellationToken cancellationToken) =>
+{
+    var configuredApiKey = configuration["WhatsAppBot:ApiKey"];
+    if (string.IsNullOrWhiteSpace(configuredApiKey))
+    {
+        return Results.Problem(
+            "WhatsApp bot API is not configured.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    var providedApiKey = request.Headers["X-Bot-Api-Key"].ToString();
+    var expectedBytes = Encoding.UTF8.GetBytes(configuredApiKey);
+    var providedBytes = Encoding.UTF8.GetBytes(providedApiKey);
+    if (!CryptographicOperations.FixedTimeEquals(expectedBytes, providedBytes))
+    {
+        return Results.Unauthorized();
+    }
+
+    var normalizedDistrict = district.Trim().ToUpperInvariant();
+    if (normalizedDistrict.Length is < 2 or > 10 ||
+        normalizedDistrict.Any(character => !char.IsAsciiLetterOrDigit(character)))
+    {
+        return Results.BadRequest(new { error = "Kode district tidak valid." });
+    }
+
+    var selectedDays = days ?? 7;
+    if (selectedDays is < 1 or > 90)
+    {
+        return Results.BadRequest(new { error = "Periode harus antara 1 dan 90 hari." });
+    }
+
+    try
+    {
+        var summary = await mappingService.GetFuelTruckDistrictSummaryAsync(
+            normalizedDistrict, selectedDays, cancellationToken);
+        return Results.Ok(summary);
+    }
+    catch (SqlException exception)
+    {
+        logger.LogError(exception, "Failed to get Fuel Truck summary for district {District}.", normalizedDistrict);
+        return Results.Problem(
+            "Data Fuel Truck gagal dimuat.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (InvalidOperationException exception)
+    {
+        logger.LogError(exception, "The RfidDb connection string is unavailable.");
+        return Results.Problem(
+            "Koneksi RfidDb belum dikonfigurasi.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+})
+    .AllowAnonymous();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

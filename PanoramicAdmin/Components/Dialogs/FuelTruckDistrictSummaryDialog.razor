@@ -1,0 +1,113 @@
+@using System.Globalization
+
+<MudDialog>
+    <DialogContent>
+        <div class="ft-summary-period">
+            <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Class="ft-summary-period-icon" />
+            <div>
+                <MudText Typo="Typo.overline">PERIODE DATA</MudText>
+                <MudText Typo="Typo.body1" Class="ft-summary-period-value">
+                    @SelectedDays hari terakhir
+                </MudText>
+            </div>
+        </div>
+
+        <MudPaper Class="ft-summary-rate" Elevation="0">
+            <div class="ft-summary-rate-heading">
+                <div>
+                    <MudText Typo="Typo.overline">RFID FT Success Install</MudText>
+                    <MudText Typo="Typo.h3" Class="ft-summary-rate-value">
+                        @($"{RfidSuccessPercentage:0.##}%")
+                    </MudText>
+                </div>
+                <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined">
+                    @RfidWarehouseIds.Count dari @TotalWarehouseCount FT
+                </MudChip>
+            </div>
+            <div class="ft-summary-rate-track" role="progressbar"
+                 aria-label="RFID FT Success Install"
+                 aria-valuemin="0" aria-valuemax="100"
+                 aria-valuenow="@RfidSuccessPercentage.ToString(CultureInfo.InvariantCulture)">
+                <span style="@($"width: {RfidSuccessPercentage.ToString(CultureInfo.InvariantCulture)}%")"></span>
+            </div>
+        </MudPaper>
+
+        <MudGrid Spacing="2" Class="ft-summary-lists">
+            <MudItem xs="12" sm="6">
+                <MudPaper Class="ft-summary-list-card ft-summary-list-success" Elevation="0">
+                    <div class="ft-summary-list-heading">
+                        <div>
+                            <MudText Typo="Typo.overline">FT SUDAH RFID</MudText>
+                            <MudText Typo="Typo.h5">@RfidWarehouseIds.Count</MudText>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                 Color="Color.Success" Size="Size.Large" />
+                    </div>
+                    @if (RfidWarehouseIds.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Class="ft-summary-empty">
+                            Tidak ada FT dengan RFID pada periode ini.
+                        </MudText>
+                    }
+                    else
+                    {
+                        <div class="ft-summary-unit-list" aria-label="Daftar FT sudah RFID">
+                            @foreach (var warehouseId in RfidWarehouseIds)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success"
+                                         Variant="Variant.Outlined">@warehouseId</MudChip>
+                            }
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudPaper Class="ft-summary-list-card ft-summary-list-manual" Elevation="0">
+                    <div class="ft-summary-list-heading">
+                        <div>
+                            <MudText Typo="Typo.overline">FT BELUM RFID (MANUAL)</MudText>
+                            <MudText Typo="Typo.h5">@ManualWarehouseIds.Count</MudText>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.PendingActions"
+                                 Color="Color.Warning" Size="Size.Large" />
+                    </div>
+                    @if (ManualWarehouseIds.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Class="ft-summary-empty">
+                            Tidak ada FT manual pada periode ini.
+                        </MudText>
+                    }
+                    else
+                    {
+                        <div class="ft-summary-unit-list" aria-label="Daftar FT belum RFID">
+                            @foreach (var warehouseId in ManualWarehouseIds)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning"
+                                         Variant="Variant.Outlined">@warehouseId</MudChip>
+                            }
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Tutup</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public IReadOnlyList<string> RfidWarehouseIds { get; set; } = [];
+    [Parameter] public IReadOnlyList<string> ManualWarehouseIds { get; set; } = [];
+    [Parameter] public int SelectedDays { get; set; }
+
+    private int TotalWarehouseCount => RfidWarehouseIds.Count + ManualWarehouseIds.Count;
+    private decimal RfidSuccessPercentage => TotalWarehouseCount == 0
+        ? 0
+        : decimal.Round((decimal)RfidWarehouseIds.Count / TotalWarehouseCount * 100, 2);
+
+    private void Close() => MudDialog.Close();
+}

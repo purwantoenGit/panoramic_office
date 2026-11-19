@@ -3327,6 +3327,176 @@ body, .mud-typography {
     font-weight: 800;
 }
 
+.pit-stop-district-button {
+    min-width: 0;
+    padding: 0;
+    font-weight: 800;
+    text-transform: none;
+}
+
+.pit-stop-rfid-button {
+    min-width: 0;
+    padding: 0 4px;
+    color: #254c20;
+    font-weight: 800;
+    text-transform: none;
+}
+
+.ft-summary-period {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding: 12px 16px;
+    border: 1px solid #e2eaf4;
+    border-radius: 12px;
+    background: #f5f8fc;
+}
+
+.ft-summary-period-icon {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border-radius: 10px;
+    background: #e7effb;
+    color: #2859a6;
+}
+
+.ft-summary-period-value {
+    color: #183b70;
+    font-weight: 700 !important;
+}
+
+.ft-summary-rate {
+    margin-bottom: 16px;
+    padding: 18px 20px;
+    border: 1px solid #cfe7d5;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #f3fbf5, #fff);
+}
+
+.ft-achievement-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.ft-achievement-summary-card {
+    padding: 16px 20px;
+    border: 1px solid #e2eaf4;
+    border-radius: 14px;
+    background: #f5f8fc;
+}
+
+.ft-achievement-summary-rfid {
+    border-color: #cfe7d5;
+    background: linear-gradient(135deg, #f3fbf5, #fff);
+}
+
+.ft-achievement-total-value {
+    margin-top: 2px;
+    color: #2859a6;
+    font-weight: 800 !important;
+}
+
+.ft-achievement-count-column {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.ft-achievement-count-button {
+    min-width: 32px !important;
+    padding: 2px 6px !important;
+    font-variant-numeric: tabular-nums;
+}
+
+.ft-achievement-unit-details {
+    display: grid;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid #dfe5ec;
+}
+
+.ft-achievement-unit-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ft-summary-rate-heading,
+.ft-summary-list-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.ft-summary-rate-value {
+    margin-top: 2px;
+    color: #267343;
+    font-weight: 800 !important;
+}
+
+.ft-summary-rate-track {
+    height: 9px;
+    margin-top: 14px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #dcebe0;
+}
+
+.ft-summary-rate-track > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #50a96b, #267343);
+    transition: width 180ms ease;
+}
+
+.ft-summary-lists {
+    margin-top: 0;
+}
+
+.ft-summary-list-card {
+    height: 100%;
+    padding: 16px;
+    border: 1px solid #e4e9f0;
+    border-radius: 14px;
+    background: #fff;
+}
+
+.ft-summary-list-success {
+    border-color: #d1e8d8;
+}
+
+.ft-summary-list-manual {
+    border-color: #f0dfc0;
+}
+
+.ft-summary-unit-list {
+    display: flex;
+    max-height: 150px;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 14px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.ft-summary-empty {
+    margin-top: 14px;
+    color: #718096;
+}
+
+@media (max-width: 600px) {
+    .ft-achievement-summary-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .pit-stop-table .pit-stop-percent-column {
     color: #2859a6;
     font-weight: 800;

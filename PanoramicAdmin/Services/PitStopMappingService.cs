@@ -17,15 +17,54 @@ public sealed class PitStopMappingService(RfidEquipmentService equipmentService)
         CancellationToken cancellationToken = default)
         => await GetWarehouseStatusesAsync("FT", days, cancellationToken);
 
+    public async Task<FuelTruckDistrictSummary> GetFuelTruckDistrictSummaryAsync(
+        string district,
+        int days,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateDays(days);
+        ArgumentException.ThrowIfNullOrWhiteSpace(district);
+
+        var normalizedDistrict = district.Trim().ToUpperInvariant();
+        var statuses = await GetFuelTruckStatusesAsync(days, cancellationToken);
+        var districtStatuses = statuses
+            .Where(status => string.Equals(
+                status.District, normalizedDistrict, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        var rfidWarehouseIds = districtStatuses
+            .Where(status => status.HasRfid)
+            .Select(status => status.WarehouseId)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(warehouseId => warehouseId, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var manualWarehouseIds = districtStatuses
+            .Where(status => !status.HasRfid && status.HasNonRfid)
+            .Select(status => status.WarehouseId)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(warehouseId => warehouseId, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var totalWarehouseCount = rfidWarehouseIds.Length + manualWarehouseIds.Length;
+        var percentage = totalWarehouseCount == 0
+            ? 0
+            : decimal.Round((decimal)rfidWarehouseIds.Length / totalWarehouseCount * 100, 2);
+
+        return new FuelTruckDistrictSummary(
+            normalizedDistrict,
+            days,
+            rfidWarehouseIds.Length,
+            totalWarehouseCount,
+            percentage,
+            rfidWarehouseIds,
+            manualWarehouseIds);
+    }
+
     private async Task<IReadOnlyList<PitStopWarehouseStatus>> GetWarehouseStatusesAsync(
         string warehousePrefix,
         int days,
         CancellationToken cancellationToken)
     {
-        if (days is < 1 or > 90)
-        {
-            throw new ArgumentOutOfRangeException(nameof(days), "Periode harus antara 1 dan 90 hari.");
-        }
+        ValidateDays(days);
 
         await using var connection = equipmentService.CreateConnection();
         await connection.OpenAsync(cancellationToken);
@@ -71,6 +110,135 @@ public sealed class PitStopMappingService(RfidEquipmentService equipmentService)
         return statuses;
     }
 
+    public async Task<IReadOnlyList<FuelTruckRfidDailyAchievement>> GetFuelTruckRfidAchievementsAsync(
+        string district,
+        string warehouseId,
+        int days,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateDays(days);
+        ArgumentException.ThrowIfNullOrWhiteSpace(district);
+        ArgumentException.ThrowIfNullOrWhiteSpace(warehouseId);
+
+        var normalizedWarehouseId = warehouseId.Trim().ToUpperInvariant();
+        if (!normalizedWarehouseId.StartsWith("FT", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Kode warehouse harus merupakan Fuel Truck.", nameof(warehouseId));
+        }
+
+        await using var connection = equipmentService.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            ;WITH [DateRange] AS
+            (
+                SELECT CONVERT(date, DATEADD(DAY, -@Days, GETDATE())) AS [AchievementDate]
+                UNION ALL
+                SELECT DATEADD(DAY, 1, [AchievementDate])
+                FROM [DateRange]
+                WHERE [AchievementDate] < CONVERT(date, GETDATE())
+            ),
+            [DailyRfid] AS
+            (
+                SELECT
+                    CONVERT(date, [issued_date]) AS [AchievementDate],
+                    COUNT_BIG(CASE
+                        WHEN [input_type] IS NOT NULL
+                         AND UPPER(LTRIM(RTRIM(CONVERT(nvarchar(50), [input_type])))) <> N'RFID'
+                        THEN 1
+                    END) AS [ManualTransactionCount],
+                    COUNT_BIG(CASE
+                        WHEN UPPER(LTRIM(RTRIM(CONVERT(nvarchar(50), [input_type])))) = N'RFID'
+                        THEN 1
+                    END) AS [RfidCount]
+                FROM [DB_SATUPAMA_SM].[dbo].[tbl_t_log_sheet_detail]
+                WHERE UPPER(LTRIM(RTRIM(CONVERT(nvarchar(50), [dstrct_code])))) = @District
+                  AND UPPER(LTRIM(RTRIM(CONVERT(nvarchar(50), [whouse_id])))) = @WarehouseId
+                  AND [issued_date] >= DATEADD(DAY, -@Days, CONVERT(date, GETDATE()))
+                  AND [issued_date] < DATEADD(DAY, 1, CONVERT(date, GETDATE()))
+                GROUP BY CONVERT(date, [issued_date])
+            )
+            SELECT
+                [DateRange].[AchievementDate],
+                ISNULL([DailyRfid].[ManualTransactionCount], CONVERT(bigint, 0)) AS [ManualTransactionCount],
+                ISNULL([DailyRfid].[RfidCount], CONVERT(bigint, 0)) AS [RfidCount]
+            FROM [DateRange]
+            LEFT JOIN [DailyRfid]
+                ON [DailyRfid].[AchievementDate] = [DateRange].[AchievementDate]
+            ORDER BY [DateRange].[AchievementDate]
+            OPTION (MAXRECURSION 100);
+            """;
+        command.Parameters.Add("@Days", SqlDbType.Int).Value = days;
+        command.Parameters.Add("@District", SqlDbType.NVarChar, 50).Value = district.Trim().ToUpperInvariant();
+        command.Parameters.Add("@WarehouseId", SqlDbType.NVarChar, 50).Value = normalizedWarehouseId;
+
+        var achievements = new List<FuelTruckRfidDailyAchievement>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            achievements.Add(new FuelTruckRfidDailyAchievement(
+                reader.GetDateTime(0),
+                reader.GetInt64(1),
+                reader.GetInt64(2)));
+        }
+
+        return achievements;
+    }
+
+    public async Task<IReadOnlyList<string>> GetFuelTruckUnitNumbersAsync(
+        string district,
+        string warehouseId,
+        DateTime achievementDate,
+        bool isRfid,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(district);
+        ArgumentException.ThrowIfNullOrWhiteSpace(warehouseId);
+
+        var normalizedWarehouseId = warehouseId.Trim().ToUpperInvariant();
+        if (!normalizedWarehouseId.StartsWith("FT", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Kode warehouse harus merupakan Fuel Truck.", nameof(warehouseId));
+        }
+
+        await using var connection = equipmentService.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT DISTINCT
+                UPPER(LTRIM(RTRIM(CONVERT(nvarchar(4000), [unit_no])))) AS [UnitNo]
+            FROM [DB_SATUPAMA_SM].[dbo].[tbl_t_log_sheet_detail]
+            WHERE UPPER(LTRIM(RTRIM(CONVERT(nvarchar(50), [dstrct_code])))) = @District
+              AND UPPER(LTRIM(RTRIM(CONVERT(nvarchar(50), [whouse_id])))) = @WarehouseId
+              AND
+              (
+                  (@IsRfid = 1 AND UPPER(LTRIM(RTRIM(CONVERT(nvarchar(50), [input_type])))) = N'RFID')
+                  OR
+                  (@IsRfid = 0 AND [input_type] IS NOT NULL
+                   AND UPPER(LTRIM(RTRIM(CONVERT(nvarchar(50), [input_type])))) <> N'RFID')
+              )
+              AND [issued_date] >= @AchievementDate
+              AND [issued_date] < DATEADD(DAY, 1, @AchievementDate)
+              AND NULLIF(LTRIM(RTRIM(CONVERT(nvarchar(4000), [unit_no]))), N'') IS NOT NULL
+            ORDER BY [UnitNo];
+            """;
+        command.Parameters.Add("@District", SqlDbType.NVarChar, 50).Value = district.Trim().ToUpperInvariant();
+        command.Parameters.Add("@WarehouseId", SqlDbType.NVarChar, 50).Value = normalizedWarehouseId;
+        command.Parameters.Add("@AchievementDate", SqlDbType.Date).Value = achievementDate.Date;
+        command.Parameters.Add("@IsRfid", SqlDbType.Bit).Value = isRfid;
+
+        var unitNumbers = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            unitNumbers.Add(ReadText(reader, 0));
+        }
+
+        return unitNumbers;
+    }
+
     public async Task<IReadOnlyList<string>> GetFallbackDistrictsAsync(
         string warehousePrefix,
         CancellationToken cancellationToken = default)
@@ -106,6 +274,14 @@ public sealed class PitStopMappingService(RfidEquipmentService equipmentService)
         }
 
         return districts;
+    }
+
+    private static void ValidateDays(int days)
+    {
+        if (days is < 1 or > 90)
+        {
+            throw new ArgumentOutOfRangeException(nameof(days), "Periode harus antara 1 dan 90 hari.");
+        }
     }
 
     private static string ReadText(SqlDataReader reader, int ordinal) =>

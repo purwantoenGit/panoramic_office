@@ -10,3 +10,7 @@
 TestResults/
 PanoramicAdmin/wwwroot/uploads/
 PanoramicAdmin/App_Data/PbiImages/
+PanoramicAdmin/WhatsAppBot/node_modules/
+PanoramicAdmin/WhatsAppBot/.env
+PanoramicAdmin/WhatsAppBot/.wwebjs_auth/
+PanoramicAdmin/WhatsAppBot/.wwebjs_cache/

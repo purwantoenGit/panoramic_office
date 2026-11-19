@@ -1,0 +1,17 @@
+{
+  "name": "panoramic-ft-whatsapp-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WhatsApp command bot for Fuel Truck district summaries",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.34.8"
+  }
+}

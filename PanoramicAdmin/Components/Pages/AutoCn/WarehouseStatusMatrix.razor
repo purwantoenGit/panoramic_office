@@ -1,4 +1,6 @@
 @using PanoramicAdmin.Models
+@using PanoramicAdmin.Components.Dialogs
+@inject IDialogService DialogService
 
 <MudGrid Spacing="2" Class="pit-stop-summary">
     <MudItem xs="12" sm="4">
@@ -97,7 +99,21 @@
                     @foreach (var district in FilteredDistricts)
                     {
                         <tr @key="district.District">
-                            <th scope="row" class="pit-stop-district-column">@district.District</th>
+                            <th scope="row" class="pit-stop-district-column">
+                                @if (EnableDistrictSummary)
+                                {
+                                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                               Class="pit-stop-district-button"
+                                               OnClick="@(() => OpenDistrictSummaryAsync(district))"
+                                               aria-label="@($"Lihat ringkasan FT district {district.District}")">
+                                        @district.District
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    @district.District
+                                }
+                            </th>
                             <td class="pit-stop-percent-column">@($"{district.RfidInstalled:0.##}%")</td>
                             @foreach (var warehouseId in WarehouseIds)
                             {
@@ -105,9 +121,26 @@
                                 <td class="@GetStatusClass(status)">
                                     @if (status == "RFID")
                                     {
-                                        <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
+                                        @if (EnableRfidAchievement)
+                                        {
+                                            <MudButton Variant="Variant.Text" Color="Color.Success" Size="Size.Small"
+                                                       Class="pit-stop-rfid-button"
+                                                       OnClick="@(() => OpenRfidAchievementAsync(district.District, warehouseId))"
+                                                       aria-label="@($"Lihat achievement RFID {warehouseId} district {district.District}")">
+                                                <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
+                                                RFID
+                                            </MudButton>
+                                        }
+                                        else
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
+                                            @status
+                                        }
                                     }
-                                    @status
+                                    else
+                                    {
+                                        @status
+                                    }
                                 </td>
                             }
                             <td class="pit-stop-dst-column">@district.Dst</td>
@@ -149,6 +182,8 @@
     [Parameter] public DateTime? LastUpdated { get; set; }
     [Parameter] public string? LoadError { get; set; }
     [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool EnableDistrictSummary { get; set; }
+    [Parameter] public bool EnableRfidAchievement { get; set; }
     [Parameter] public EventCallback<string?> SearchChanged { get; set; }
     [Parameter] public EventCallback<int> DaysChanged { get; set; }
     [Parameter] public EventCallback RetryRequested { get; set; }
@@ -156,6 +191,54 @@
     private Task OnSearchChanged(string? text) => SearchChanged.InvokeAsync(text);
     private Task OnDaysChanged(int days) => DaysChanged.InvokeAsync(days);
     private Task OnRetryAsync() => RetryRequested.InvokeAsync();
+
+    private async Task OpenRfidAchievementAsync(string district, string warehouseId)
+    {
+        var parameters = new DialogParameters
+        {
+            ["District"] = district,
+            ["WarehouseId"] = warehouseId,
+            ["SelectedDays"] = SelectedDays
+        };
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Medium
+        };
+
+        await DialogService.ShowAsync<FuelTruckRfidAchievementDialog>(
+            $"Achievement RFID - {warehouseId}", parameters, options);
+    }
+
+    private async Task OpenDistrictSummaryAsync(PitStopDistrictRow district)
+    {
+        var rfidWarehouseIds = district.WarehouseStatuses
+            .Where(status => status.Value == "RFID")
+            .Select(status => status.Key)
+            .OrderBy(warehouseId => warehouseId, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var manualWarehouseIds = district.WarehouseStatuses
+            .Where(status => status.Value == "MANUAL")
+            .Select(status => status.Key)
+            .OrderBy(warehouseId => warehouseId, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var parameters = new DialogParameters
+        {
+            ["RfidWarehouseIds"] = rfidWarehouseIds,
+            ["ManualWarehouseIds"] = manualWarehouseIds,
+            ["SelectedDays"] = SelectedDays
+        };
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            FullWidth = true,
+            MaxWidth = MaxWidth.Medium
+        };
+
+        await DialogService.ShowAsync<FuelTruckDistrictSummaryDialog>(
+            $"Resume FT - {district.District}", parameters, options);
+    }
 
     private static string GetStatusClass(string status) => status switch
     {

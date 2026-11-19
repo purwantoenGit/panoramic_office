@@ -1,0 +1,235 @@
+@using Microsoft.Data.SqlClient
+@using PanoramicAdmin.Models
+@using PanoramicAdmin.Services
+@inject PitStopMappingService MappingService
+@inject ILogger<FuelTruckRfidAchievementDialog> Logger
+
+<MudDialog>
+    <DialogContent>
+        <div class="ft-summary-period">
+            <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Class="ft-summary-period-icon" />
+            <div>
+                <MudText Typo="Typo.overline">DISTRICT · FUEL TRUCK</MudText>
+                <MudText Typo="Typo.body1" Class="ft-summary-period-value">
+                    @District · @WarehouseId
+                </MudText>
+            </div>
+            <MudSpacer />
+            <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined">
+                @SelectedDays hari terakhir
+            </MudChip>
+        </div>
+
+        @if (IsLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+                Memuat achievement RFID...
+            </MudText>
+        }
+        else if (LoadError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+                <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                    <span>@LoadError</span>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="LoadAsync">
+                        Coba lagi
+                    </MudButton>
+                </div>
+            </MudAlert>
+        }
+        else
+        {
+            <div class="ft-achievement-summary-grid">
+                <MudPaper Class="ft-achievement-summary-card" Elevation="0">
+                    <MudText Typo="Typo.overline">MANUAL TRANSAKSI</MudText>
+                    <MudText Typo="Typo.h4" Class="ft-achievement-total-value">
+                        @Achievements.Sum(achievement => achievement.ManualTransactionCount).ToString("N0")
+                    </MudText>
+                </MudPaper>
+                <MudPaper Class="ft-achievement-summary-card ft-achievement-summary-rfid" Elevation="0">
+                    <div class="ft-summary-rate-heading">
+                        <div>
+                            <MudText Typo="Typo.overline">ACH RFID</MudText>
+                            <MudText Typo="Typo.h4" Class="ft-summary-rate-value">
+                                @Achievements.Sum(achievement => achievement.RfidCount).ToString("N0")
+                            </MudText>
+                        </div>
+                        <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined">
+                            @Achievements.Count(achievement => achievement.RfidCount > 0) hari aktif
+                        </MudChip>
+                    </div>
+                </MudPaper>
+            </div>
+
+            @if (Achievements.Count == 0)
+            {
+                <MudText Class="pa-6" Align="Align.Center" Color="Color.Secondary">
+                    Tidak ada data RFID pada periode ini.
+                </MudText>
+            }
+            else
+            {
+                <MudTable Items="@Achievements" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
+                    <HeaderContent>
+                        <MudTh>Tanggal</MudTh>
+                        <MudTh Class="ft-achievement-count-column">Manual Transaksi</MudTh>
+                        <MudTh Class="ft-achievement-count-column">Achievement RFID</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Tanggal">
+                            @context.AchievementDate.ToString("dd MMM yyyy")
+                        </MudTd>
+                        <MudTd DataLabel="Manual Transaksi" Class="ft-achievement-count-column">
+                            <MudButton Variant="Variant.Text"
+                                       Size="Size.Small"
+                                       Class="ft-achievement-count-button"
+                                       aria-label="@($"Lihat unit_no untuk {context.ManualTransactionCount} transaksi manual tanggal {context.AchievementDate:dd MMM yyyy}")"
+                                       OnClick="@(() => ShowUnitNumbersAsync(context, false))">
+                                @context.ManualTransactionCount.ToString("N0")
+                            </MudButton>
+                        </MudTd>
+                        <MudTd DataLabel="Achievement RFID" Class="ft-achievement-count-column">
+                            <MudButton Variant="Variant.Text"
+                                       Size="Size.Small"
+                                       Color="@(context.RfidCount == 0 ? Color.Error : Color.Default)"
+                                       Class="ft-achievement-count-button"
+                                       aria-label="@($"Lihat unit_no untuk {context.RfidCount} achievement RFID tanggal {context.AchievementDate:dd MMM yyyy}")"
+                                       OnClick="@(() => ShowUnitNumbersAsync(context, true))">
+                                @context.RfidCount.ToString("N0")
+                            </MudButton>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                @if (SelectedAchievement is not null)
+                {
+                    <MudPaper Class="ft-achievement-unit-details" Elevation="0">
+                        <div class="ft-summary-rate-heading">
+                            <MudText Typo="Typo.subtitle2">
+                                @SelectedUnitNumbersType · @SelectedAchievement.AchievementDate.ToString("dd MMM yyyy")
+                            </MudText>
+                            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                           Size="Size.Small"
+                                           aria-label="Tutup daftar unit_no"
+                                           OnClick="ClearUnitNumbers" />
+                        </div>
+                        @if (IsLoadingUnitNumbers)
+                        {
+                            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                        }
+                        else if (UnitNumbersError is not null)
+                        {
+                            <MudAlert Severity="Severity.Error" Dense="true">@UnitNumbersError</MudAlert>
+                        }
+                        else if (UnitNumbers.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Tidak ada unit_no untuk @SelectedUnitNumbersType pada tanggal ini.
+                            </MudText>
+                        }
+                        else
+                        {
+                            <div class="ft-achievement-unit-list">
+                                @foreach (var unitNumber in UnitNumbers)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                        @unitNumber
+                                    </MudChip>
+                                }
+                            </div>
+                        }
+                    </MudPaper>
+                }
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Tutup</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string District { get; set; } = string.Empty;
+    [Parameter] public string WarehouseId { get; set; } = string.Empty;
+    [Parameter] public int SelectedDays { get; set; }
+
+    private IReadOnlyList<FuelTruckRfidDailyAchievement> Achievements { get; set; } = [];
+    private IReadOnlyList<string> UnitNumbers { get; set; } = [];
+    private FuelTruckRfidDailyAchievement? SelectedAchievement { get; set; }
+    private bool SelectedUnitNumbersAreRfid { get; set; }
+    private string? LoadError { get; set; }
+    private string? UnitNumbersError { get; set; }
+    private bool IsLoading { get; set; }
+    private bool IsLoadingUnitNumbers { get; set; }
+    private string SelectedUnitNumbersType => SelectedUnitNumbersAreRfid ? "Achievement RFID" : "Manual Transaksi";
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        IsLoading = true;
+        LoadError = null;
+        try
+        {
+            Achievements = await MappingService.GetFuelTruckRfidAchievementsAsync(
+                District, WarehouseId, SelectedDays);
+        }
+        catch (SqlException exception)
+        {
+            Logger.LogError(exception, "Failed to load RFID achievement data for {District} {WarehouseId}.", District, WarehouseId);
+            LoadError = "Achievement RFID gagal dimuat. Periksa koneksi RfidDb dan hak akses SELECT ke tbl_t_log_sheet_detail.";
+        }
+        catch (InvalidOperationException exception)
+        {
+            Logger.LogError(exception, "The RfidDb connection string is unavailable.");
+            LoadError = "Koneksi RfidDb belum dikonfigurasi. Periksa User Secrets atau environment variable.";
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Unexpected error while loading RFID achievement data for {District} {WarehouseId}.", District, WarehouseId);
+            LoadError = "Terjadi kesalahan saat memuat achievement RFID. Periksa log aplikasi.";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task ShowUnitNumbersAsync(FuelTruckRfidDailyAchievement achievement, bool isRfid)
+    {
+        SelectedAchievement = achievement;
+        SelectedUnitNumbersAreRfid = isRfid;
+        UnitNumbers = [];
+        UnitNumbersError = null;
+        IsLoadingUnitNumbers = true;
+        try
+        {
+            UnitNumbers = await MappingService.GetFuelTruckUnitNumbersAsync(
+                District, WarehouseId, achievement.AchievementDate, isRfid);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception,
+                "Failed to load {TransactionType} unit numbers for {District} {WarehouseId} on {AchievementDate}.",
+                SelectedUnitNumbersType, District, WarehouseId, achievement.AchievementDate);
+            UnitNumbersError = "Unit_no gagal dimuat. Periksa koneksi database dan log aplikasi.";
+        }
+        finally
+        {
+            IsLoadingUnitNumbers = false;
+        }
+    }
+
+    private void ClearUnitNumbers()
+    {
+        SelectedAchievement = null;
+        UnitNumbers = [];
+        UnitNumbersError = null;
+    }
+
+    private void Close() => MudDialog.Close();
+}
