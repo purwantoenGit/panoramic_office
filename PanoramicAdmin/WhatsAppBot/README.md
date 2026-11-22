@@ -21,17 +21,21 @@ Header: X-Bot-Api-Key: <same secret>
 
 ## Start the bot
 
-Use Node.js 18 or newer. From this directory:
+Use Node.js 18 or newer. From this directory, copy the template and edit `.env`
+with the PanoramicAdmin URL, matching API key, approved WhatsApp sender/group
+IDs, and any optional n8n settings:
 
 ```powershell
+Copy-Item .env.example .env
+notepad .env
 npm install
-$env:PANORAMIC_API_BASE_URL = "https://your-internal-panoramicadmin-host"
-$env:PANORAMIC_API_TOKEN = "same value as WhatsAppBot__ApiKey"
-$env:WHATSAPP_ALLOWED_SENDERS = "6281234567890"
-$env:WHATSAPP_ALLOWED_DISTRICTS = "KPCS"
-$env:PUPPETEER_EXECUTABLE_PATH = "C:\Program Files\Google\Chrome\Application\chrome.exe"
 npm start
 ```
+
+The bot loads `.env` from this directory on startup. Keep real credentials in
+`.env`; it is ignored by Git. Do not commit or share it. Values set in the
+process environment take precedence over values in `.env`. The `.env.example`
+file contains placeholders only and can be copied again to restore the template.
 
 Set `PUPPETEER_EXECUTABLE_PATH` if Puppeteer's Chromium download is unavailable
 and Chrome is already installed on the bot host. Otherwise Puppeteer downloads
