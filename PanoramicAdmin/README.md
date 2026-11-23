@@ -12,6 +12,22 @@ dotnet run
 
 Open the URL printed by the .NET CLI. The dashboard is at `/` and the sample user list is at `/users`.
 
+### Local development secrets
+
+PanoramicAdmin loads a `.env` file from this directory when running in the
+Development environment. Copy `.env.example` to `.env` and set
+`WhatsAppBot__ApiKey` to the same secret used as `PANORAMIC_API_TOKEN` by the
+WhatsApp bot:
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+```
+
+The `.env` file is ignored by Git. Do not commit or share it. Existing process
+environment variables take precedence over values in `.env`. Restart the app
+after changing the file.
+
 ## Live reload in VS Code
 
 From the workspace root, open the Command Palette, choose **Tasks: Run Task**, and select **Watch PanoramicAdmin (Hot Reload)**. Alternatively, from this directory, run:

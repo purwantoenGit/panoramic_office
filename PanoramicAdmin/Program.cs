@@ -9,6 +9,15 @@ using PanoramicAdmin.Services;
 using PanoramicAdmin.ViewModels;
 
 var builder = WebApplication.CreateBuilder(args);
+if (builder.Environment.IsDevelopment())
+{
+    var envPath = Path.Combine(builder.Environment.ContentRootPath, ".env");
+    if (File.Exists(envPath))
+    {
+        DotNetEnv.Env.Load(envPath);
+        builder.Configuration.AddEnvironmentVariables();
+    }
+}
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

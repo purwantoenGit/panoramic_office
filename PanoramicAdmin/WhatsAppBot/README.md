@@ -6,11 +6,13 @@ headless page using the WhatsApp Web browser.
 
 ## Configure PanoramicAdmin
 
-Set the same long random API key on the PanoramicAdmin host and in the bot process:
+Set the same long random API key in PanoramicAdmin and the bot. For local
+development, configure `WhatsAppBot__ApiKey` in
+`PanoramicAdmin/.env` (see the PanoramicAdmin README). In the bot's `.env`, set
+`PANORAMIC_API_TOKEN` to that same value.
 
-```powershell
-$env:WhatsAppBot__ApiKey = "replace-with-a-long-random-secret"
-```
+For other hosting environments, configure `WhatsAppBot__ApiKey` in the
+PanoramicAdmin process environment.
 
 The API endpoint is:
 
