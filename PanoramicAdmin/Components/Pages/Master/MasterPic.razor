@@ -12,7 +12,7 @@
     <div>
         <MudText Typo="Typo.h4" Class="page-title">Master PIC</MudText>
         <MudText Typo="Typo.body2" Class="page-subtitle">
-            Kelola daftar person in charge.
+            Kelola daftar person in charge dan nomor WhatsApp untuk perintah bot.
         </MudText>
     </div>
     <MudButton Variant="Variant.Filled" Color="Color.Primary"
@@ -40,7 +40,7 @@
             </MudText>
         </div>
         <MudTextField T="string" Value="@ViewModel.SearchText" ValueChanged="OnSearchChanged"
-                      Placeholder="Cari nama atau role PIC"
+                      Placeholder="Cari nama, role, atau nomor WhatsApp"
                       Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
                       Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense"
                       Clearable="true" Class="search-field" aria-label="Cari nama atau role PIC" />
@@ -82,6 +82,7 @@
                 <MudTh>Inisial</MudTh>
                 <MudTh>Nama</MudTh>
                 <MudTh>ROLE</MudTh>
+                <MudTh>Nomor WhatsApp</MudTh>
                 <MudTh Class="project-actions-header">Edit</MudTh>
                 <MudTh Class="project-actions-header">Delete</MudTh>
             </HeaderContent>
@@ -108,6 +109,9 @@
                              Class="@GetRoleChipClass(context.Role)">
                         @(string.IsNullOrWhiteSpace(context.Role) ? "Belum diisi" : context.Role)
                     </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Nomor WhatsApp">
+                    @(context.PhoneNumber ?? "Belum diisi")
                 </MudTd>
                 <MudTd DataLabel="Edit" Class="project-actions-cell">
                     <MudIconButton Icon="@Icons.Material.Filled.Edit"

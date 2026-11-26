@@ -7,6 +7,8 @@ public class ProjectIssueActionPlan
     public ProjectIssue? ProjectIssue { get; set; }
     public required string ActionPlan { get; set; }
     public required string Status { get; set; }
+    public int IssuerPicId { get; set; }
+    public MasterPic? IssuerPic { get; set; }
     public int PicId { get; set; }
     public MasterPic? Pic { get; set; }
     public ICollection<ProjectIssueActionPlanPic> PicAssignments { get; set; } = [];

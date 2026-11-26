@@ -2,80 +2,110 @@
 
 <MudDialog Class="add-project-dialog">
     <TitleContent>
-        <div class="add-project-header">
-            <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Rounded="true">
+        <div class="project-issue-dialog-header">
+            <div class="project-issue-dialog-icon">
                 <MudIcon Icon="@Icons.Material.Filled.BugReport" />
-            </MudAvatar>
-            <div>
+            </div>
+            <div class="project-issue-dialog-heading">
                 <MudText Typo="Typo.h6" Class="add-project-title">@Title</MudText>
                 <MudText Typo="Typo.caption" Class="add-project-subtitle">
-                    Lengkapi informasi issue project.
+                    Kelola detail issue dan rencana tindak lanjut dalam satu tempat.
                 </MudText>
             </div>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                     Class="project-issue-dialog-mode">
+                @(InitialValue is null ? "ISSUE BARU" : "EDIT ISSUE")
+            </MudChip>
         </div>
     </TitleContent>
     <DialogContent>
-        <MudGrid Spacing="2">
-            <MudItem xs="12" sm="6">
-                <MudSelect T="int" @bind-Value="_projectId" Label="Project" Variant="Variant.Outlined"
-                           Margin="Margin.Dense" Required="true" RequiredError="Pilih Project."
-                           Disabled="@(Projects.Length == 0)">
-                    @foreach (var item in Projects)
-                    {
-                        <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudSelect T="string" @bind-Value="_statusProject" Label="Status Project"
-                           Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
-                           RequiredError="Pilih Status Project."
-                           Disabled="@(ProjectStatuses.Length == 0)">
-                    @foreach (var status in ProjectStatuses)
-                    {
-                        <MudSelectItem T="string" Value="@status">@status</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudDatePicker @bind-Date="_tanggal" Label="Tanggal" Variant="Variant.Outlined"
-                               Margin="Margin.Dense" Required="true" DateFormat="dd/MM/yyyy" />
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudAutocomplete T="ReferenceOption" Value="@_selectedIssuerPic"
-                                 ValueChanged="OnIssuerPicSelected"
-                                 SearchFunc="SearchPicsAsync" ToStringFunc="PicToString"
-                                 Label="Issuer" Placeholder="Ketik nama Issuer..."
-                                 Variant="Variant.Outlined" Margin="Margin.Dense"
-                                 Required="true" RequiredError="Pilih Issuer."
-                                 MinCharacters="1" MaxItems="20" Clearable="true"
-                                 ResetValueOnEmptyText="true" Immediate="true"
-                                 Disabled="@(Pics.Length == 0)" />
-            </MudItem>
-            <MudItem xs="12">
-                <MudSelect T="int" @bind-Value="_strategicActionId" Label="Strategic Action"
-                           Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
-                           RequiredError="Pilih Strategic Action."
-                           Disabled="@(StrategicActions.Length == 0)">
-                    @foreach (var item in StrategicActions)
-                    {
-                        <MudSelectItem T="int" Value="@item.Id">@item.Name</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12">
-                <div class="project-action-plan-heading">
+        <div class="project-issue-dialog-content">
+            <MudPaper Class="project-issue-overview-panel" Elevation="0">
+                <div class="project-issue-section-heading">
+                    <span class="project-issue-section-icon">
+                        <MudIcon Icon="@Icons.Material.Filled.Tune" />
+                    </span>
                     <div>
-                        <MudText Typo="Typo.subtitle1" Class="project-action-plan-title">Action Plan</MudText>
-                        <MudText Typo="Typo.caption" Class="project-action-plan-hint">
-                            Tambahkan satu atau beberapa rencana, masing-masing dengan satu atau beberapa PIC dan feedback.
+                        <MudText Typo="Typo.subtitle1" Class="project-issue-section-title">
+                            Informasi utama
+                        </MudText>
+                        <MudText Typo="Typo.caption" Class="project-issue-section-hint">
+                            Tentukan project, status, dan konteks issue.
                         </MudText>
                     </div>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Add"
-                               OnClick="AddActionPlan">
-                        Tambah Action Plan
-                    </MudButton>
+                </div>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?" @bind-Value="_projectId" Label="Project"
+                                   Placeholder="Pilih project..." Variant="Variant.Outlined"
+                                   Margin="Margin.Dense" Required="true" RequiredError="Pilih Project."
+                                   Disabled="@(Projects.Length == 0)">
+                            @foreach (var item in Projects)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)item.Id)">@item.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="string" @bind-Value="_statusProject" Label="Status Project"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                                   RequiredError="Pilih Status Project."
+                                   Disabled="@(ProjectStatuses.Length == 0)">
+                            @foreach (var status in ProjectStatuses)
+                            {
+                                <MudSelectItem T="string" Value="@status">@status</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudDatePicker @bind-Date="_tanggal" Label="Tanggal" Variant="Variant.Outlined"
+                                       Margin="Margin.Dense" Required="true" DateFormat="dd/MM/yyyy" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudDatePicker @bind-Date="_dueDate" Label="Due Date" Variant="Variant.Outlined"
+                                       Margin="Margin.Dense" DateFormat="dd/MM/yyyy" Clearable="true" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudAutocomplete T="string" Value="@_strategicActionName"
+                                         ValueChanged="OnStrategicActionNameChanged"
+                                         SearchFunc="SearchStrategicActionsAsync"
+                                         Label="Strategic Action" Placeholder="Pilih atau ketik Strategic Action baru..."
+                                         HelperText="Nama baru akan ditambahkan ke Master Strategic Action saat issue disimpan."
+                                         Variant="Variant.Outlined" Margin="Margin.Dense"
+                                         Required="true" RequiredError="Pilih atau isi Strategic Action."
+                                         MinCharacters="0" MaxItems="20" Clearable="true"
+                                         ResetValueOnEmptyText="true" Immediate="true" CoerceValue="true"
+                                         MaxLength="200" />
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <section class="project-action-plan-section">
+                <div class="project-action-plan-heading">
+                    <div class="project-action-plan-heading-copy">
+                        <span class="project-issue-section-icon project-action-plan-section-icon">
+                            <MudIcon Icon="@Icons.Material.Filled.Assignment" />
+                        </span>
+                        <div>
+                            <MudText Typo="Typo.subtitle1" Class="project-action-plan-title">
+                                Action Plan
+                            </MudText>
+                            <MudText Typo="Typo.caption" Class="project-action-plan-hint">
+                                Setiap rencana memiliki Issuer, PIC, status, dan feedback sendiri.
+                            </MudText>
+                        </div>
+                    </div>
+                    <div class="project-action-plan-heading-actions">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                 Class="project-action-plan-count">
+                            @_actionPlans.Count rencana
+                        </MudChip>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="AddActionPlan">
+                            Tambah rencana
+                        </MudButton>
+                    </div>
                 </div>
                 <div class="project-action-plan-list">
                     @for (var i = 0; i < _actionPlans.Count; i++)
@@ -86,12 +116,18 @@
                             <div class="project-action-plan-form-heading">
                                 <div class="project-action-plan-form-title-wrap">
                                     <span class="project-action-plan-letter">@actionPlanLabel</span>
-                                    <MudText Typo="Typo.subtitle2" Class="project-action-plan-form-title">
-                                        Action Plan @actionPlanLabel
-                                    </MudText>
+                                    <div>
+                                        <MudText Typo="Typo.subtitle2" Class="project-action-plan-form-title">
+                                            Rencana @actionPlanLabel
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Class="project-action-plan-form-subtitle">
+                                            Isi langkah dan penanggung jawab.
+                                        </MudText>
+                                    </div>
                                 </div>
                                 <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
                                                Color="Color.Error" Size="Size.Small"
+                                               Class="project-action-plan-remove"
                                                Disabled="@(_actionPlans.Count == 1)"
                                                OnClick="@(() => RemoveActionPlan(actionPlan))"
                                                aria-label="@($"Hapus Action Plan {actionPlanLabel}")" />
@@ -105,6 +141,17 @@
                                                   Class="project-issue-text-field project-issue-action-plan-input" />
                                 </MudItem>
                                 <MudItem xs="12" sm="6">
+                                    <MudAutocomplete T="ReferenceOption" Value="@GetActionPlanIssuer(actionPlan)"
+                                                     ValueChanged="@(pic => SetActionPlanIssuer(actionPlan, pic))"
+                                                     SearchFunc="SearchPicsAsync" ToStringFunc="PicToString"
+                                                     Label="Issuer" Placeholder="Ketik nama Issuer..."
+                                                     Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                     Required="true" RequiredError="Pilih Issuer untuk Action Plan ini."
+                                                     MinCharacters="1" MaxItems="20" Clearable="true"
+                                                     ResetValueOnEmptyText="true" Immediate="true"
+                                                     Disabled="@(Pics.Length == 0)" />
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
                                     <MudSelect T="string" @bind-Value="actionPlan.Status" Label="Status"
                                                Variant="Variant.Outlined" Margin="Margin.Dense"
                                                Required="true" RequiredError="Pilih Status untuk Action Plan ini."
@@ -115,25 +162,36 @@
                                         }
                                     </MudSelect>
                                 </MudItem>
-                                <MudItem xs="12" sm="6">
-                                    <MudAutocomplete T="ReferenceOption" Value="@actionPlan.PendingPic"
-                                                     ValueChanged="@(pic => AddActionPlanPic(actionPlan, pic))"
-                                                     SearchFunc="@((string value, CancellationToken cancellationToken) =>
-                                                         SearchActionPlanPicsAsync(actionPlan, value, cancellationToken))"
-                                                     ToStringFunc="PicToString"
-                                                     Label="PIC" Placeholder="Ketik nama PIC..."
-                                                     Variant="Variant.Outlined" Margin="Margin.Dense"
-                                                     MinCharacters="1" MaxItems="20" Clearable="true"
-                                                     ResetValueOnEmptyText="true" Immediate="true"
-                                                     Disabled="@(Pics.Length == 0)" />
-                                    <div class="d-flex flex-wrap gap-2 mt-2">
-                                        @foreach (var pic in GetSelectedPics(actionPlan))
+                                <MudItem xs="12">
+                                    <div class="project-action-plan-pic-section">
+                                        <MudAutocomplete T="ReferenceOption" Value="@actionPlan.PendingPic"
+                                                         ValueChanged="@(pic => AddActionPlanPic(actionPlan, pic))"
+                                                         SearchFunc="@((string value, CancellationToken cancellationToken) =>
+                                                             SearchActionPlanPicsAsync(actionPlan, value, cancellationToken))"
+                                                         ToStringFunc="PicToString"
+                                                         Label="PIC" Placeholder="Ketik nama PIC untuk ditambahkan..."
+                                                         Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                         MinCharacters="1" MaxItems="20" Clearable="true"
+                                                         ResetValueOnEmptyText="true" Immediate="true"
+                                                         Disabled="@(Pics.Length == 0)" />
+                                        @if (GetSelectedPics(actionPlan).Any())
                                         {
-                                            <MudChip T="string" @key="pic.Id" Size="Size.Small"
-                                                     Variant="Variant.Outlined" Color="Color.Primary"
-                                                     OnClose="@(() => RemoveActionPlanPic(actionPlan, pic.Id))">
-                                                @pic.Name
-                                            </MudChip>
+                                            <div class="project-action-plan-pic-list">
+                                                @foreach (var pic in GetSelectedPics(actionPlan))
+                                                {
+                                                    <MudChip T="string" @key="pic.Id" Size="Size.Small"
+                                                             Variant="Variant.Outlined" Color="Color.Primary"
+                                                             OnClose="@(() => RemoveActionPlanPic(actionPlan, pic.Id))">
+                                                        @pic.Name
+                                                    </MudChip>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.caption" Class="project-action-plan-pic-hint">
+                                                Pilih minimal satu PIC untuk rencana ini.
+                                            </MudText>
                                         }
                                     </div>
                                 </MudItem>
@@ -141,37 +199,36 @@
                                     <MudTextField T="string" @bind-Value="actionPlan.Feedback"
                                                   Label="Feedback" Variant="Variant.Outlined"
                                                   Placeholder="Catat perkembangan, hasil, kendala, atau tindak lanjut..."
-                                                  Margin="Margin.Dense" Lines="4"
+                                                  Margin="Margin.Dense" Lines="3"
                                                   Class="project-issue-text-field project-issue-feedback-input" />
                                 </MudItem>
                             </MudGrid>
                         </MudPaper>
                     }
                 </div>
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudDatePicker @bind-Date="_dueDate" Label="Due Date" Variant="Variant.Outlined"
-                               Margin="Margin.Dense" DateFormat="dd/MM/yyyy" Clearable="true" />
-            </MudItem>
-        </MudGrid>
-        @if (ProjectStatuses.Length == 0)
-        {
-            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">
-                Belum ada Status Project aktif. Tambahkan atau aktifkan pilihan di
-                <MudLink Href="/master-issue">Master Issue</MudLink>.
-            </MudAlert>
-        }
-        @if (_validationMessage is not null)
-        {
-            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">@_validationMessage</MudAlert>
-        }
+            </section>
+
+            @if (ProjectStatuses.Length == 0)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="project-issue-dialog-alert">
+                    Belum ada Status Project aktif. Tambahkan atau aktifkan pilihan di
+                    <MudLink Href="/master-issue">Master Issue</MudLink>.
+                </MudAlert>
+            }
+            @if (_validationMessage is not null)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="project-issue-dialog-alert">
+                    @_validationMessage
+                </MudAlert>
+            }
+        </div>
     </DialogContent>
     <DialogActions>
         <div class="add-project-actions">
             <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Batal</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save"
                        StartIcon="@Icons.Material.Filled.Check" Class="add-project-save">
-                Simpan
+                Simpan Issue
             </MudButton>
         </div>
     </DialogActions>
@@ -188,12 +245,10 @@
     [Parameter] public ReferenceOption[] StrategicActions { get; set; } = [];
     [Parameter] public string[] ProjectStatuses { get; set; } = [];
 
-    private int _projectId;
+    private int? _projectId;
     private string _statusProject = string.Empty;
     private DateTime? _tanggal = DateTime.Today;
-    private int _issuerPicId;
-    private ReferenceOption? _selectedIssuerPic;
-    private int _strategicActionId;
+    private string _strategicActionName = string.Empty;
     private DateTime? _dueDate;
     private string? _validationMessage;
     private List<ActionPlanForm> _actionPlans = [new()];
@@ -204,13 +259,12 @@
         _projectId = value.ProjectId;
         _statusProject = value.StatusProject;
         _tanggal = value.Tanggal;
-        _issuerPicId = value.IssuerPicId;
-        _selectedIssuerPic = Pics.FirstOrDefault(pic => pic.Id == _issuerPicId);
-        _strategicActionId = value.StrategicActionId;
+        _strategicActionName = value.StrategicActionName;
         _actionPlans = value.ActionPlans
             .Select(plan => new ActionPlanForm
             {
                 Id = plan.Id,
+                IssuerPicId = plan.IssuerPicId,
                 ActionPlan = plan.ActionPlan,
                 Status = plan.Status,
                 PicIds = plan.PicIds.ToHashSet(),
@@ -226,16 +280,25 @@
 
     private void AddActionPlan() => _actionPlans.Add(new ActionPlanForm());
 
-    private void OnIssuerPicSelected(ReferenceOption? pic)
-    {
-        _selectedIssuerPic = pic;
-        _issuerPicId = pic?.Id ?? 0;
-    }
+    private void OnStrategicActionNameChanged(string? name) =>
+        _strategicActionName = name ?? string.Empty;
 
     private Task<IEnumerable<ReferenceOption>> SearchPicsAsync(
         string value,
         CancellationToken cancellationToken) =>
         Task.FromResult<IEnumerable<ReferenceOption>>(FindPicMatches(value));
+
+    private Task<IEnumerable<string>> SearchStrategicActionsAsync(
+        string value,
+        CancellationToken cancellationToken)
+    {
+        IEnumerable<string> matches = string.IsNullOrWhiteSpace(value)
+            ? StrategicActions.Select(action => action.Name)
+            : StrategicActions
+                .Where(action => action.Name.Contains(value.Trim(), StringComparison.OrdinalIgnoreCase))
+                .Select(action => action.Name);
+        return Task.FromResult<IEnumerable<string>>(matches.Take(20));
+    }
 
     private Task<IEnumerable<ReferenceOption>> SearchActionPlanPicsAsync(
         ActionPlanForm actionPlan,
@@ -260,6 +323,12 @@
     }
 
     private static string PicToString(ReferenceOption? pic) => pic?.Name ?? string.Empty;
+
+    private ReferenceOption? GetActionPlanIssuer(ActionPlanForm actionPlan) =>
+        Pics.FirstOrDefault(pic => pic.Id == actionPlan.IssuerPicId);
+
+    private static void SetActionPlanIssuer(ActionPlanForm actionPlan, ReferenceOption? pic) =>
+        actionPlan.IssuerPicId = pic?.Id ?? 0;
 
     private IEnumerable<ReferenceOption> GetSelectedPics(ActionPlanForm actionPlan) =>
         Pics.Where(pic => actionPlan.PicIds.Contains(pic.Id));
@@ -286,9 +355,11 @@
 
     private void Save()
     {
-        if (_projectId <= 0 || _issuerPicId <= 0 || _strategicActionId <= 0)
+        if (_projectId is not int projectId || projectId <= 0 ||
+            string.IsNullOrWhiteSpace(_strategicActionName) ||
+            _strategicActionName.Trim().Length > 200)
         {
-            _validationMessage = "Pilih Project, Issuer, dan Strategic Action.";
+            _validationMessage = "Pilih Project, lalu pilih atau isi Strategic Action (maksimal 200 karakter).";
             return;
         }
         if (string.IsNullOrWhiteSpace(_statusProject) ||
@@ -300,12 +371,14 @@
         if (_actionPlans.Count == 0 ||
             _actionPlans.Any(plan =>
                 string.IsNullOrWhiteSpace(plan.ActionPlan) ||
+                plan.IssuerPicId <= 0 ||
+                !Pics.Any(pic => pic.Id == plan.IssuerPicId) ||
                 !plan.PicIds.Any() ||
                 plan.PicIds.Any(picId => picId <= 0) ||
                 string.IsNullOrWhiteSpace(plan.Status) ||
                 !ProjectStatuses.Contains(plan.Status, StringComparer.Ordinal)))
         {
-            _validationMessage = "Isi Action Plan dan pilih Status serta minimal satu PIC untuk setiap rencana.";
+            _validationMessage = "Isi Action Plan, pilih Issuer dan Status, serta minimal satu PIC untuk setiap rencana.";
             return;
         }
         if (_tanggal is null)
@@ -315,9 +388,10 @@
         }
 
         MudDialog.Close(DialogResult.Ok(new ProjectIssueInput(
-            _projectId, _statusProject.Trim(), _tanggal.Value.Date, _issuerPicId, _strategicActionId,
+            projectId, _statusProject.Trim(), _tanggal.Value.Date, _strategicActionName.Trim(),
             _actionPlans.Select(plan => new ProjectIssueActionPlanInput(
                 plan.Id,
+                plan.IssuerPicId,
                 plan.ActionPlan.Trim(),
                 plan.Status,
                 plan.PicIds.Distinct().ToArray(),
@@ -330,6 +404,7 @@
     private sealed class ActionPlanForm
     {
         public int? Id { get; set; }
+        public int IssuerPicId { get; set; }
         public string ActionPlan { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public IReadOnlyCollection<int> PicIds { get; set; } = [];

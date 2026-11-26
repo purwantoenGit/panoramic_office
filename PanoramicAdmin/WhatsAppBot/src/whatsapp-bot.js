@@ -1,11 +1,14 @@
 'use strict';
 
-const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
+const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const { createPanoramicApi } = require('./panoramic-api');
 const { createN8nWebhook } = require('./n8n-webhook');
-const { formatUpdatedAt, createSummaryCaption, renderSummaryImage } = require('./summary-image');
 const { normalizeWhatsAppId } = require('./config');
+const { createKpcsAutoCnFtHandler } = require('./wa-bot-autocn-kpcs');
+const { createBrcbAutoCnHandler } = require('./wa-bot-autocn-brcb');
+const { createSmaReScrumTasksHandler } = require('./wa-bot-scrum-smare');
+const { createWhatsAppSendBridge } = require('./whatsapp-send-bridge');
 
 function startWhatsAppBot(config) {
     const client = new Client({
@@ -21,6 +24,33 @@ function startWhatsAppBot(config) {
     const panoramicApi = createPanoramicApi(config);
     const n8nWebhook = createN8nWebhook(config);
     const activeRequests = new Set();
+    const handleKpcsAutoCnFt = createKpcsAutoCnFtHandler({
+        config,
+        client,
+        panoramicApi,
+        activeRequests
+    });
+    const handleBrcbAutoCn = createBrcbAutoCnHandler({
+        config,
+        client,
+        panoramicApi,
+        activeRequests
+    });
+    const handleSmaReScrumTasks = createSmaReScrumTasksHandler({
+        config,
+        client,
+        panoramicApi,
+        activeRequests
+    });
+    const sendBridge = createWhatsAppSendBridge({ client, apiToken: config.apiToken });
+
+    sendBridge.on('error', (error) => {
+        console.error('Unable to start the local WhatsApp send bridge:', error);
+        process.exitCode = 1;
+    });
+    sendBridge.listen(config.bridgePort, '127.0.0.1', () => {
+        console.log(`Local WhatsApp send bridge listening on 127.0.0.1:${config.bridgePort}.`);
+    });
 
     client.on('qr', (qr) => {
         console.log('Scan QR ini menggunakan WhatsApp pada perangkat bot:');
@@ -60,10 +90,10 @@ function startWhatsAppBot(config) {
             return;
         }
 
-        if (/^@omp\s+manual$/i.test(body)) {
+        if (isOmpManualCommand(body)) {
             const chatId = normalizeWhatsAppId(message.from);
-            if (chatId !== config.n8nAllowedGroupId) {
-                console.warn('Ignored @omp manual command outside the configured WhatsApp group.');
+            if (!config.n8nAllowedGroupIds.has(chatId)) {
+                console.warn('Ignored @omp manual command outside the configured WhatsApp groups.');
                 return;
             }
 
@@ -86,49 +116,15 @@ function startWhatsAppBot(config) {
             return;
         }
 
-        const match = body.match(/^!([a-z0-9]{2,10})\s+Auto\s+CN\s+FT$/i);
-        if (!match) {
+        if (await handleKpcsAutoCnFt(message)) {
             return;
         }
 
-        const senderId = normalizeWhatsAppId(message.author || message.from);
-        const chatId = normalizeWhatsAppId(message.from);
-        if (!config.allowedSenders.has(senderId) && !config.allowedSenders.has(chatId)) {
-            console.warn('Ignored FT summary command from an unapproved sender.');
+        if (await handleBrcbAutoCn(message)) {
             return;
         }
 
-        const district = match[1].toUpperCase();
-        if (!config.allowedDistricts.has(district)) {
-            await message.reply(`District ${district} belum diaktifkan untuk perintah bot ini.`);
-            return;
-        }
-
-        const requestId = `${chatId}:${district}`;
-        if (activeRequests.has(requestId)) {
-            await message.reply('Permintaan Resume FT untuk district ini sedang diproses.');
-            return;
-        }
-
-        activeRequests.add(requestId);
-        try {
-            const summary = await panoramicApi.getFuelTruckSummary(district);
-            const updatedAt = formatUpdatedAt(new Date());
-            const image = await renderSummaryImage(client.pupBrowser, summary, updatedAt);
-            const media = new MessageMedia(
-                'image/png',
-                image.toString('base64'),
-                `resume-ft-${district}.png`
-            );
-            await client.sendMessage(message.from, media, {
-                caption: createSummaryCaption(summary, updatedAt)
-            });
-        } catch (error) {
-            console.error(`Unable to send Resume FT for ${district}:`, error);
-            await message.reply('Gagal membuat Resume FT. Periksa koneksi aplikasi dan log bot.');
-        } finally {
-            activeRequests.delete(requestId);
-        }
+        await handleSmaReScrumTasks(message);
     }
 
     void client.initialize().catch((error) => {
@@ -139,4 +135,8 @@ function startWhatsAppBot(config) {
     return client;
 }
 
-module.exports = { startWhatsAppBot };
+function isOmpManualCommand(body) {
+    return /^@omp\s+manual\b/i.test(body);
+}
+
+module.exports = { startWhatsAppBot, isOmpManualCommand };

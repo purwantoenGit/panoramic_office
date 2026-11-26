@@ -9,26 +9,39 @@
             <div>
                 <MudText Typo="Typo.h6" Class="add-project-title">Tambah Master PIC</MudText>
                 <MudText Typo="Typo.caption" Class="add-project-subtitle">
-                    Masukkan nama dan role PIC.
+                    Masukkan identitas dan kontak WhatsApp PIC.
                 </MudText>
             </div>
         </div>
     </TitleContent>
     <DialogContent>
-        <MudTextField T="string" @bind-Value="_nama" Label="Nama"
-                      Placeholder="Masukkan nama PIC"
-                      Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
-                      MaxLength="150" Counter="150"
-                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" />
-        <MudSelect T="string" @bind-Value="_role" Label="Role"
-                   Variant="Variant.Outlined" Margin="Margin.Dense"
-                   Required="true" RequiredError="Pilih role dari Master Roles."
-                   Disabled="@(Roles.Count == 0)">
-            @foreach (var role in Roles)
-            {
-                <MudSelectItem T="string" Value="@role">@role</MudSelectItem>
-            }
-        </MudSelect>
+        <div class="master-pic-edit-fields">
+            <MudTextField T="string" @bind-Value="_nama" Label="Nama"
+                          Placeholder="Masukkan nama PIC"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"
+                          MaxLength="150" Counter="150"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" />
+            <MudSelect T="string" @bind-Value="_role" Label="Role"
+                       Variant="Variant.Outlined" Margin="Margin.Dense"
+                       Required="true" RequiredError="Pilih role dari Master Roles."
+                       Disabled="@(Roles.Count == 0)"
+                       Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Work">
+                @foreach (var role in Roles)
+                {
+                    <MudSelectItem T="string" Value="@role">@role</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField T="string" @bind-Value="_phoneNumber" Label="Nomor WhatsApp"
+                          Placeholder="+6281234567890"
+                          HelperText="Nomor internasional; awali dengan kode negara."
+                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Call" />
+            <MudTextField T="string" @bind-Value="_whatsAppId" Label="WA ID (opsional)"
+                          Placeholder="6281234567890@lid"
+                          HelperText="Fallback jika nomor tidak dapat dipetakan."
+                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AlternateEmail" />
+        </div>
         @if (_validationMessage is not null)
         {
             <MudText Typo="Typo.caption" Color="Color.Error">@_validationMessage</MudText>
@@ -54,6 +67,8 @@
 
     private string _nama = string.Empty;
     private string _role = string.Empty;
+    private string _phoneNumber = string.Empty;
+    private string _whatsAppId = string.Empty;
     private string? _validationMessage;
 
     protected override void OnParametersSet()
@@ -92,7 +107,19 @@
             return;
         }
 
-        MudDialog.Close(DialogResult.Ok(new MasterPicInput(nama, role)));
+        if (!MasterPicContact.TryNormalizePhoneNumber(_phoneNumber, out var phoneNumber))
+        {
+            _validationMessage = "Nomor WhatsApp harus berupa nomor internasional, contoh +6281234567890.";
+            return;
+        }
+
+        if (!MasterPicContact.TryNormalizeWhatsAppId(_whatsAppId, out var whatsAppId))
+        {
+            _validationMessage = "WA ID harus berbentuk nomor@c.us, nomor@s.whatsapp.net, atau nomor@lid.";
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new MasterPicInput(nama, role, phoneNumber, whatsAppId)));
     }
 
     private void Cancel() => MudDialog.Cancel();

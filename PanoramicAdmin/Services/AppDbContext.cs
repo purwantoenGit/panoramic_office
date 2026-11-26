@@ -78,6 +78,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasColumnName("Role")
                 .HasMaxLength(100)
                 .IsRequired();
+            entity.Property(pic => pic.PhoneNumber)
+                .HasColumnName("PhoneNumber")
+                .HasMaxLength(16);
+            entity.Property(pic => pic.WhatsAppId)
+                .HasColumnName("WhatsAppId")
+                .HasMaxLength(100);
+            entity.HasIndex(pic => pic.PhoneNumber)
+                .IsUnique()
+                .HasFilter("[PhoneNumber] IS NOT NULL")
+                .HasDatabaseName("UX_pano_master_pic_PhoneNumber");
+            entity.HasIndex(pic => pic.WhatsAppId)
+                .IsUnique()
+                .HasFilter("[WhatsAppId] IS NOT NULL")
+                .HasDatabaseName("UX_pano_master_pic_WhatsAppId");
         });
 
         modelBuilder.Entity<MasterRole>(entity =>
@@ -159,10 +173,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .WithMany()
                 .HasForeignKey(issue => issue.StrategicActionId)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(issue => issue.IssuerPic)
-                .WithMany()
-                .HasForeignKey(issue => issue.IssuerPicId)
-                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<ProjectIssueActionPlan>(entity =>
@@ -183,6 +193,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .WithMany(issue => issue.ActionPlans)
                 .HasForeignKey(plan => plan.ProjectIssueId)
                 .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(plan => plan.IssuerPic)
+                .WithMany()
+                .HasForeignKey(plan => plan.IssuerPicId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(plan => plan.Pic)
                 .WithMany()
                 .HasForeignKey(plan => plan.PicId)

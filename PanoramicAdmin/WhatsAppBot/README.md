@@ -58,7 +58,11 @@ chat where the command was sent.
 
 - `index.js` loads configuration and starts the bot.
 - `src/config.js` reads and validates environment variables.
-- `src/whatsapp-bot.js` handles WhatsApp events and commands.
+- `src/whatsapp-bot.js` handles WhatsApp events and dispatches commands.
+- `src/wa-bot-autocn-kpcs.js` handles the `!KPCS Auto CN FT` command.
+- `src/wa-bot-autocn-brcb.js` handles the `!BRCB Auto CN` and `!BRCB Auto CN FT` commands.
+- `src/wa-bot-scrum-smare.js` handles the `!tugas saya` command for Smart Refueling.
+- `src/whatsapp-send-bridge.js` sends authenticated, in-app WhatsApp messages through the connected bot account.
 - `src/n8n-webhook.js` calls n8n and parses its reply.
 - `src/panoramic-api.js` requests Fuel Truck summary data.
 - `src/summary-image.js` renders the PNG and WhatsApp caption.
@@ -67,24 +71,53 @@ chat where the command was sent.
 
 ```text
 !KPCS Auto CN FT
+!BRCB Auto CN
+!BRCB Auto CN FT
 ```
 
-More districts can be enabled by comma-separating them in
-`WHATSAPP_ALLOWED_DISTRICTS`.
+Enable each command's district in `WHATSAPP_ALLOWED_DISTRICTS`, separated by
+commas (for example, `KPCS,BRCB`).
 
 Send `!id` from a WhatsApp group to have the bot reply with that group's ID.
 Use that ID as `WHATSAPP_ALLOWED_SENDERS` to allow every member of that group
 to request summaries.
 
+## Smart Refueling Scrum tasks
+
+The command `!tugas saya` returns the sender's tasks across all SMARE PBI
+sprints, limited to `Belum dimulai` and `Sedang dikerjakan`. A PBI sprint is
+included only when it has at least one matching task. The command is only
+enabled in the group IDs listed in `WHATSAPP_SMARE_TASK_GROUP_IDS` (comma-separated).
+Send `!id` in the intended group to obtain its ID, then set the variable in the
+bot `.env`.
+
+Run `Database/Scripts/Create_MasterPic.sql` against `db_panoramic` before
+starting the feature. Add each PIC's WhatsApp number to Master PIC in
+international format (for example `+6281234567890`). The bot asks
+`whatsapp-web.js` to map a sender's WhatsApp LID to its phone number when
+possible. The optional WA ID field is a fallback for accounts whose phone
+number cannot be resolved; store the sender ID exactly as shown in WhatsApp,
+such as `6281234567890@lid`.
+
+Project Issue's **Kirim WA** button sends the Action Plan directly from the
+connected bot account; it does not open a WhatsApp chat. Keep the bot running
+and connected. The local send bridge listens on `127.0.0.1` using
+`WHATSAPP_BOT_BRIDGE_PORT` (default `3100`) and authenticates with the same
+`WhatsAppBot__ApiKey` / `PANORAMIC_API_TOKEN` value. PanoramicAdmin uses
+`http://127.0.0.1:3100` by default; override it with
+`WhatsAppBot__BridgeUrl` if needed. The bridge is loopback-only by design and
+should not be exposed directly to the network.
+
 ## n8n command
 
 The configured group can send `@omp manual`. Set the n8n production webhook
-URL before starting the bot:
+URL before starting the bot. `N8N_ALLOWED_GROUP_ID` accepts one or more
+comma-separated group IDs:
 
 ```bash
 export N8N_WEBHOOK_URL='https://your-n8n-host/webhook/whatsapp-omp-manual'
 export N8N_WEBHOOK_TOKEN='same-secret-as-the-n8n-header-auth-credential'
-export N8N_ALLOWED_GROUP_ID='120363412809510667@g.us'
+export N8N_ALLOWED_GROUP_ID='120363425559351535@g.us,120363412809510667@g.us'
 ```
 
 In n8n, configure the Webhook node for `POST`, connect it to the processing

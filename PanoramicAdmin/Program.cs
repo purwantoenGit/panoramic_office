@@ -5,6 +5,7 @@ using MudBlazor.Services;
 using System.Security.Cryptography;
 using System.Text;
 using PanoramicAdmin.Components;
+using PanoramicAdmin.Models;
 using PanoramicAdmin.Services;
 using PanoramicAdmin.ViewModels;
 
@@ -46,6 +47,8 @@ builder.Services.AddOptions<OllamaOptions>()
     .ValidateOnStart();
 builder.Services.AddHttpClient<ScrumAssistantService>(client =>
     client.Timeout = TimeSpan.FromMinutes(2));
+builder.Services.AddHttpClient<WhatsAppBotBridgeService>(client =>
+    client.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddSingleton<IUserService, InMemoryUserService>();
 builder.Services.AddTransient<UserListViewModel>();
 builder.Services.AddTransient<MasterProjectViewModel>();
@@ -67,6 +70,7 @@ builder.Services.AddTransient<SopEvaluationViewModel>();
 builder.Services.AddTransient<SmartRefuelingImplementationViewModel>();
 builder.Services.AddTransient<ScrumProjectViewModel>();
 builder.Services.AddTransient<ScrumProductBacklogViewModel>();
+builder.Services.AddTransient<WhatsAppScrumTaskService>();
 builder.Services.AddSingleton<ScrumProductBacklogImageStorage>();
 
 var app = builder.Build();
@@ -148,6 +152,71 @@ app.MapGet("/api/whatsapp/ft-summary/{district}", async Task<IResult> (
         logger.LogError(exception, "The RfidDb connection string is unavailable.");
         return Results.Problem(
             "Koneksi RfidDb belum dikonfigurasi.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+})
+    .AllowAnonymous();
+app.MapPost("/api/whatsapp/smare/my-tasks", async Task<IResult> (
+    WhatsAppScrumTaskRequest input,
+    HttpRequest request,
+    IConfiguration configuration,
+    WhatsAppScrumTaskService taskService,
+    ILogger<Program> logger,
+    CancellationToken cancellationToken) =>
+{
+    var configuredApiKey = configuration["WhatsAppBot:ApiKey"];
+    if (string.IsNullOrWhiteSpace(configuredApiKey))
+    {
+        return Results.Problem(
+            "WhatsApp bot API is not configured.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    var providedApiKey = request.Headers["X-Bot-Api-Key"].ToString();
+    var expectedBytes = Encoding.UTF8.GetBytes(configuredApiKey);
+    var providedBytes = Encoding.UTF8.GetBytes(providedApiKey);
+    if (!CryptographicOperations.FixedTimeEquals(expectedBytes, providedBytes))
+    {
+        return Results.Unauthorized();
+    }
+
+    if (!MasterPicContact.TryNormalizePhoneNumber(input.PhoneNumber, out var phoneNumber) ||
+        !MasterPicContact.TryNormalizeWhatsAppId(input.WhatsAppId, out var whatsAppId))
+    {
+        return Results.BadRequest(new { error = "Nomor telepon atau WhatsApp ID tidak valid." });
+    }
+
+    if (phoneNumber is null && whatsAppId is null)
+    {
+        return Results.BadRequest(new { error = "Nomor telepon atau WhatsApp ID wajib dikirim." });
+    }
+
+    try
+    {
+        var result = await taskService.GetMyTasksAsync(phoneNumber, whatsAppId, cancellationToken);
+        if (result.IdentityAmbiguous)
+        {
+            return Results.Conflict(new
+            {
+                error = "Identitas WhatsApp cocok dengan lebih dari satu PIC. Periksa Master PIC."
+            });
+        }
+
+        if (!result.PicFound)
+        {
+            return Results.NotFound(new
+            {
+                error = "Nomor WhatsApp belum terdaftar pada Master PIC."
+            });
+        }
+
+        return Results.Ok(result);
+    }
+    catch (SqlException exception)
+    {
+        logger.LogError(exception, "Failed to get Smart Refueling Scrum tasks for a WhatsApp PIC.");
+        return Results.Problem(
+            "Data Scrum Smart Refueling gagal dimuat.",
             statusCode: StatusCodes.Status503ServiceUnavailable);
     }
 })

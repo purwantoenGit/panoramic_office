@@ -8,7 +8,6 @@ BEGIN
         [ProjectId] int NOT NULL,
         [StatusProject] nvarchar(200) NOT NULL,
         [Tanggal] date NOT NULL,
-        [IssuerPicId] int NOT NULL,
         [StrategicActionId] int NOT NULL,
         [Deskripsi] nvarchar(max) NULL,
         [Feedback] nvarchar(max) NULL,
@@ -159,19 +158,6 @@ IF OBJECT_ID(N'dbo.pano_project_issue', N'U') IS NOT NULL
    AND NOT EXISTS
    (
        SELECT 1 FROM sys.foreign_keys
-       WHERE name = N'FK_pano_project_issue_pano_master_pic_IssuerPicId'
-         AND parent_object_id = OBJECT_ID(N'dbo.pano_project_issue', N'U')
-   )
-BEGIN
-    ALTER TABLE [dbo].[pano_project_issue]
-        ADD CONSTRAINT [FK_pano_project_issue_pano_master_pic_IssuerPicId]
-        FOREIGN KEY ([IssuerPicId]) REFERENCES [dbo].[pano_master_pic] ([Id]) ON DELETE NO ACTION;
-END;
-
-IF OBJECT_ID(N'dbo.pano_project_issue', N'U') IS NOT NULL
-   AND NOT EXISTS
-   (
-       SELECT 1 FROM sys.foreign_keys
        WHERE name = N'FK_pano_project_issue_pano_strategic_action_StrategicActionId'
          AND parent_object_id = OBJECT_ID(N'dbo.pano_project_issue', N'U')
    )
@@ -203,6 +189,7 @@ BEGIN
         [ProjectIssueId] int NOT NULL,
         [ActionPlan] nvarchar(max) NOT NULL,
         [Status] nvarchar(200) NOT NULL,
+        [IssuerPicId] int NULL,
         [PicId] int NOT NULL,
         [Feedback] nvarchar(max) NULL,
         CONSTRAINT [PK_pano_project_issue_action_plan] PRIMARY KEY ([Id]),
@@ -215,6 +202,13 @@ BEGIN
     );
     CREATE INDEX [IX_pano_project_issue_action_plan_ProjectIssueId]
         ON [dbo].[pano_project_issue_action_plan] ([ProjectIssueId]);
+END;
+
+IF OBJECT_ID(N'dbo.pano_project_issue_action_plan', N'U') IS NOT NULL
+   AND COL_LENGTH(N'dbo.pano_project_issue_action_plan', N'IssuerPicId') IS NULL
+BEGIN
+    ALTER TABLE [dbo].[pano_project_issue_action_plan]
+        ADD [IssuerPicId] int NULL;
 END;
 
 IF OBJECT_ID(N'dbo.pano_project_issue_action_plan', N'U') IS NOT NULL
@@ -272,11 +266,13 @@ END;
 IF OBJECT_ID(N'dbo.pano_project_issue_action_plan', N'U') IS NOT NULL
    AND COL_LENGTH(N'dbo.pano_project_issue', N'Deskripsi') IS NOT NULL
    AND COL_LENGTH(N'dbo.pano_project_issue', N'PicId') IS NOT NULL
+   AND COL_LENGTH(N'dbo.pano_project_issue', N'IssuerPicId') IS NOT NULL
 BEGIN
     DECLARE @MigrateLegacyActionPlansSql nvarchar(max) = N'
         INSERT INTO [dbo].[pano_project_issue_action_plan]
-            ([ProjectIssueId], [ActionPlan], [Status], [PicId], [Feedback])
-        SELECT issue.[Id], issue.[Deskripsi], issue.[StatusProject], issue.[PicId], issue.[Feedback]
+            ([ProjectIssueId], [ActionPlan], [Status], [IssuerPicId], [PicId], [Feedback])
+        SELECT issue.[Id], issue.[Deskripsi], issue.[StatusProject],
+               issue.[IssuerPicId], issue.[PicId], issue.[Feedback]
         FROM [dbo].[pano_project_issue] AS issue
         WHERE issue.[PicId] IS NOT NULL
           AND NOT EXISTS
@@ -361,4 +357,85 @@ IF OBJECT_ID(N'dbo.pano_project_issue_action_plan_pic', N'U') IS NOT NULL
 BEGIN
     CREATE INDEX [IX_pano_project_issue_action_plan_pic_PicId]
         ON [dbo].[pano_project_issue_action_plan_pic] ([PicId]);
+END;
+
+IF OBJECT_ID(N'dbo.pano_project_issue_action_plan', N'U') IS NOT NULL
+BEGIN
+    DECLARE @FinalizeActionPlanIssuerSql nvarchar(max) = N'
+        IF COL_LENGTH(N''dbo.pano_project_issue'', N''IssuerPicId'') IS NOT NULL
+        BEGIN
+            UPDATE actionPlan
+            SET [IssuerPicId] = issue.[IssuerPicId]
+            FROM [dbo].[pano_project_issue_action_plan] AS actionPlan
+            INNER JOIN [dbo].[pano_project_issue] AS issue
+                ON issue.[Id] = actionPlan.[ProjectIssueId]
+            WHERE actionPlan.[IssuerPicId] IS NULL;
+        END;
+
+        IF EXISTS
+        (
+            SELECT 1
+            FROM [dbo].[pano_project_issue_action_plan]
+            WHERE [IssuerPicId] IS NULL
+        )
+        BEGIN
+            THROW 50002, N''Unable to migrate Issuer to every Project Issue Action Plan.'', 1;
+        END;
+
+        IF EXISTS
+        (
+            SELECT 1
+            FROM sys.columns
+            WHERE object_id = OBJECT_ID(N''dbo.pano_project_issue_action_plan'', N''U'')
+              AND name = N''IssuerPicId''
+              AND is_nullable = 1
+        )
+        BEGIN
+            ALTER TABLE [dbo].[pano_project_issue_action_plan]
+                ALTER COLUMN [IssuerPicId] int NOT NULL;
+        END;
+
+        IF NOT EXISTS
+        (
+            SELECT 1 FROM sys.foreign_keys
+            WHERE name = N''FK_pano_project_issue_action_plan_IssuerPicId''
+              AND parent_object_id = OBJECT_ID(N''dbo.pano_project_issue_action_plan'', N''U'')
+        )
+        BEGIN
+            ALTER TABLE [dbo].[pano_project_issue_action_plan]
+                ADD CONSTRAINT [FK_pano_project_issue_action_plan_IssuerPicId]
+                FOREIGN KEY ([IssuerPicId]) REFERENCES [dbo].[pano_master_pic] ([Id]) ON DELETE NO ACTION;
+        END;
+
+        IF COL_LENGTH(N''dbo.pano_project_issue'', N''IssuerPicId'') IS NOT NULL
+        BEGIN
+            DECLARE @LegacyIssuerColumnId int =
+                COLUMNPROPERTY(OBJECT_ID(N''dbo.pano_project_issue'', N''U''), N''IssuerPicId'', ''ColumnId'');
+            DECLARE @LegacyIssuerForeignKey sysname;
+            DECLARE @DropLegacyIssuerForeignKeySql nvarchar(max);
+            DECLARE legacy_issuer_foreign_keys CURSOR LOCAL FAST_FORWARD FOR
+                SELECT DISTINCT fk.name
+                FROM sys.foreign_keys AS fk
+                INNER JOIN sys.foreign_key_columns AS fkc
+                    ON fkc.constraint_object_id = fk.object_id
+                WHERE fkc.parent_object_id = OBJECT_ID(N''dbo.pano_project_issue'', N''U'')
+                  AND fkc.parent_column_id = @LegacyIssuerColumnId;
+
+            OPEN legacy_issuer_foreign_keys;
+            FETCH NEXT FROM legacy_issuer_foreign_keys INTO @LegacyIssuerForeignKey;
+            WHILE @@FETCH_STATUS = 0
+            BEGIN
+                SET @DropLegacyIssuerForeignKeySql =
+                    N''ALTER TABLE [dbo].[pano_project_issue] DROP CONSTRAINT ''
+                    + QUOTENAME(@LegacyIssuerForeignKey) + N'';'';
+                EXEC sys.sp_executesql @DropLegacyIssuerForeignKeySql;
+                FETCH NEXT FROM legacy_issuer_foreign_keys INTO @LegacyIssuerForeignKey;
+            END;
+            CLOSE legacy_issuer_foreign_keys;
+            DEALLOCATE legacy_issuer_foreign_keys;
+
+            ALTER TABLE [dbo].[pano_project_issue] DROP COLUMN [IssuerPicId];
+        END;';
+
+    EXEC sys.sp_executesql @FinalizeActionPlanIssuerSql;
 END;

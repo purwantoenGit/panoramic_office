@@ -47,7 +47,8 @@ public sealed class MasterPicViewModel(
                 .ThenBy(pic => pic.Id)
                 .ToListAsync();
             Pics = pics.Select((pic, index) =>
-                new MasterPicRow(pic.Id, index + 1, pic.Nama, pic.Role)).ToList();
+                new MasterPicRow(
+                    pic.Id, index + 1, pic.Nama, pic.Role, pic.PhoneNumber, pic.WhatsAppId)).ToList();
             ApplyFilter();
         }
         catch (SqlException exception)
@@ -84,7 +85,8 @@ public sealed class MasterPicViewModel(
         FilteredPics = Pics
             .Where(pic =>
                 pic.Nama.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                pic.Role.Contains(SearchText, StringComparison.OrdinalIgnoreCase))
+                pic.Role.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                (pic.PhoneNumber?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false))
             .Select((pic, index) => pic with { No = index + 1 })
             .ToList();
     }
@@ -107,6 +109,11 @@ public sealed class MasterPicViewModel(
             return;
         }
 
+        if (!TryNormalizeContacts(input, out var phoneNumber, out var whatsAppId))
+        {
+            return;
+        }
+
         IsSaving = true;
         NotifyStateChanged();
         try
@@ -119,7 +126,19 @@ public sealed class MasterPicViewModel(
                 return;
             }
 
-            db.MasterPics.Add(new MasterPic { Nama = nama, Role = role });
+            if (await HasDuplicateContactAsync(db, phoneNumber, whatsAppId))
+            {
+                snackbar.Add("Nomor WhatsApp atau WA ID sudah digunakan PIC lain.", Severity.Warning);
+                return;
+            }
+
+            db.MasterPics.Add(new MasterPic
+            {
+                Nama = nama,
+                Role = role,
+                PhoneNumber = phoneNumber,
+                WhatsAppId = whatsAppId
+            });
             await db.SaveChangesAsync();
             SearchText = string.Empty;
             snackbar.Add("PIC berhasil ditambahkan.", Severity.Success);
@@ -161,6 +180,11 @@ public sealed class MasterPicViewModel(
             return;
         }
 
+        if (!TryNormalizeContacts(input, out var phoneNumber, out var whatsAppId))
+        {
+            return;
+        }
+
         IsSaving = true;
         NotifyStateChanged();
         try
@@ -181,8 +205,16 @@ public sealed class MasterPicViewModel(
                 return;
             }
 
+            if (await HasDuplicateContactAsync(db, phoneNumber, whatsAppId, id))
+            {
+                snackbar.Add("Nomor WhatsApp atau WA ID sudah digunakan PIC lain.", Severity.Warning);
+                return;
+            }
+
             pic.Nama = nama;
             pic.Role = role;
+            pic.PhoneNumber = phoneNumber;
+            pic.WhatsAppId = whatsAppId;
             await db.SaveChangesAsync();
             snackbar.Add("Perubahan PIC berhasil disimpan.", Severity.Success);
             await LoadAsync();
@@ -265,7 +297,51 @@ public sealed class MasterPicViewModel(
         NotifyStateChanged();
     }
 
+    private bool TryNormalizeContacts(
+        MasterPicInput input,
+        out string? phoneNumber,
+        out string? whatsAppId)
+    {
+        if (!MasterPicContact.TryNormalizePhoneNumber(input.PhoneNumber, out phoneNumber))
+        {
+            whatsAppId = null;
+            snackbar.Add("Nomor WhatsApp harus berupa nomor internasional, contoh +6281234567890.", Severity.Warning);
+            return false;
+        }
+
+        if (!MasterPicContact.TryNormalizeWhatsAppId(input.WhatsAppId, out whatsAppId))
+        {
+            snackbar.Add("WA ID harus berbentuk nomor@c.us, nomor@s.whatsapp.net, atau nomor@lid.", Severity.Warning);
+            return false;
+        }
+
+        return true;
+    }
+
+    private static async Task<bool> HasDuplicateContactAsync(
+        AppDbContext db,
+        string? phoneNumber,
+        string? whatsAppId,
+        int? excludedPicId = null)
+    {
+        IQueryable<MasterPic> query = db.MasterPics;
+        if (excludedPicId is { } id)
+        {
+            query = query.Where(pic => pic.Id != id);
+        }
+
+        return await query.AnyAsync(pic =>
+            (phoneNumber != null && pic.PhoneNumber == phoneNumber) ||
+            (whatsAppId != null && pic.WhatsAppId == whatsAppId));
+    }
+
     private void NotifyStateChanged() => StateChanged?.Invoke();
 }
 
-public sealed record MasterPicRow(int Id, int No, string Nama, string Role);
+public sealed record MasterPicRow(
+    int Id,
+    int No,
+    string Nama,
+    string Role,
+    string? PhoneNumber,
+    string? WhatsAppId);

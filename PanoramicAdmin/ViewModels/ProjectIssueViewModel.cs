@@ -10,8 +10,11 @@ public sealed class ProjectIssueViewModel(
     IDbContextFactory<AppDbContext> dbContextFactory,
     IConfiguration configuration,
     ISnackbar snackbar,
-    ILogger<ProjectIssueViewModel> logger)
+    ILogger<ProjectIssueViewModel> logger,
+    WhatsAppBotBridgeService whatsAppBotBridgeService)
 {
+    private readonly HashSet<(int ActionPlanId, int PicId)> _sendingWhatsAppMessages = [];
+
     public event Action? StateChanged;
     public IReadOnlyList<ProjectIssueRow> Issues { get; private set; } = [];
     public IReadOnlyList<ProjectIssueRow> FilteredIssues { get; private set; } = [];
@@ -26,6 +29,8 @@ public sealed class ProjectIssueViewModel(
     public int? PendingDeleteId { get; private set; }
     public bool IsLoading { get; private set; } = true;
     public bool IsSaving { get; private set; }
+    public bool IsSendingWhatsApp(int actionPlanId, int picId) =>
+        _sendingWhatsAppMessages.Contains((actionPlanId, picId));
 
     public async Task LoadAsync()
     {
@@ -48,7 +53,7 @@ public sealed class ProjectIssueViewModel(
                 .ToListAsync();
             Pics = await db.MasterPics.AsNoTracking()
                 .OrderBy(pic => pic.Nama)
-                .Select(pic => new ReferenceOption(pic.Id, pic.Nama))
+                .Select(pic => new ReferenceOption(pic.Id, pic.Nama, pic.PhoneNumber))
                 .ToListAsync();
             StrategicActions = await db.StrategicActions.AsNoTracking()
                 .OrderBy(action => action.NamaStrategicAction)
@@ -62,10 +67,11 @@ public sealed class ProjectIssueViewModel(
 
             var issues = await db.ProjectIssues.AsNoTracking()
                 .Include(issue => issue.Project)
-                .Include(issue => issue.IssuerPic)
                 .Include(issue => issue.StrategicAction)
                 .Include(issue => issue.ActionPlans)
                     .ThenInclude(plan => plan.Pic)
+                .Include(issue => issue.ActionPlans)
+                    .ThenInclude(plan => plan.IssuerPic)
                 .Include(issue => issue.ActionPlans)
                     .ThenInclude(plan => plan.PicAssignments)
                         .ThenInclude(assignment => assignment.Pic)
@@ -78,8 +84,6 @@ public sealed class ProjectIssueViewModel(
                 issue.Project?.Name ?? "(Project tidak tersedia)",
                 issue.StatusProject,
                 issue.Tanggal,
-                issue.IssuerPicId,
-                issue.IssuerPic?.Nama ?? "(PIC tidak tersedia)",
                 issue.StrategicActionId,
                 issue.StrategicAction?.NamaStrategicAction ?? "(Strategic Action tidak tersedia)",
                 issue.ActionPlans.Select(plan =>
@@ -87,15 +91,20 @@ public sealed class ProjectIssueViewModel(
                     var assignedPics = plan.PicAssignments
                         .Select(assignment => assignment.Pic)
                         .OfType<MasterPic>()
-                        .Select(pic => new ReferenceOption(pic.Id, pic.Nama))
+                        .Select(pic => new ReferenceOption(pic.Id, pic.Nama, pic.PhoneNumber))
                         .ToList();
                     if (assignedPics.Count == 0 && plan.Pic is not null)
                     {
-                        assignedPics.Add(new ReferenceOption(plan.Pic.Id, plan.Pic.Nama));
+                        assignedPics.Add(new ReferenceOption(
+                            plan.Pic.Id, plan.Pic.Nama, plan.Pic.PhoneNumber));
                     }
 
                     return new ProjectIssueActionPlanRow(
                         plan.Id,
+                        plan.IssuerPicId,
+                        new ReferenceOption(
+                            plan.IssuerPic?.Id ?? 0,
+                            plan.IssuerPic?.Nama ?? "(PIC tidak tersedia)"),
                         plan.ActionPlan,
                         plan.Status,
                         assignedPics.Select(pic => pic.Id).ToArray(),
@@ -146,9 +155,9 @@ public sealed class ProjectIssueViewModel(
                  issue.Project.Contains(ProjectNameFilter.Trim(), StringComparison.OrdinalIgnoreCase)) &&
                 (issue.Project.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
                  issue.StatusProject.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                 issue.Issuer.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
                  issue.StrategicAction.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
                  issue.ActionPlans.Any(plan =>
+                     plan.IssuerPic.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
                      plan.ActionPlan.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
                      plan.Status.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
                      plan.Pics.Any(pic => pic.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase)) ||
@@ -159,14 +168,94 @@ public sealed class ProjectIssueViewModel(
             .ToList();
     }
 
+    public async Task SendActionPlanWhatsAppAsync(
+        ProjectIssueRow issue,
+        ProjectIssueActionPlanRow plan,
+        ReferenceOption pic)
+    {
+        if (!plan.PicIds.Contains(pic.Id))
+        {
+            snackbar.Add("PIC tersebut tidak ditugaskan pada Action Plan ini.", Severity.Warning);
+            return;
+        }
+
+        if (!MasterPicContact.TryNormalizePhoneNumber(pic.PhoneNumber, out var phoneNumber) ||
+            phoneNumber is null)
+        {
+            snackbar.Add("Nomor WhatsApp PIC belum diisi atau tidak valid di Master PIC.", Severity.Warning);
+            return;
+        }
+
+        var requestKey = (plan.Id, pic.Id);
+        if (!_sendingWhatsAppMessages.Add(requestKey))
+        {
+            return;
+        }
+
+        NotifyStateChanged();
+        try
+        {
+            var dueDate = issue.DueDate is { } date
+               ? $"📅 *Due Date:* *{date:dd/MM/yyyy}*\n"
+               : string.Empty;
+            var message =
+               $"📣 *ACTION PLAN - MOHON TINDAK LANJUT*\n\n" +
+               $"👋 Halo *{pic.Name}*, mohon tindak lanjut Action Plan berikut:\n\n" +
+               $"🏢 *Project:* {issue.Project}\n" +
+               $"🚩 *Project Issue:* {issue.StatusProject}\n" +
+               $"🎯 *Strategic Action:* {issue.StrategicAction}\n" +
+               $"👤 *Issuer:* {plan.IssuerPic.Name}\n" +
+               $"📝 *Action Plan:*\n*{plan.ActionPlan}*\n" +
+               $"🔄 *Status:* *{plan.Status}*\n" +
+               dueDate;
+
+            await whatsAppBotBridgeService.SendMessageAsync(phoneNumber, message);
+            snackbar.Add($"Action Plan berhasil dikirim ke {pic.Name} melalui WhatsApp.", Severity.Success);
+        }
+        catch (HttpRequestException exception)
+        {
+            logger.LogError(
+               exception,
+               "WhatsApp send failed for Project Issue {IssueId}, Action Plan {ActionPlanId}, PIC {PicId}.",
+               issue.Id,
+               plan.Id,
+               pic.Id);
+            snackbar.Add(
+               "WhatsApp gagal mengirim. Pastikan bot aktif, terhubung, dan nomor PIC terdaftar di WhatsApp.",
+               Severity.Error);
+        }
+        catch (TaskCanceledException exception)
+        {
+            logger.LogError(
+               exception,
+               "WhatsApp send timed out for Project Issue {IssueId}, Action Plan {ActionPlanId}, PIC {PicId}.",
+               issue.Id,
+               plan.Id,
+               pic.Id);
+            snackbar.Add("Pengiriman WhatsApp timeout. Periksa koneksi bot lalu coba lagi.", Severity.Error);
+        }
+        catch (InvalidOperationException exception)
+        {
+            logger.LogError(exception, "WhatsApp bot bridge configuration is invalid.");
+            snackbar.Add("Konfigurasi WhatsApp bot belum lengkap. Hubungi admin.", Severity.Error);
+        }
+        finally
+        {
+            _sendingWhatsAppMessages.Remove(requestKey);
+            NotifyStateChanged();
+        }
+    }
+
     public async Task CreateAsync(ProjectIssueInput input) => await SaveAsync(null, input);
     public async Task UpdateAsync(int id, ProjectIssueInput input) => await SaveAsync(id, input);
 
     private async Task SaveAsync(int? id, ProjectIssueInput input)
     {
         var status = input.StatusProject.Trim();
+        var strategicActionName = input.StrategicActionName.Trim();
         var actionPlans = input.ActionPlans.Select(plan => new ProjectIssueActionPlanInput(
             plan.Id,
+            plan.IssuerPicId,
             plan.ActionPlan.Trim(),
             plan.Status.Trim(),
             plan.PicIds.Distinct().ToArray(),
@@ -179,16 +268,25 @@ public sealed class ProjectIssueViewModel(
         {
             await using var db = await dbContextFactory.CreateDbContextAsync();
             var projectExists = await db.Projects.AnyAsync(project => project.Id == input.ProjectId);
-            var issuerExists = await db.MasterPics.AnyAsync(pic => pic.Id == input.IssuerPicId);
-            var strategicActionExists = await db.StrategicActions.AnyAsync(action => action.Id == input.StrategicActionId);
+            var issuerPicIds = actionPlans.Select(plan => plan.IssuerPicId).Distinct().ToArray();
+            var validIssuerPicCount = await db.MasterPics.CountAsync(pic => issuerPicIds.Contains(pic.Id));
             var actionPlanPicIds = actionPlans.SelectMany(plan => plan.PicIds).Distinct().ToArray();
             var validActionPlanPicCount = await db.MasterPics.CountAsync(pic => actionPlanPicIds.Contains(pic.Id));
-            if (!projectExists || !issuerExists || !strategicActionExists ||
+            if (!projectExists || validIssuerPicCount != issuerPicIds.Length ||
                 validActionPlanPicCount != actionPlanPicIds.Length)
             {
-                snackbar.Add("Pilihan Project, Issuer, PIC Action Plan, atau Strategic Action sudah berubah. Muat ulang data dan pilih kembali.", Severity.Warning);
+                snackbar.Add("Pilihan Project, Issuer, atau PIC Action Plan sudah berubah. Muat ulang data dan pilih kembali.", Severity.Warning);
                 await LoadAsync();
                 return;
+            }
+
+            var strategicAction = await db.StrategicActions
+                .FirstOrDefaultAsync(action => action.NamaStrategicAction == strategicActionName);
+            var isNewStrategicAction = strategicAction is null;
+            if (strategicAction is null)
+            {
+                strategicAction = new StrategicAction { NamaStrategicAction = strategicActionName };
+                db.StrategicActions.Add(strategicAction);
             }
 
             var activeStatuses = await db.MasterIssues.AsNoTracking()
@@ -251,8 +349,7 @@ public sealed class ProjectIssueViewModel(
             issue.ProjectId = input.ProjectId;
             issue.StatusProject = status;
             issue.Tanggal = input.Tanggal.Date;
-            issue.IssuerPicId = input.IssuerPicId;
-            issue.StrategicActionId = input.StrategicActionId;
+            issue.StrategicAction = strategicAction;
             issue.DueDate = input.DueDate?.Date;
             var retainedActionPlanIds = new HashSet<int>();
             foreach (var actionPlan in actionPlans)
@@ -267,6 +364,7 @@ public sealed class ProjectIssueViewModel(
                 {
                     actionPlanEntity = new ProjectIssueActionPlan
                     {
+                        IssuerPicId = actionPlan.IssuerPicId,
                         ActionPlan = actionPlan.ActionPlan,
                         Status = actionPlan.Status,
                         PicId = actionPlan.PicIds[0],
@@ -280,6 +378,7 @@ public sealed class ProjectIssueViewModel(
                     continue;
                 }
 
+                actionPlanEntity.IssuerPicId = actionPlan.IssuerPicId;
                 actionPlanEntity.ActionPlan = actionPlan.ActionPlan;
                 actionPlanEntity.Status = actionPlan.Status;
                 actionPlanEntity.PicId = actionPlan.PicIds[0];
@@ -303,7 +402,14 @@ public sealed class ProjectIssueViewModel(
             }
 
             await db.SaveChangesAsync();
-            snackbar.Add(id is null ? "Project Issue berhasil ditambahkan." : "Perubahan Project Issue berhasil disimpan.", Severity.Success);
+            var successMessage = id is null
+                ? "Project Issue berhasil ditambahkan."
+                : "Perubahan Project Issue berhasil disimpan.";
+            if (isNewStrategicAction)
+            {
+                successMessage += " Strategic Action baru juga ditambahkan.";
+            }
+            snackbar.Add(successMessage, Severity.Success);
             SearchText = string.Empty;
             await LoadAsync();
         }
@@ -324,9 +430,11 @@ public sealed class ProjectIssueViewModel(
         string status,
         IReadOnlyList<ProjectIssueActionPlanInput> actionPlans)
     {
-        if (input.ProjectId <= 0 || input.IssuerPicId <= 0 || input.StrategicActionId <= 0)
+        if (input.ProjectId <= 0 ||
+            string.IsNullOrWhiteSpace(input.StrategicActionName) ||
+            input.StrategicActionName.Trim().Length > 200)
         {
-            snackbar.Add("Pilih Project, Issuer, dan Strategic Action.", Severity.Warning);
+            snackbar.Add("Pilih Project, lalu pilih atau isi Strategic Action (maksimal 200 karakter).", Severity.Warning);
             return false;
         }
         if (string.IsNullOrWhiteSpace(status) || status.Length > 200)
@@ -337,11 +445,12 @@ public sealed class ProjectIssueViewModel(
         if (actionPlans.Count == 0 ||
             actionPlans.Any(plan =>
                 string.IsNullOrWhiteSpace(plan.ActionPlan) ||
+                plan.IssuerPicId <= 0 ||
                 string.IsNullOrWhiteSpace(plan.Status) ||
                 plan.PicIds.Count == 0 ||
                 plan.PicIds.Any(picId => picId <= 0)))
         {
-            snackbar.Add("Tambahkan minimal satu Action Plan dan pilih Status serta minimal satu PIC untuk setiap Action Plan.", Severity.Warning);
+            snackbar.Add("Tambahkan minimal satu Action Plan dan pilih Issuer, Status, serta minimal satu PIC untuk setiap Action Plan.", Severity.Warning);
             return false;
         }
         if (input.Tanggal == default)
@@ -416,7 +525,7 @@ public sealed class ProjectIssueViewModel(
     private void NotifyStateChanged() => StateChanged?.Invoke();
 }
 
-public sealed record ReferenceOption(int Id, string Name);
+public sealed record ReferenceOption(int Id, string Name, string? PhoneNumber = null);
 
 public sealed record ProjectIssueRow(
     int Id,
@@ -425,8 +534,6 @@ public sealed record ProjectIssueRow(
     string Project,
     string StatusProject,
     DateTime Tanggal,
-    int IssuerPicId,
-    string Issuer,
     int StrategicActionId,
     string StrategicAction,
     IReadOnlyList<ProjectIssueActionPlanRow> ActionPlans,
@@ -436,13 +543,14 @@ public sealed record ProjectIssueInput(
     int ProjectId,
     string StatusProject,
     DateTime Tanggal,
-    int IssuerPicId,
-    int StrategicActionId,
+    string StrategicActionName,
     IReadOnlyList<ProjectIssueActionPlanInput> ActionPlans,
     DateTime? DueDate);
 
 public sealed record ProjectIssueActionPlanRow(
     int Id,
+    int IssuerPicId,
+    ReferenceOption IssuerPic,
     string ActionPlan,
     string Status,
     IReadOnlyList<int> PicIds,
@@ -451,6 +559,7 @@ public sealed record ProjectIssueActionPlanRow(
 
 public sealed record ProjectIssueActionPlanInput(
     int? Id,
+    int IssuerPicId,
     string ActionPlan,
     string Status,
     IReadOnlyList<int> PicIds,
