@@ -269,6 +269,7 @@
                                                         @foreach (var pic in plan.Pics)
                                                         {
                                                             var hasWhatsAppNumber = HasValidWhatsAppNumber(pic);
+                                                            var hasEmail = HasValidEmail(pic);
                                                             <div @key="pic.Id" class="project-issue-plan-pic-contact">
                                                                 <MudText Typo="Typo.body2" Class="project-issue-pic-contact-name">
                                                                     @pic.Name
@@ -293,6 +294,28 @@
                                                                     <span class="project-issue-wa-unavailable"
                                                                           title="Nomor WhatsApp belum diisi di Master PIC">
                                                                         WA belum tersedia
+                                                                    </span>
+                                                                }
+                                                                @if (hasEmail)
+                                                                {
+                                                                    <MudButton Class="project-issue-email-button"
+                                                                               Variant="Variant.Outlined"
+                                                                               Color="Color.Primary"
+                                                                               Size="Size.Small"
+                                                                               StartIcon="@Icons.Material.Filled.Email"
+                                                                               Disabled="@ViewModel.IsSendingActionPlanEmail(plan.Id, pic.Id)"
+                                                                               OnClick="@(() => ViewModel.SendActionPlanEmailAsync(issue, plan, pic))"
+                                                                               aria-label="@($"Kirim email ke {pic.Name}")">
+                                                                        @(ViewModel.IsSendingActionPlanEmail(plan.Id, pic.Id)
+                                                                            ? "Mengirim"
+                                                                            : "Kirim Email")
+                                                                    </MudButton>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="project-issue-email-unavailable"
+                                                                          title="Alamat email belum diisi di Master PIC">
+                                                                        Email belum tersedia
                                                                     </span>
                                                                 }
                                                             </div>
@@ -481,6 +504,10 @@
     private static bool HasValidWhatsAppNumber(ReferenceOption pic) =>
         MasterPicContact.TryNormalizePhoneNumber(pic.PhoneNumber, out var phoneNumber) &&
         phoneNumber is not null;
+
+    private static bool HasValidEmail(ReferenceOption pic) =>
+        MasterPicContact.TryNormalizeEmail(pic.Email, out var email) &&
+        email is not null;
 
     private string GetEmptyStateMessage() =>
         ViewModel.Issues.Count == 0

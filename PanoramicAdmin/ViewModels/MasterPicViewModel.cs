@@ -48,7 +48,7 @@ public sealed class MasterPicViewModel(
                 .ToListAsync();
             Pics = pics.Select((pic, index) =>
                 new MasterPicRow(
-                    pic.Id, index + 1, pic.Nama, pic.Role, pic.PhoneNumber, pic.WhatsAppId)).ToList();
+                    pic.Id, index + 1, pic.Nama, pic.Role, pic.PhoneNumber, pic.WhatsAppId, pic.Email)).ToList();
             ApplyFilter();
         }
         catch (SqlException exception)
@@ -86,7 +86,8 @@ public sealed class MasterPicViewModel(
             .Where(pic =>
                 pic.Nama.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
                 pic.Role.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                (pic.PhoneNumber?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false))
+                (pic.PhoneNumber?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (pic.Email?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false))
             .Select((pic, index) => pic with { No = index + 1 })
             .ToList();
     }
@@ -109,7 +110,7 @@ public sealed class MasterPicViewModel(
             return;
         }
 
-        if (!TryNormalizeContacts(input, out var phoneNumber, out var whatsAppId))
+        if (!TryNormalizeContacts(input, out var email, out var phoneNumber, out var whatsAppId))
         {
             return;
         }
@@ -137,7 +138,8 @@ public sealed class MasterPicViewModel(
                 Nama = nama,
                 Role = role,
                 PhoneNumber = phoneNumber,
-                WhatsAppId = whatsAppId
+                WhatsAppId = whatsAppId,
+                Email = email
             });
             await db.SaveChangesAsync();
             SearchText = string.Empty;
@@ -180,7 +182,7 @@ public sealed class MasterPicViewModel(
             return;
         }
 
-        if (!TryNormalizeContacts(input, out var phoneNumber, out var whatsAppId))
+        if (!TryNormalizeContacts(input, out var email, out var phoneNumber, out var whatsAppId))
         {
             return;
         }
@@ -215,6 +217,7 @@ public sealed class MasterPicViewModel(
             pic.Role = role;
             pic.PhoneNumber = phoneNumber;
             pic.WhatsAppId = whatsAppId;
+            pic.Email = email;
             await db.SaveChangesAsync();
             snackbar.Add("Perubahan PIC berhasil disimpan.", Severity.Success);
             await LoadAsync();
@@ -299,11 +302,21 @@ public sealed class MasterPicViewModel(
 
     private bool TryNormalizeContacts(
         MasterPicInput input,
+        out string? email,
         out string? phoneNumber,
         out string? whatsAppId)
     {
+        if (!MasterPicContact.TryNormalizeEmail(input.Email, out email))
+        {
+            phoneNumber = null;
+            whatsAppId = null;
+            snackbar.Add("Alamat email PIC tidak valid.", Severity.Warning);
+            return false;
+        }
+
         if (!MasterPicContact.TryNormalizePhoneNumber(input.PhoneNumber, out phoneNumber))
         {
+            email = null;
             whatsAppId = null;
             snackbar.Add("Nomor WhatsApp harus berupa nomor internasional, contoh +6281234567890.", Severity.Warning);
             return false;
@@ -311,6 +324,7 @@ public sealed class MasterPicViewModel(
 
         if (!MasterPicContact.TryNormalizeWhatsAppId(input.WhatsAppId, out whatsAppId))
         {
+            email = null;
             snackbar.Add("WA ID harus berbentuk nomor@c.us, nomor@s.whatsapp.net, atau nomor@lid.", Severity.Warning);
             return false;
         }
@@ -344,4 +358,5 @@ public sealed record MasterPicRow(
     string Nama,
     string Role,
     string? PhoneNumber,
-    string? WhatsAppId);
+    string? WhatsAppId,
+    string? Email);

@@ -28,6 +28,34 @@ The `.env` file is ignored by Git. Do not commit or share it. Existing process
 environment variables take precedence over values in `.env`. Restart the app
 after changing the file.
 
+### Action Plan email through Power Automate
+
+Create a cloud flow with the **When an HTTP request is received** trigger and
+the **Office 365 Outlook — Send an email (V2)** action. Use this request schema:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "to": { "type": "string" },
+    "subject": { "type": "string" },
+    "bodyHtml": { "type": "string" }
+  },
+  "required": ["to", "subject", "bodyHtml"]
+}
+```
+
+Map `to`, `subject`, and `bodyHtml` from the trigger body to the matching
+fields in **Send an email (V2)**. A **Response** action after sending is
+optional: if added, use status code `200` and body `{"sent": true}`. Without a
+Response action, Power Automate returns `202 Accepted`; the application reports
+that the flow accepted the request and advises checking its run history, rather
+than claiming the email was sent. Configure the flow's HTTP invoke URL as
+`PowerAutomate__ActionPlanEmailFlowUrl` in `.env` for development or as an
+environment variable in the deployed app. The invoke URL contains a secret
+signature; do not commit or share it. The HTTP trigger may require a Power
+Automate Premium license, depending on the tenant's licensing.
+
 ## Live reload in VS Code
 
 From the workspace root, open the Command Palette, choose **Tasks: Run Task**, and select **Watch PanoramicAdmin (Hot Reload)**. Alternatively, from this directory, run:
@@ -65,6 +93,7 @@ If `pano_master_status` exists, the script renames it to
 
 Run `Database/Scripts/Create_MasterPic.sql`, then
 `Database/Scripts/Create_MasterRoles.sql` against `db_panoramic`.
+Rerun `Create_MasterPic.sql` on an existing database to add the PIC Email field.
 The Master Roles script creates `dbo.pano_master_roles` and imports any existing
 non-empty Master PIC role values. Master PIC's Role field is selected from this
 list; changing a role updates its assigned PICs, while a role in use cannot be

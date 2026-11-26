@@ -10,6 +10,7 @@ BEGIN
             CONSTRAINT [DF_pano_master_pic_Role] DEFAULT (N''),
         [PhoneNumber] nvarchar(16) NULL,
         [WhatsAppId] nvarchar(100) NULL,
+        [Email] nvarchar(254) NULL,
         CONSTRAINT [PK_pano_master_pic] PRIMARY KEY ([Id])
     );
 END;
@@ -38,6 +39,12 @@ IF COL_LENGTH(N'dbo.pano_master_pic', N'WhatsAppId') IS NULL
 BEGIN
     ALTER TABLE [dbo].[pano_master_pic]
         ADD [WhatsAppId] nvarchar(100) NULL;
+END;
+
+IF COL_LENGTH(N'dbo.pano_master_pic', N'Email') IS NULL
+BEGIN
+    ALTER TABLE [dbo].[pano_master_pic]
+        ADD [Email] nvarchar(254) NULL;
 END;
 
 IF NOT EXISTS

@@ -11,9 +11,11 @@ public sealed class ProjectIssueViewModel(
     IConfiguration configuration,
     ISnackbar snackbar,
     ILogger<ProjectIssueViewModel> logger,
-    WhatsAppBotBridgeService whatsAppBotBridgeService)
+    WhatsAppBotBridgeService whatsAppBotBridgeService,
+    PowerAutomateEmailService powerAutomateEmailService)
 {
     private readonly HashSet<(int ActionPlanId, int PicId)> _sendingWhatsAppMessages = [];
+    private readonly HashSet<(int ActionPlanId, int PicId)> _sendingActionPlanEmails = [];
 
     public event Action? StateChanged;
     public IReadOnlyList<ProjectIssueRow> Issues { get; private set; } = [];
@@ -31,6 +33,8 @@ public sealed class ProjectIssueViewModel(
     public bool IsSaving { get; private set; }
     public bool IsSendingWhatsApp(int actionPlanId, int picId) =>
         _sendingWhatsAppMessages.Contains((actionPlanId, picId));
+    public bool IsSendingActionPlanEmail(int actionPlanId, int picId) =>
+        _sendingActionPlanEmails.Contains((actionPlanId, picId));
 
     public async Task LoadAsync()
     {
@@ -53,7 +57,7 @@ public sealed class ProjectIssueViewModel(
                 .ToListAsync();
             Pics = await db.MasterPics.AsNoTracking()
                 .OrderBy(pic => pic.Nama)
-                .Select(pic => new ReferenceOption(pic.Id, pic.Nama, pic.PhoneNumber))
+                .Select(pic => new ReferenceOption(pic.Id, pic.Nama, pic.PhoneNumber, pic.Email))
                 .ToListAsync();
             StrategicActions = await db.StrategicActions.AsNoTracking()
                 .OrderBy(action => action.NamaStrategicAction)
@@ -91,12 +95,12 @@ public sealed class ProjectIssueViewModel(
                     var assignedPics = plan.PicAssignments
                         .Select(assignment => assignment.Pic)
                         .OfType<MasterPic>()
-                        .Select(pic => new ReferenceOption(pic.Id, pic.Nama, pic.PhoneNumber))
+                        .Select(pic => new ReferenceOption(pic.Id, pic.Nama, pic.PhoneNumber, pic.Email))
                         .ToList();
                     if (assignedPics.Count == 0 && plan.Pic is not null)
                     {
                         assignedPics.Add(new ReferenceOption(
-                            plan.Pic.Id, plan.Pic.Nama, plan.Pic.PhoneNumber));
+                            plan.Pic.Id, plan.Pic.Nama, plan.Pic.PhoneNumber, plan.Pic.Email));
                     }
 
                     return new ProjectIssueActionPlanRow(
@@ -245,6 +249,141 @@ public sealed class ProjectIssueViewModel(
             NotifyStateChanged();
         }
     }
+
+    public async Task SendActionPlanEmailAsync(
+        ProjectIssueRow issue,
+        ProjectIssueActionPlanRow plan,
+        ReferenceOption pic)
+    {
+        if (!plan.PicIds.Contains(pic.Id))
+        {
+            snackbar.Add("PIC tersebut tidak ditugaskan pada Action Plan ini.", Severity.Warning);
+            return;
+        }
+
+        if (!MasterPicContact.TryNormalizeEmail(pic.Email, out var email) || email is null)
+        {
+            snackbar.Add("Alamat email PIC belum diisi atau tidak valid di Master PIC.", Severity.Warning);
+            return;
+        }
+
+        var requestKey = (plan.Id, pic.Id);
+        if (!_sendingActionPlanEmails.Add(requestKey))
+        {
+            return;
+        }
+
+        NotifyStateChanged();
+        try
+        {
+            var subjectProject = issue.Project.Replace('\r', ' ').Replace('\n', ' ').Trim();
+            var subject = $"Action Plan - {subjectProject}";
+            var bodyHtml = BuildActionPlanEmailHtml(issue, plan, pic);
+
+            var deliveryConfirmed =
+                await powerAutomateEmailService.SendActionPlanEmailAsync(email, subject, bodyHtml);
+            snackbar.Add(
+                deliveryConfirmed
+                    ? $"Action Plan berhasil dikirim ke {pic.Name} melalui email."
+                    : $"Power Automate menerima permintaan email untuk {pic.Name}. Periksa riwayat flow untuk memastikan terkirim.",
+                Severity.Success);
+        }
+        catch (HttpRequestException exception)
+        {
+            logger.LogError(
+                "Power Automate email failed for Project Issue {IssueId}, Action Plan {ActionPlanId}, " +
+                "PIC {PicId}; HTTP status {StatusCode}.",
+                issue.Id,
+                plan.Id,
+                pic.Id,
+                exception.StatusCode);
+            snackbar.Add(
+                "Email gagal dikirim. Periksa konfigurasi dan riwayat flow Power Automate.",
+                Severity.Error);
+        }
+        catch (TaskCanceledException)
+        {
+            logger.LogError(
+                "Power Automate email timed out for Project Issue {IssueId}, Action Plan {ActionPlanId}, PIC {PicId}.",
+                issue.Id,
+                plan.Id,
+                pic.Id);
+            snackbar.Add("Pengiriman email timeout. Periksa flow Power Automate lalu coba lagi.", Severity.Error);
+        }
+        catch (InvalidOperationException exception)
+        {
+            logger.LogError(exception, "Power Automate email flow configuration is invalid.");
+            snackbar.Add("Konfigurasi flow Power Automate belum lengkap. Hubungi admin.", Severity.Error);
+        }
+        finally
+        {
+            _sendingActionPlanEmails.Remove(requestKey);
+            NotifyStateChanged();
+        }
+    }
+
+    private static string BuildActionPlanEmailHtml(
+        ProjectIssueRow issue,
+        ProjectIssueActionPlanRow plan,
+        ReferenceOption pic)
+    {
+        var dueDateRow = issue.DueDate is { } date
+            ? $"""
+               <tr>
+                 <td style="padding:10px 12px;color:#526174;white-space:nowrap;">📅 Due Date</td>
+                 <td style="padding:10px 12px;"><strong>{date:dd/MM/yyyy}</strong></td>
+               </tr>
+               """
+            : string.Empty;
+
+        return $"""
+                <!doctype html>
+                <html>
+                <body style="margin:0;padding:24px;background:#f4f7fb;font-family:Segoe UI,Arial,sans-serif;color:#243247;">
+                  <div style="max-width:680px;margin:0 auto;padding:24px;background:#ffffff;border:1px solid #e5eaf2;border-radius:12px;">
+                    <h2 style="margin:0 0 18px;color:#2457a6;font-size:20px;">📣 Action Plan - Mohon Tindak Lanjut</h2>
+                    <p style="margin:0 0 20px;line-height:1.6;">👋 Halo <strong>{EncodeHtml(pic.Name)}</strong>, mohon tindak lanjut Action Plan berikut:</p>
+                    <table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px;">
+                      <tr>
+                        <td style="padding:10px 12px;color:#526174;white-space:nowrap;">🏢 Project</td>
+                        <td style="padding:10px 12px;">{EncodeHtml(issue.Project)}</td>
+                      </tr>
+                      <tr style="background:#f8fafd;">
+                        <td style="padding:10px 12px;color:#526174;white-space:nowrap;">🚩 Project Issue</td>
+                        <td style="padding:10px 12px;">{EncodeHtml(issue.StatusProject)}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:10px 12px;color:#526174;white-space:nowrap;">🎯 Strategic Action</td>
+                        <td style="padding:10px 12px;">{EncodeHtml(issue.StrategicAction)}</td>
+                      </tr>
+                      <tr style="background:#f8fafd;">
+                        <td style="padding:10px 12px;color:#526174;white-space:nowrap;">👤 Issuer</td>
+                        <td style="padding:10px 12px;">{EncodeHtml(plan.IssuerPic.Name)}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:10px 12px;color:#526174;white-space:nowrap;vertical-align:top;">📝 Action Plan</td>
+                        <td style="padding:10px 12px;line-height:1.6;"><strong>{EncodeHtmlWithLineBreaks(plan.ActionPlan)}</strong></td>
+                      </tr>
+                      <tr style="background:#f8fafd;">
+                        <td style="padding:10px 12px;color:#526174;white-space:nowrap;">🔄 Status</td>
+                        <td style="padding:10px 12px;"><strong>{EncodeHtml(plan.Status)}</strong></td>
+                      </tr>
+                      {dueDateRow}
+                    </table>
+                  </div>
+                </body>
+                </html>
+                """;
+    }
+
+    private static string EncodeHtml(string value) =>
+        System.Net.WebUtility.HtmlEncode(value);
+
+    private static string EncodeHtmlWithLineBreaks(string value) =>
+        EncodeHtml(value)
+            .Replace("\r\n", "\n")
+            .Replace('\r', '\n')
+            .Replace("\n", "<br>");
 
     public async Task CreateAsync(ProjectIssueInput input) => await SaveAsync(null, input);
     public async Task UpdateAsync(int id, ProjectIssueInput input) => await SaveAsync(id, input);
@@ -525,7 +664,11 @@ public sealed class ProjectIssueViewModel(
     private void NotifyStateChanged() => StateChanged?.Invoke();
 }
 
-public sealed record ReferenceOption(int Id, string Name, string? PhoneNumber = null);
+public sealed record ReferenceOption(
+    int Id,
+    string Name,
+    string? PhoneNumber = null,
+    string? Email = null);
 
 public sealed record ProjectIssueRow(
     int Id,

@@ -84,6 +84,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(pic => pic.WhatsAppId)
                 .HasColumnName("WhatsAppId")
                 .HasMaxLength(100);
+            entity.Property(pic => pic.Email)
+                .HasColumnName("Email")
+                .HasMaxLength(254);
             entity.HasIndex(pic => pic.PhoneNumber)
                 .IsUnique()
                 .HasFilter("[PhoneNumber] IS NOT NULL")

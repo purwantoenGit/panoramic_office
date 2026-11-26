@@ -7,16 +7,38 @@ public class MasterPic
     public required string Role { get; set; }
     public string? PhoneNumber { get; set; }
     public string? WhatsAppId { get; set; }
+    public string? Email { get; set; }
 }
 
 public sealed record MasterPicInput(
     string Nama,
     string Role,
     string? PhoneNumber = null,
-    string? WhatsAppId = null);
+    string? WhatsAppId = null,
+    string? Email = null);
 
 public static class MasterPicContact
 {
+    public static bool TryNormalizeEmail(string? value, out string? normalized)
+    {
+        normalized = null;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return true;
+        }
+
+        var candidate = value.Trim();
+        if (candidate.Length > 254 ||
+            !System.Net.Mail.MailAddress.TryCreate(candidate, out var address) ||
+            !string.Equals(address.Address, candidate, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        normalized = candidate;
+        return true;
+    }
+
     public static bool TryNormalizePhoneNumber(string? value, out string? normalized)
     {
         normalized = null;

@@ -9,7 +9,7 @@
             <div>
                 <MudText Typo="Typo.h6" Class="add-project-title">Tambah Master PIC</MudText>
                 <MudText Typo="Typo.caption" Class="add-project-subtitle">
-                    Masukkan identitas dan kontak WhatsApp PIC.
+                    Masukkan identitas, email, dan kontak WhatsApp PIC.
                 </MudText>
             </div>
         </div>
@@ -41,6 +41,11 @@
                           HelperText="Fallback jika nomor tidak dapat dipetakan."
                           Variant="Variant.Outlined" Margin="Margin.Dense"
                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AlternateEmail" />
+            <MudTextField T="string" @bind-Value="_email" Label="Email (opsional)"
+                          Placeholder="nama@perusahaan.com"
+                          HelperText="Dipakai untuk mengirim Action Plan melalui email."
+                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Email" />
         </div>
         @if (_validationMessage is not null)
         {
@@ -69,6 +74,7 @@
     private string _role = string.Empty;
     private string _phoneNumber = string.Empty;
     private string _whatsAppId = string.Empty;
+    private string _email = string.Empty;
     private string? _validationMessage;
 
     protected override void OnParametersSet()
@@ -119,7 +125,13 @@
             return;
         }
 
-        MudDialog.Close(DialogResult.Ok(new MasterPicInput(nama, role, phoneNumber, whatsAppId)));
+        if (!MasterPicContact.TryNormalizeEmail(_email, out var email))
+        {
+            _validationMessage = "Alamat email PIC tidak valid.";
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new MasterPicInput(nama, role, phoneNumber, whatsAppId, email)));
     }
 
     private void Cancel() => MudDialog.Cancel();

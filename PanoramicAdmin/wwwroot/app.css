@@ -1867,6 +1867,7 @@ body, .mud-typography {
 .project-issue-plan-pic-contact {
     display: inline-flex;
     min-width: 0;
+    flex-wrap: wrap;
     align-items: center;
     gap: 9px;
     padding: 6px 8px;
@@ -1906,7 +1907,34 @@ body, .mud-typography {
     outline-offset: 2px;
 }
 
-.project-issue-wa-unavailable {
+.project-issue-email-button {
+    min-height: 28px;
+    padding: 3px 9px !important;
+    border: 1px solid #c8d8f6 !important;
+    border-radius: 999px !important;
+    background: #f1f5fe !important;
+    color: #315fa8 !important;
+    font-size: 0.73rem !important;
+    font-weight: 800 !important;
+    transition: background-color 140ms ease, box-shadow 140ms ease;
+}
+
+.project-issue-email-button:hover {
+    background: #e5edfc !important;
+    box-shadow: 0 2px 7px rgb(49 95 168 / 14%);
+}
+
+.project-issue-email-button:disabled {
+    opacity: 0.65;
+}
+
+.project-issue-email-button:focus-visible {
+    outline: 2px solid #315fa8;
+    outline-offset: 2px;
+}
+
+.project-issue-wa-unavailable,
+.project-issue-email-unavailable {
     color: #8793a3;
     font-size: 0.7rem;
     font-weight: 650;
