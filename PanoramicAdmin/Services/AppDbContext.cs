@@ -17,6 +17,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ProjectIssue> ProjectIssues => Set<ProjectIssue>();
     public DbSet<ProjectIssueActionPlan> ProjectIssueActionPlans => Set<ProjectIssueActionPlan>();
     public DbSet<ProjectIssueActionPlanPic> ProjectIssueActionPlanPics => Set<ProjectIssueActionPlanPic>();
+    public DbSet<ProjectIssueActionPlanFollowUpToken> ProjectIssueActionPlanFollowUpTokens =>
+        Set<ProjectIssueActionPlanFollowUpToken>();
     public DbSet<RfidTagManualUnit> RfidTagManualUnits => Set<RfidTagManualUnit>();
     public DbSet<SopEvaluation> SopEvaluations => Set<SopEvaluation>();
     public DbSet<SopEvaluationDocument> SopEvaluationDocuments => Set<SopEvaluationDocument>();
@@ -95,6 +97,36 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .IsUnique()
                 .HasFilter("[WhatsAppId] IS NOT NULL")
                 .HasDatabaseName("UX_pano_master_pic_WhatsAppId");
+        });
+
+        modelBuilder.Entity<ProjectIssueActionPlanFollowUpToken>(entity =>
+        {
+            entity.ToTable("pano_project_issue_action_plan_followup_token", "dbo");
+            entity.Property(token => token.TokenHash)
+                .HasColumnName("TokenHash")
+                .HasMaxLength(64)
+                .IsFixedLength()
+                .IsRequired();
+            entity.Property(token => token.CreatedAtUtc)
+                .HasColumnName("CreatedAtUtc")
+                .HasColumnType("datetime2");
+            entity.Property(token => token.ExpiresAtUtc)
+                .HasColumnName("ExpiresAtUtc")
+                .HasColumnType("datetime2");
+            entity.Property(token => token.UsedAtUtc)
+                .HasColumnName("UsedAtUtc")
+                .HasColumnType("datetime2");
+            entity.HasIndex(token => token.TokenHash)
+                .IsUnique()
+                .HasDatabaseName("UX_pano_project_issue_action_plan_followup_token_TokenHash");
+            entity.HasOne(token => token.ActionPlan)
+                .WithMany()
+                .HasForeignKey(token => token.ActionPlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(token => token.Pic)
+                .WithMany()
+                .HasForeignKey(token => token.PicId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<MasterRole>(entity =>

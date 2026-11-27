@@ -1,0 +1,319 @@
+@page "/project-issue/follow-up"
+@layout BlankLayout
+@using PanoramicAdmin.Services
+@inject IJSRuntime JS
+@inject ProjectIssueFollowUpService FollowUpService
+
+<PageTitle>Action Plan Follow-up | Panoramic Review</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="project-issue-followup-page">
+    <div class="project-issue-followup-shell">
+        <div class="project-issue-followup-brand">
+            <span class="project-issue-followup-brand-icon">
+                <MudIcon Icon="@Icons.Material.Filled.Timeline" />
+            </span>
+            <span>PANORAMIC <strong>REVIEW</strong></span>
+        </div>
+
+        <MudPaper Class="project-issue-followup-card" Elevation="0">
+            @if (_isLoading)
+            {
+                <div class="project-issue-followup-loading">
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+                    <MudText Typo="Typo.body2">Memuat detail Action Plan...</MudText>
+                </div>
+            }
+            else if (_pageData is null)
+            {
+                <div class="project-issue-followup-state">
+                    <MudAvatar Color="Color.Error" Variant="Variant.Filled" Size="Size.Large">
+                        <MudIcon Icon="@Icons.Material.Filled.LinkOff" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.h5">Link tidak tersedia</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Link follow-up tidak valid atau kedaluwarsa.
+                        Minta pengirim email untuk mengirim ulang Action Plan.
+                    </MudText>
+                </div>
+            }
+            else if (_saved)
+            {
+                <div class="project-issue-followup-state project-issue-followup-success">
+                    <MudAvatar Color="Color.Success" Variant="Variant.Filled" Size="Size.Large">
+                        <MudIcon Icon="@Icons.Material.Filled.Check" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.h5">Follow-up berhasil disimpan</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Feedback dan status Action Plan sudah diperbarui. Link ini tetap dapat digunakan
+                        sampai masa berlakunya habis untuk mengirim follow-up berikutnya.
+                    </MudText>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                               OnClick="StartAnotherFollowUpAsync"
+                               Class="project-issue-followup-save">
+                        Tambah Follow-up Lagi
+                    </MudButton>
+                </div>
+            }
+            else
+            {
+                <div class="project-issue-followup-hero">
+                    <span class="project-issue-followup-eyebrow">PROJECT ISSUE · ACTION PLAN</span>
+                    <MudText Typo="Typo.h4" Class="project-issue-followup-title">
+                        Follow-up Action Plan
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="project-issue-followup-subtitle">
+                        Periksa detail tugas, tulis feedback, lalu perbarui statusnya.
+                    </MudText>
+                </div>
+
+                <section class="project-issue-followup-summary">
+                    <div class="project-issue-followup-section-heading">
+                        <span class="project-issue-followup-section-icon">
+                            <MudIcon Icon="@Icons.Material.Filled.Subject" />
+                        </span>
+                        <div>
+                            <MudText Typo="Typo.subtitle1">Ringkasan Action Plan</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Informasi ini hanya dapat dilihat.
+                            </MudText>
+                        </div>
+                    </div>
+
+                    <div class="project-issue-followup-details">
+                        <div class="project-issue-followup-detail">
+                            <span class="project-issue-followup-detail-label">
+                                <MudIcon Icon="@Icons.Material.Filled.Business" /> Project
+                            </span>
+                            <strong>@_pageData.Project</strong>
+                        </div>
+                        <div class="project-issue-followup-detail">
+                            <span class="project-issue-followup-detail-label">
+                                <MudIcon Icon="@Icons.Material.Filled.Flag" /> Project Issue
+                            </span>
+                            <strong>@_pageData.ProjectIssue</strong>
+                        </div>
+                        <div class="project-issue-followup-detail">
+                            <span class="project-issue-followup-detail-label">
+                                <MudIcon Icon="@Icons.Material.Filled.TrackChanges" /> Strategic Action
+                            </span>
+                            <strong>@_pageData.StrategicAction</strong>
+                        </div>
+                        <div class="project-issue-followup-detail">
+                            <span class="project-issue-followup-detail-label">
+                                <MudIcon Icon="@Icons.Material.Filled.PersonOutline" /> Issuer
+                            </span>
+                            <strong>@_pageData.Issuer</strong>
+                        </div>
+                        <div class="project-issue-followup-detail">
+                            <span class="project-issue-followup-detail-label">
+                                <MudIcon Icon="@Icons.Material.Filled.AssignmentInd" /> PIC
+                            </span>
+                            <strong>@_pageData.Pic</strong>
+                        </div>
+                        <div class="project-issue-followup-detail project-issue-followup-detail-wide">
+                            <span class="project-issue-followup-detail-label">
+                                <MudIcon Icon="@Icons.Material.Filled.Description" /> Action Plan
+                            </span>
+                            <strong class="project-issue-followup-action-plan">@_pageData.ActionPlan</strong>
+                        </div>
+                        <div class="project-issue-followup-detail">
+                            <span class="project-issue-followup-detail-label">
+                                <MudIcon Icon="@Icons.Material.Filled.Sync" /> Status saat ini
+                            </span>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                                     Class="project-issue-followup-current-status">
+                                @_pageData.CurrentStatus
+                            </MudChip>
+                        </div>
+                        @if (_pageData.DueDate is { } dueDate)
+                        {
+                            <div class="project-issue-followup-detail">
+                                <span class="project-issue-followup-detail-label">
+                                    <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" /> Due Date
+                                </span>
+                                <strong>@dueDate.ToString("dd/MM/yyyy")</strong>
+                            </div>
+                        }
+                    </div>
+                </section>
+
+                <section class="project-issue-followup-form">
+                    <div class="project-issue-followup-section-heading">
+                        <span class="project-issue-followup-section-icon project-issue-followup-form-icon">
+                            <MudIcon Icon="@Icons.Material.Filled.EditNote" />
+                        </span>
+                        <div>
+                            <MudText Typo="Typo.subtitle1">Update tindak lanjut</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Feedback baru akan ditambahkan ke riwayat. Status harus diubah sebelum menyimpan.
+                            </MudText>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(_pageData.ExistingFeedback))
+                    {
+                        <div class="project-issue-followup-previous-feedback">
+                            <span>FEEDBACK SEBELUMNYA</span>
+                            <p>@_pageData.ExistingFeedback</p>
+                        </div>
+                    }
+
+                    <MudTextField T="string" @bind-Value="_feedback"
+                                  Label="Feedback tindak lanjut"
+                                  Placeholder="Ceritakan progres, hasil, atau kendala..."
+                                  Variant="Variant.Outlined" Lines="5" Required="true"
+                                  RequiredError="Feedback wajib diisi."
+                                  Class="project-issue-followup-feedback-input"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.ChatBubbleOutline" />
+
+                    <div class="project-issue-followup-status-row">
+                        <MudSelect T="string" @bind-Value="_selectedStatus" Label="Pilih status baru"
+                                   Variant="Variant.Outlined" Required="true"
+                                   RequiredError="Pilih status baru yang berbeda dari status saat ini."
+                                   Class="project-issue-followup-status">
+                            @foreach (var status in _pageData.AvailableStatuses)
+                            {
+                                <MudSelectItem T="string" Value="@status">@status</MudSelectItem>
+                            }
+                        </MudSelect>
+                        @if (!string.IsNullOrWhiteSpace(_selectedStatus))
+                        {
+                            <div class="project-issue-followup-status-preview">
+                                <span>Perubahan status</span>
+                                <div>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                        @_pageData.CurrentStatus
+                                    </MudChip>
+                                    <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" />
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                                             Color="Color.Primary">
+                                        @_selectedStatus
+                                    </MudChip>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    @if (_validationMessage is not null)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true"
+                                  Variant="Variant.Outlined" Class="project-issue-followup-validation">
+                            @_validationMessage
+                        </MudAlert>
+                    }
+
+                    <div class="project-issue-followup-actions">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SaveAsync" Disabled="@_isSaving"
+                                   Class="project-issue-followup-save">
+                            @(_isSaving ? "Menyimpan..." : "Simpan Follow-up")
+                        </MudButton>
+                    </div>
+                </section>
+            }
+        </MudPaper>
+
+        <div class="project-issue-followup-footer">
+            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" />
+            <span>Link bersifat pribadi, berlaku 30 hari, dan dapat digunakan berulang kali.</span>
+        </div>
+    </div>
+</MudContainer>
+
+@code {
+    private string? _token;
+    private string _feedback = string.Empty;
+    private string? _selectedStatus;
+    private string? _validationMessage;
+    private ProjectIssueFollowUpPageData? _pageData;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _saved;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _token = await JS.InvokeAsync<string?>("panoramicFollowUp.takeToken");
+        _pageData = await FollowUpService.GetPageDataAsync(_token);
+        _isLoading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_pageData is null || _token is null || _isSaving)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_feedback))
+        {
+            _validationMessage = "Feedback wajib diisi.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_selectedStatus))
+        {
+            _validationMessage = "Pilih status baru.";
+            return;
+        }
+
+        if (string.Equals(_selectedStatus, _pageData.CurrentStatus, StringComparison.Ordinal))
+        {
+            _validationMessage = "Status harus diganti dari status saat ini sebelum disimpan.";
+            return;
+        }
+
+        _isSaving = true;
+        _validationMessage = null;
+        try
+        {
+            var result = await FollowUpService.SaveAsync(_token, _feedback, _selectedStatus);
+            switch (result)
+            {
+                case FollowUpSaveResult.Saved:
+                    _saved = true;
+                    break;
+                case FollowUpSaveResult.InvalidOrExpired:
+                    _pageData = null;
+                    break;
+                case FollowUpSaveResult.FeedbackRequired:
+                    _validationMessage = "Feedback wajib diisi.";
+                    break;
+                case FollowUpSaveResult.StatusRequired:
+                    _validationMessage = "Pilih status baru.";
+                    break;
+                case FollowUpSaveResult.StatusMustChange:
+                    _validationMessage = "Status harus diganti dari status saat ini sebelum disimpan.";
+                    break;
+                case FollowUpSaveResult.InvalidStatus:
+                    _validationMessage = "Status yang dipilih sudah tidak aktif. Muat ulang halaman dan pilih status yang tersedia.";
+                    break;
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task StartAnotherFollowUpAsync()
+    {
+        if (_token is null)
+        {
+            return;
+        }
+
+        _pageData = await FollowUpService.GetPageDataAsync(_token);
+        _feedback = string.Empty;
+        _selectedStatus = null;
+        _validationMessage = null;
+        _saved = false;
+    }
+}

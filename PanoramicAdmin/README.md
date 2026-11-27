@@ -56,6 +56,18 @@ environment variable in the deployed app. The invoke URL contains a secret
 signature; do not commit or share it. The HTTP trigger may require a Power
 Automate Premium license, depending on the tenant's licensing.
 
+Run `Database/Scripts/Create_ProjectIssueFollowUp.sql` against `db_panoramic`
+to enable follow-up links. Set `ProjectIssueFollowUp__BaseUrl` to the application
+base URL that PICs can open from the office network. HTTPS is recommended. For
+an HTTP-only private office network, explicitly set
+`ProjectIssueFollowUp__AllowInsecureHttp=true`; HTTP hosts must resolve only to
+private network addresses, and `localhost` is not allowed. HTTP does not encrypt
+the follow-up token or submitted feedback in transit, so use only on a trusted
+internal network. Each email gets a unique
+follow-up link that expires after 30 days and is usable once. The browser opens
+a read-only summary and allows the recipient to submit feedback with a changed
+active status; the current feedback is preserved in the saved history.
+
 ## Live reload in VS Code
 
 From the workspace root, open the Command Palette, choose **Tasks: Run Task**, and select **Watch PanoramicAdmin (Hot Reload)**. Alternatively, from this directory, run:

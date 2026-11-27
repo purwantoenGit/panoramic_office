@@ -12,7 +12,8 @@ public sealed class ProjectIssueViewModel(
     ISnackbar snackbar,
     ILogger<ProjectIssueViewModel> logger,
     WhatsAppBotBridgeService whatsAppBotBridgeService,
-    PowerAutomateEmailService powerAutomateEmailService)
+    PowerAutomateEmailService powerAutomateEmailService,
+    ProjectIssueFollowUpService projectIssueFollowUpService)
 {
     private readonly HashSet<(int ActionPlanId, int PicId)> _sendingWhatsAppMessages = [];
     private readonly HashSet<(int ActionPlanId, int PicId)> _sendingActionPlanEmails = [];
@@ -278,7 +279,8 @@ public sealed class ProjectIssueViewModel(
         {
             var subjectProject = issue.Project.Replace('\r', ' ').Replace('\n', ' ').Trim();
             var subject = $"Action Plan - {subjectProject}";
-            var bodyHtml = BuildActionPlanEmailHtml(issue, plan, pic);
+            var followUpUrl = await projectIssueFollowUpService.CreateLinkAsync(plan.Id, pic.Id);
+            var bodyHtml = BuildActionPlanEmailHtml(issue, plan, pic, followUpUrl);
 
             var deliveryConfirmed =
                 await powerAutomateEmailService.SendActionPlanEmailAsync(email, subject, bodyHtml);
@@ -312,8 +314,21 @@ public sealed class ProjectIssueViewModel(
         }
         catch (InvalidOperationException exception)
         {
-            logger.LogError(exception, "Power Automate email flow configuration is invalid.");
-            snackbar.Add("Konfigurasi flow Power Automate belum lengkap. Hubungi admin.", Severity.Error);
+            logger.LogError(exception, "Action Plan email or follow-up link configuration is invalid.");
+            snackbar.Add(
+                "Periksa konfigurasi flow Power Automate dan alamat HTTPS PanoramicReview untuk follow-up.",
+                Severity.Error);
+        }
+        catch (SqlException exception)
+        {
+            logger.LogError(
+                exception,
+                "Unable to create Action Plan follow-up link for Project Issue {IssueId}, Action Plan {ActionPlanId}.",
+                issue.Id,
+                plan.Id);
+            snackbar.Add(
+                "Link follow-up gagal dibuat. Pastikan skrip database Project Issue Follow-up sudah dijalankan.",
+                Severity.Error);
         }
         finally
         {
@@ -325,7 +340,8 @@ public sealed class ProjectIssueViewModel(
     private static string BuildActionPlanEmailHtml(
         ProjectIssueRow issue,
         ProjectIssueActionPlanRow plan,
-        ReferenceOption pic)
+        ReferenceOption pic,
+        string followUpUrl)
     {
         var dueDateRow = issue.DueDate is { } date
             ? $"""
@@ -341,6 +357,7 @@ public sealed class ProjectIssueViewModel(
                 <html>
                 <body style="margin:0;padding:24px;background:#f4f7fb;font-family:Segoe UI,Arial,sans-serif;color:#243247;">
                   <div style="max-width:680px;margin:0 auto;padding:24px;background:#ffffff;border:1px solid #e5eaf2;border-radius:12px;">
+                    <p style="margin:0 0 8px;color:#718096;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Pesan Otomatis dari PANORAMIC REVIEW!</p>
                     <h2 style="margin:0 0 18px;color:#2457a6;font-size:20px;">📣 Action Plan - Mohon Tindak Lanjut</h2>
                     <p style="margin:0 0 20px;line-height:1.6;">👋 Halo <strong>{EncodeHtml(pic.Name)}</strong>, mohon tindak lanjut Action Plan berikut:</p>
                     <table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px;">
@@ -370,6 +387,9 @@ public sealed class ProjectIssueViewModel(
                       </tr>
                       {dueDateRow}
                     </table>
+                    <div style="margin-top:24px;text-align:center;">
+                      <a href="{EncodeHtml(followUpUrl)}" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#2457a6;color:#ffffff;text-decoration:none;font-weight:700;">🔗 Link to Follow Up</a>
+                    </div>
                   </div>
                 </body>
                 </html>

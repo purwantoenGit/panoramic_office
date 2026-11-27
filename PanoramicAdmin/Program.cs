@@ -51,6 +51,7 @@ builder.Services.AddHttpClient<WhatsAppBotBridgeService>(client =>
     client.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddHttpClient<PowerAutomateEmailService>(client =>
     client.Timeout = TimeSpan.FromSeconds(60));
+builder.Services.AddTransient<ProjectIssueFollowUpService>();
 builder.Services.AddSingleton<IUserService, InMemoryUserService>();
 builder.Services.AddTransient<UserListViewModel>();
 builder.Services.AddTransient<MasterProjectViewModel>();
